@@ -7,16 +7,16 @@ const UserController = {
     const { email, password } = req.body;
 
     try {
-      const user = await db.collection("users").findOne({ email });
+      const user = await db.collection("users").findOne({ email }); // Retrieve user information based on provided email
 
       if (!user) {
         return res.status(404).send("User not found");
       }
 
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      const isValidPassword = await bcrypt.compare(password, user.password); // Compare hashed password with provided password
 
       if (!isValidPassword) {
-        return res.status(401).send("Invalid password");
+        return res.status(401).send("Invalid password"); // Respond with 401 if password is invalid
       }
 
       res.status(200).send("Login successful");
@@ -31,20 +31,17 @@ const UserController = {
     const { username, email, password } = req.body;
 
     try {
-      // Check if the username is already taken
-      const existingUsername = await db.collection("users").findOne({ username });
+      const existingUsername = await db.collection("users").findOne({ username }); // Check if the username is already taken
       if (existingUsername) {
         return res.status(400).send("Username already taken");
       }
 
-      // Check if the email is already taken
-      const existingEmail = await db.collection("users").findOne({ email });
+      const existingEmail = await db.collection("users").findOne({ email }); // Check if the email is already registered
       if (existingEmail) {
         return res.status(400).send("Email already taken");
       }
 
-      // Hash the password before saving it to the database
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password, 10); // Hash the password before saving it to the database
 
       // Create a new user
       const newUser = {
@@ -53,8 +50,7 @@ const UserController = {
         password: hashedPassword,
       };
 
-      // Save the user to the database
-      await db.collection("users").insertOne(newUser);
+      await db.collection("users").insertOne(newUser); // Save the new user to the database
 
       res.status(201).send("Registration successful");
     } catch (error) {
