@@ -1,6 +1,7 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { type PanelResponse as MarketPanelResponse } from '@/lib/panel';
 import { type MarketPanelKey } from '@/lib/market';
@@ -83,10 +84,27 @@ const fetcher = async (url: string): Promise<MarketPanelSuccessResponse> => {
 };
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
-  const [activePanelKey, setActivePanelKey] =
-    useState<MarketPanelKey>(defaultPanel);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const panelParam = searchParams.get('panel');
+
+  const activePanelKey = isMarketPanelKey(panelParam)
+    ? panelParam
+    : defaultPanel;
 
   const activePanel = getMarketPanelOption(activePanelKey);
+
+  function handlePanelChange(key: MarketPanelKey) {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    nextParams.set('panel', key);
+
+    router.replace(`${pathname}?${nextParams.toString()}`, {
+      scroll: false,
+    });
+  }
 
   const { data, error, isLoading } = useSWR<MarketPanelSuccessResponse, Error>(
     activePanel.fetchUrl,
@@ -113,9 +131,9 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       <PanelContent
         title={activePanel.title}
         activePanelKey={activePanelKey}
-        onChange={setActivePanelKey}
+        onChange={handlePanelChange}
       >
-        <p className='text-red-400'>Error cargando datos: {error.message}</p>
+        <p className="text-red-400">Error cargando datos: {error.message}</p>
       </PanelContent>
     );
   }
@@ -125,9 +143,9 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       <PanelContent
         title={activePanel.title}
         activePanelKey={activePanelKey}
-        onChange={setActivePanelKey}
+        onChange={handlePanelChange}
       >
-        <p className='text-gray-500' role='status'>
+        <p className="text-gray-500" role="status">
           Cargando datos...
         </p>
       </PanelContent>
@@ -139,15 +157,15 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       <PanelContent
         title={activePanel.title}
         activePanelKey={activePanelKey}
-        onChange={setActivePanelKey}
+        onChange={handlePanelChange}
       >
         {hasError && (
-          <p className='mb-2 text-sm text-yellow-400' role='status'>
+          <p className="mb-2 text-sm text-yellow-400" role="status">
             No se pudo actualizar. Mostrando últimos datos disponibles.
           </p>
         )}
 
-        <p className='text-gray-500' role='status'>
+        <p className="text-gray-500" role="status">
           No hay datos disponibles.
         </p>
       </PanelContent>
@@ -158,18 +176,18 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     <PanelContent
       title={activePanel.title}
       activePanelKey={activePanelKey}
-      onChange={setActivePanelKey}
+      onChange={handlePanelChange}
     >
       {hasError && (
-        <p className='mb-2 text-sm text-yellow-400' role='status'>
+        <p className="mb-2 text-sm text-yellow-400" role="status">
           No se pudo actualizar. Mostrando últimos datos disponibles.
         </p>
       )}
 
       <div
-        className='divide-y divide-gray-200'
-        role='grid'
-        aria-label='Panel de acciones'
+        className="divide-y divide-gray-200"
+        role="grid"
+        aria-label="Panel de acciones"
       >
         {rows.map((row) => (
           <Stock key={row.ticker} {...row} />
@@ -191,7 +209,7 @@ function PanelContent({
   children: ReactNode;
 }) {
   return (
-    <section className='py-4'>
+    <section className="py-4">
       <Title>{title}</Title>
 
       <PanelMenu
@@ -200,7 +218,7 @@ function PanelContent({
         options={MARKET_PANEL_OPTIONS}
       />
 
-      <div className='overflow-x-auto'>
+      <div className="overflow-x-auto">
         <NavStocks />
 
         {children}
@@ -214,4 +232,8 @@ function getMarketPanelOption(key: MarketPanelKey): MarketPanelOption {
     MARKET_PANEL_OPTIONS.find((option) => option.key === key) ??
     MARKET_PANEL_OPTIONS[0]
   );
+}
+
+function isMarketPanelKey(value: string | null): value is MarketPanelKey {
+  return MARKET_PANEL_OPTIONS.some((option) => option.key === value);
 }
