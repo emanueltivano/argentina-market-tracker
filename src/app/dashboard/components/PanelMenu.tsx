@@ -17,7 +17,7 @@ export default function PanelMenu({
   options,
 }: Props) {
   return (
-    <nav className="mb-4 flex flex-wrap gap-2" aria-label="Paneles de mercado">
+    <nav className="panel-menu" aria-label="Paneles de mercado">
       {options.map((option) => {
         const isActive = option.key === activePanelKey
 
@@ -27,12 +27,9 @@ export default function PanelMenu({
             type="button"
             onClick={() => onChange(option.key)}
             aria-current={isActive ? 'page' : undefined}
-            className={[
-              'rounded-full border px-3 py-1 text-sm font-medium transition',
-              isActive
-                ? 'border-gray-900 bg-gray-900 text-white'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50',
-            ].join(' ')}
+            className={`panel-menu-button ${
+              isActive ? 'panel-menu-button-active' : ''
+            }`}
           >
             {option.label}
           </button>

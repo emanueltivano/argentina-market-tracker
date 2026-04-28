@@ -191,7 +191,7 @@ function PanelContent({
   children: ReactNode;
 }) {
   return (
-    <section className='p-4'>
+    <section className='py-4'>
       <Title>{title}</Title>
 
       <PanelMenu
@@ -200,9 +200,11 @@ function PanelContent({
         options={MARKET_PANEL_OPTIONS}
       />
 
-      <NavStocks />
+      <div className='overflow-x-auto'>
+        <NavStocks />
 
-      {children}
+        {children}
+      </div>
     </section>
   );
 }

@@ -8,10 +8,7 @@ export default function PageTitle({
   ...props
 }: Props) {
   return (
-    <h1
-      className={`mb-4 text-2xl font-bold tracking-tight md:text-3xl ${className}`}
-      {...props}
-    >
+    <h1 className={`page-title ${className}`} {...props}>
       {children}
     </h1>
   )
