@@ -1,13 +1,184 @@
 @import "tailwindcss";
 
+/* =========================
+   Theme variables
+========================= */
+
 :root {
   --bg: 255 255 255;
   --fg: 17 24 39;
+
+  --main-color: #1c36be;
+  --main-light-color: #899fff;
+  --text-color: #042b5d;
+
+  --positive-color: #00c28f;
+  --positive-light-color: #33d6aa;
+  --negative-color: #eb0a3a;
+  --negative-light-color: #f04565;
+
+  --background-light: #ffffff;
+  --link-color: #002c65;
+  --hover-color: #e5e5e5;
+  --select-color: #eeeeee;
+
+  --buy-color: #e6f9f4;
+  --sell-color: #fde7eb;
 }
+
+/* =========================
+   Base
+========================= */
 
 @layer base {
   body {
     background-color: rgb(var(--bg));
     color: rgb(var(--fg));
   }
+}
+
+/* =========================
+   Tailwind component utilities
+========================= */
+
+@layer components {
+  .page-title {
+    @apply ms-2 mb-4 text-2xl font-bold tracking-tight md:text-3xl;
+  }
+
+  .panel-menu {
+    @apply ms-2 mb-4 flex flex-wrap gap-2;
+  }
+
+  .panel-menu-button {
+    @apply rounded-md border px-3 py-1 text-sm font-medium transition;
+  }
+
+  .nav-stocks {
+    @apply ps-1 border-b text-xs font-semibold sm:text-sm;
+  }
+
+  .nav-stocks-cell {
+    @apply min-w-0 whitespace-nowrap px-2 py-2 sm:px-3;
+  }
+
+  .stock-row {
+    @apply ps-1 items-center tabular-nums;
+  }
+
+  .stock-cell {
+    @apply min-w-0 whitespace-nowrap px-2 py-1 text-xs sm:px-3 sm:py-2 sm:text-sm;
+  }
+}
+
+/* =========================
+   Page title
+========================= */
+
+.page-title {
+  color: var(--text-color);
+}
+
+/* =========================
+   Panel menu
+========================= */
+
+.panel-menu-button {
+  cursor: pointer;
+  border-color: var(--hover-color);
+  background-color: var(--background-light);
+  color: var(--text-color);
+}
+
+.panel-menu-button:hover {
+  border-color: var(--main-light-color);
+  background-color: var(--main-light-color);
+  color: white;
+}
+
+.panel-menu-button-active {
+  border-color: var(--main-color);
+  background-color: var(--main-color);
+  color: white;
+}
+
+.panel-menu-button-active:hover {
+  border-color: var(--main-color);
+  background-color: var(--main-color);
+  color: white;
+}
+
+/* =========================
+   Nav stocks
+========================= */
+
+.nav-stocks {
+  width: 100%;
+  border-color: var(--hover-color);
+  color: var(--text-color);
+  background-color: var(--select-color);
+}
+
+.nav-stocks abbr {
+  text-decoration: none;
+}
+
+/* =========================
+   Stock rows
+========================= */
+
+.stock-row {
+  color: var(--text-color);
+}
+
+.stock-ticker {
+  font-size: large;
+  font-weight: 600;
+}
+
+.stock-price {
+  font-weight: 500;
+}
+
+.stock-var {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.25rem;
+  box-sizing: border-box;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  color: white;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.stock-var-positive {
+  background-color: var(--positive-light-color);
+}
+
+.stock-var-negative {
+  background-color: var(--negative-light-color);
+}
+
+.stock-var.stock-var-neutral {
+  color: var(--text-color);
+  background-color: transparent;
+  border: 1px solid var(--text-color);
+}
+
+.stock-var-positive.stock-var-strong {
+  background-color: var(--positive-color);
+}
+
+.stock-var-negative.stock-var-strong {
+  background-color: var(--negative-color);
+}
+
+.stock-buy-price {
+  background-color: var(--buy-color);
+}
+
+.stock-sell-price {
+  background-color: var(--sell-color);
 }

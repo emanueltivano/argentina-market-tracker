@@ -1,30 +1,44 @@
-import { STOCK_GRID_LAYOUT } from './stockGrid'
+import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
 
 const COLUMNS = [
   { label: 'Ticker', className: 'font-medium text-left' },
   { label: 'Precio' },
   { label: 'Var %', title: 'Variación porcentual' },
-  { label: 'CC', title: 'Cantidad de compra' },
+  {
+    label: 'CC',
+    title: 'Cantidad de compra',
+    className: STOCK_COLUMN_VISIBILITY.desktopOnly,
+  },
   { label: 'PC', title: 'Precio de compra' },
   { label: 'PV', title: 'Precio de venta' },
-  { label: 'CV', title: 'Cantidad de venta' },
-  { label: 'Apertura' },
-  { label: 'Mínimo' },
-  { label: 'Máximo' },
-  { label: 'Último cierre' },
-  { label: 'Total operado' },
-  { label: 'Operaciones' },
-]
+  {
+    label: 'CV',
+    title: 'Cantidad de venta',
+    className: STOCK_COLUMN_VISIBILITY.desktopOnly,
+  },
+  { label: 'Apertura', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
+  { label: 'Mínimo', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
+  { label: 'Máximo', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
+  { label: 'Último cierre', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
+  { label: 'Total operado', className: STOCK_COLUMN_VISIBILITY.tabletUp },
+  { label: 'Operaciones', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
+];
 
-/** Misma grilla que las filas de Stock */
-const GRID =
-  `${STOCK_GRID_LAYOUT} border-b border-gray-200 text-xs sm:text-sm font-medium text-gray-700`
+const GRID = STOCK_GRID_LAYOUT;
 
 export default function NavStocks() {
   return (
-    <div className={GRID} role="columnheader" aria-label="Encabezados de columnas">
+    <div
+      className={`${GRID} nav-stocks`}
+      role='row'
+      aria-label='Encabezados de columnas'
+    >
       {COLUMNS.map((column) => (
-        <span key={column.label} className={column.className}>
+        <span
+          key={column.label}
+          role='columnheader'
+          className={`nav-stocks-cell ${column.className ?? ''}`}
+        >
           {column.title ? (
             <abbr title={column.title}>{column.label}</abbr>
           ) : (
@@ -33,5 +47,5 @@ export default function NavStocks() {
         </span>
       ))}
     </div>
-  )
+  );
 }
