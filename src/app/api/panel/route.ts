@@ -21,7 +21,7 @@ function getPanelType(req: NextRequest): MarketPanelKey {
 }
 
 function isDebugEnabled() {
-  return ENV.NODE_ENV !== 'production' && process.env.ENABLE_TOKEN_DEBUG === '1'
+  return process.env.ENABLE_TOKEN_DEBUG === '1'
 }
 
 function shouldReturnRawData(req: NextRequest): boolean {
