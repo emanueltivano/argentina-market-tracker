@@ -4,7 +4,7 @@ import { type ReactNode, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { type PanelResponse as MarketPanelResponse } from '@/lib/panel';
-import { type MarketPanelKey } from '@/lib/market';
+import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market';
 import NavStocks from './NavStocks';
 import PanelMenu from './PanelMenu';
 import Title from './PageTitle';
@@ -234,6 +234,3 @@ function getMarketPanelOption(key: MarketPanelKey): MarketPanelOption {
   );
 }
 
-function isMarketPanelKey(value: string | null): value is MarketPanelKey {
-  return MARKET_PANEL_OPTIONS.some((option) => option.key === value);
-}
