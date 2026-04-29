@@ -226,11 +226,16 @@
 
 .stock-buy,
 .stock-sell {
-  display: flex;
   align-items: center;
   justify-content: center;
   height: 50px;
 }
+
+.stock-buy:not(.hidden),
+.stock-sell:not(.hidden) {
+  display: flex;
+}
+
 
 .stock-buy {
   background-color: var(--buy-color);
@@ -240,7 +245,9 @@
   background-color: var(--sell-color);
 }
 
-.stock-buy:not(.hidden),
-.stock-sell:not(.hidden) {
-  display: flex;
+@media (min-width: 1024px) {
+  .stock-buy.hidden,
+  .stock-sell.hidden {
+    display: flex;
+  }
 }

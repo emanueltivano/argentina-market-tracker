@@ -5,10 +5,10 @@ export const STOCK_GRID_LAYOUT = [
   'lg:[grid-template-columns:minmax(120px,1.2fr)_repeat(11,minmax(0,1fr))]',
   'items-center',
   'gap-0',
-  'px-0',
-  'py-2',
+  'px-2',
+  'py-0',
   'sm:px-0',
-  'sm:py-2',
+  'sm:py-0',
   'text-left',
   'whitespace-nowrap',
 ].join(' ')
