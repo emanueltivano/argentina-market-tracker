@@ -7,6 +7,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "deps:update": "npx npm-check-updates -u && npm install"
   },
@@ -25,6 +26,8 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "^10.5.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.4",
     "postcss": "^8.5.12",
     "tailwindcss": "^4.2.4",
     "typescript": "6.0.3"

@@ -194,7 +194,10 @@ async function callWithToken(
 
   const body = normalizeBody(init.body, headers)
 
-  const { headers: _headers, body: _body, signal: _signal, ...restInit } = init
+  const restInit = { ...init }
+  delete restInit.headers
+  delete restInit.body
+  delete restInit.signal
 
   const res = await fetchWithTimeout(
     url,
