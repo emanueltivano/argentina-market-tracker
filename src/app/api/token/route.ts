@@ -5,7 +5,7 @@ import { ENV } from '@/lib/server/env'
 const TOKEN_TIMEOUT = 15_000
 
 function isEnabled() {
-  return process.env.ENABLE_TOKEN_DEBUG === '1'
+  return ENV.NODE_ENV !== 'production' && process.env.ENABLE_TOKEN_DEBUG === '1'
 }
 
 function methodNotAllowed() {
