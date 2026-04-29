@@ -18,6 +18,7 @@ export function mapPanelTituloToStockProps(item: PanelTitulo): StockProps {
 
   return {
     ticker: item.simbolo,
+    description: item.descripcion,
     price: numberOrNull(item.ultimoPrecio),
     var: variation,
     varType: getVariationType(variation),
@@ -30,6 +31,5 @@ export function mapPanelTituloToStockProps(item: PanelTitulo): StockProps {
     max: numberOrNull(item.maximo),
     close: numberOrNull(item.ultimoCierre),
     volume: numberOrNull(item.volumen),
-    trades: numberOrNull(item.cantidadOperaciones),
   }
 }

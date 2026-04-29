@@ -1,5 +1,6 @@
 export interface PanelTitulo {
   simbolo: string
+  descripcion: string
   puntas?: {
     cantidadCompra?: number
     precioCompra?: number
@@ -13,7 +14,6 @@ export interface PanelTitulo {
   minimo?: number
   ultimoCierre?: number
   volumen?: number
-  cantidadOperaciones?: number
 }
 
 export interface PanelSuccessResponse {

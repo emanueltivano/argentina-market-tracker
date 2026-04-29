@@ -3,6 +3,7 @@ import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
 
 export interface StockProps {
   ticker: string;
+  description: string;
   price: number | null;
   var: number | null;
   varType: 'positive' | 'negative' | 'neutral';
@@ -15,7 +16,6 @@ export interface StockProps {
   max: number | null;
   close: number | null;
   volume: number | null;
-  trades: number | null;
 }
 
 function formatNumber(
@@ -101,6 +101,8 @@ const Stock: FC<StockProps> = (props) => {
       <div
         className="stock-cell stock-ticker justify-self-start text-left font-mono"
         role="gridcell"
+
+        title={`${props.description}`}
       >
         {props.ticker}
       </div>
@@ -120,22 +122,22 @@ const Stock: FC<StockProps> = (props) => {
       </span>
 
       <span
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
+        className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
         role="gridcell"
       >
         {formatInteger(props.buyQty)}
       </span>
 
-      <span className="stock-cell stock-buy-price" role="gridcell">
+      <span className="stock-cell stock-buy" role="gridcell">
         {formatMoney(props.buyPrice)}
       </span>
 
-      <span className="stock-cell stock-sell-price" role="gridcell">
+      <span className="stock-cell stock-sell" role="gridcell">
         {formatMoney(props.sellPrice)}
       </span>
 
       <span
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
+        className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
         role="gridcell"
       >
         {formatInteger(props.sellQty)}
@@ -174,13 +176,6 @@ const Stock: FC<StockProps> = (props) => {
         role="gridcell"
       >
         {formatInteger(props.volume)}
-      </span>
-
-      <span
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-        role="gridcell"
-      >
-        {formatInteger(props.trades)}
       </span>
     </div>
   );

@@ -21,7 +21,6 @@ const COLUMNS = [
   { label: 'Máximo', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
   { label: 'Último cierre', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
   { label: 'Total operado', className: STOCK_COLUMN_VISIBILITY.tabletUp },
-  { label: 'Operaciones', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
 ];
 
 const GRID = STOCK_GRID_LAYOUT;
