@@ -1,6 +1,5 @@
 import { type ReactNode } from 'react';
 import { type MarketPanelKey } from '@/lib/market';
-import NavStocks from './NavStocks';
 import PanelMenu from './PanelMenu';
 import Title from './PageTitle';
 import { MARKET_PANEL_OPTIONS } from '../lib/panelOptions';
@@ -29,7 +28,6 @@ export default function PanelContent({
       />
 
       <div className="overflow-x-auto">
-        <NavStocks />
         {children}
       </div>
     </section>

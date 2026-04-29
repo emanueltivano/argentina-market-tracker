@@ -1,14 +1,38 @@
 'use client';
 
+import { type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market';
 import Stock from './Stock';
+import NavStocks from './NavStocks';
 import PanelContent from './PanelContent';
 import { useMarketPanel } from '../hooks/useMarketPanel';
+
+const STOCK_TABLE_COLUMN_COUNT = 12;
 
 type PanelProps = {
   defaultPanel?: MarketPanelKey;
 };
+
+function StockTable({ children }: { children: ReactNode }) {
+  return (
+    <table className='stock-table'>
+      <caption className='sr-only'>Panel de acciones</caption>
+      <NavStocks />
+      <tbody className='divide-y divide-gray-200'>{children}</tbody>
+    </table>
+  );
+}
+
+function StockTableStatus({ children }: { children: ReactNode }) {
+  return (
+    <tr>
+      <td className='stock-status-cell' colSpan={STOCK_TABLE_COLUMN_COUNT}>
+        {children}
+      </td>
+    </tr>
+  );
+}
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   const router = useRouter();
@@ -50,7 +74,11 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <p className='text-red-400'>Error cargando datos: {errorMessage}</p>
+        <StockTable>
+          <StockTableStatus>
+            <p className='text-red-400'>Error cargando datos: {errorMessage}</p>
+          </StockTableStatus>
+        </StockTable>
       </PanelContent>
     );
   }
@@ -62,10 +90,14 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <div className='flex items-center justify-center py-8' role='status'>
-          <span className='sr-only'>Cargando datos...</span>
-          <div className='loader' />
-        </div>
+        <StockTable>
+          <StockTableStatus>
+            <div className='flex items-center justify-center py-8' role='status'>
+              <span className='sr-only'>Cargando datos...</span>
+              <div className='loader' />
+            </div>
+          </StockTableStatus>
+        </StockTable>
       </PanelContent>
     );
   }
@@ -77,15 +109,19 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        {hasError && (
-          <p className='mb-2 text-sm text-yellow-400' role='status'>
-            No se pudo actualizar. Mostrando últimos datos disponibles.
-          </p>
-        )}
+        <StockTable>
+          <StockTableStatus>
+            {hasError && (
+              <p className='mb-2 text-sm text-yellow-400' role='status'>
+                No se pudo actualizar. Mostrando últimos datos disponibles.
+              </p>
+            )}
 
-        <p className='text-gray-500' role='status'>
-          No hay datos disponibles.
-        </p>
+            <p className='text-gray-500' role='status'>
+              No hay datos disponibles.
+            </p>
+          </StockTableStatus>
+        </StockTable>
       </PanelContent>
     );
   }
@@ -102,15 +138,11 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         </p>
       )}
 
-      <div
-        className='divide-y divide-gray-200'
-        role='grid'
-        aria-label='Panel de acciones'
-      >
+      <StockTable>
         {rows.map((row) => (
           <Stock key={row.ticker} {...row} />
         ))}
-      </div>
+      </StockTable>
     </PanelContent>
   );
 }

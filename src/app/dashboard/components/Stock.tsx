@@ -97,87 +97,78 @@ const Stock: FC<StockProps> = (props) => {
     props.var !== null && Math.abs(props.var) >= 3 ? 'stock-var-strong' : '';
 
   return (
-    <div className={`${GRID} stock-row`} role="row" data-symbol={props.ticker}>
-      <div
+    <tr className={`${GRID} stock-row`} data-symbol={props.ticker}>
+      <th
+        scope="row"
         className="stock-cell stock-ticker justify-self-start text-left font-mono"
-        role="gridcell"
-
         title={`${props.description}`}
       >
         {props.ticker}
-      </div>
+      </th>
 
-      <span className="stock-cell stock-price" role="gridcell">
+      <td className="stock-cell stock-price">
         {formatMoney(props.price)}
-      </span>
+      </td>
 
-      <span
+      <td
         className="stock-cell"
-        role="gridcell"
         aria-label={getVariationAriaLabel(props.var, props.varType)}
       >
         <span className={`stock-var ${varClass} ${strengthClass}`}>
           {formatSignedPercent(props.var)}
         </span>
-      </span>
+      </td>
 
-      <span
+      <td
         className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-        role="gridcell"
       >
         {formatInteger(props.buyQty)}
-      </span>
+      </td>
 
-      <span className="stock-cell stock-buy" role="gridcell">
+      <td className="stock-cell stock-buy">
         {formatMoney(props.buyPrice)}
-      </span>
+      </td>
 
-      <span className="stock-cell stock-sell" role="gridcell">
+      <td className="stock-cell stock-sell">
         {formatMoney(props.sellPrice)}
-      </span>
+      </td>
 
-      <span
+      <td
         className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-        role="gridcell"
       >
         {formatInteger(props.sellQty)}
-      </span>
+      </td>
 
-      <span
+      <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-        role="gridcell"
       >
         {formatMoney(props.open)}
-      </span>
+      </td>
 
-      <span
+      <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-        role="gridcell"
       >
         {formatMoney(props.min)}
-      </span>
+      </td>
 
-      <span
+      <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-        role="gridcell"
       >
         {formatMoney(props.max)}
-      </span>
+      </td>
 
-      <span
+      <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-        role="gridcell"
       >
         {formatMoney(props.close)}
-      </span>
+      </td>
 
-      <span
+      <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
-        role="gridcell"
       >
         {formatInteger(props.volume)}
-      </span>
-    </div>
+      </td>
+    </tr>
   );
 };
 

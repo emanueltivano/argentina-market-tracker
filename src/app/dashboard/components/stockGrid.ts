@@ -5,7 +5,7 @@ export const STOCK_GRID_LAYOUT = [
   'lg:[grid-template-columns:minmax(120px,1.2fr)_repeat(11,minmax(0,1fr))]',
   'items-center',
   'gap-0',
-  'px-2',
+  'ps-2',
   'py-0',
   'sm:px-0',
   'sm:py-0',
@@ -14,6 +14,6 @@ export const STOCK_GRID_LAYOUT = [
 ].join(' ')
 
 export const STOCK_COLUMN_VISIBILITY = {
-  desktopOnly: 'hidden lg:block',
-  tabletUp: 'hidden md:block',
+  desktopOnly: 'hidden lg:table-cell',
+  tabletUp: 'hidden md:table-cell',
 } as const

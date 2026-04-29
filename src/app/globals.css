@@ -63,6 +63,10 @@
     @apply min-w-0 whitespace-nowrap px-2 py-2 sm:px-3;
   }
 
+  .stock-table {
+    @apply w-full border-collapse;
+  }
+
   .stock-row {
     @apply px-2 py-0 items-center tabular-nums;
   }
@@ -129,6 +133,10 @@
 
 .nav-stocks abbr {
   text-decoration: none;
+}
+
+.stock-status-cell {
+  padding: 0;
 }
 
 /* =========================

@@ -27,24 +27,22 @@ const GRID = STOCK_GRID_LAYOUT;
 
 export default function NavStocks() {
   return (
-    <div
-      className={`${GRID} nav-stocks`}
-      role='row'
-      aria-label='Encabezados de columnas'
-    >
-      {COLUMNS.map((column) => (
-        <span
-          key={column.label}
-          role='columnheader'
-          className={`nav-stocks-cell ${column.className ?? ''}`}
-        >
-          {column.title ? (
-            <abbr title={column.title}>{column.label}</abbr>
-          ) : (
-            column.label
-          )}
-        </span>
-      ))}
-    </div>
+    <thead>
+      <tr className={`${GRID} nav-stocks`}>
+        {COLUMNS.map((column) => (
+          <th
+            key={column.label}
+            scope="col"
+            className={`nav-stocks-cell ${column.className ?? ''}`}
+          >
+            {column.title ? (
+              <abbr title={column.title}>{column.label}</abbr>
+            ) : (
+              column.label
+            )}
+          </th>
+        ))}
+      </tr>
+    </thead>
   );
 }
