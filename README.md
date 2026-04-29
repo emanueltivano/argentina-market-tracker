@@ -19,17 +19,13 @@ tests y una arquitectura facil de explicar en entrevista.
 
 ![Dashboard mobile](docs/screenshots/dashboard-mobile.png)
 
-## Que demuestra tecnicamente
+## Decisiones técnicas destacadas
 
-- Separacion entre frontend, API interna y cliente server-side.
-- Credenciales y token de API externa solo en servidor.
-- Proxy interno con `/api/panel` para no exponer la API externa al navegador.
-- Cache server-side corto por panel para evitar llamadas repetidas durante una demo.
-- Validacion y normalizacion de datos externos antes de llegar a la UI.
-- TypeScript en modo strict.
-- ESLint como barrera basica de calidad.
-- Vitest para tests unitarios de logica critica.
-- Estados de UI: loading, error, vacio y datos.
+- API route interna para proteger credenciales y evitar llamadas directas desde el navegador.
+- Cliente server-side aislado con `server-only`.
+- Cache corto para reducir llamadas repetidas a la API externa.
+- Normalización de datos antes de renderizar en la UI.
+- TypeScript estricto, lint y tests unitarios para lógica crítica.
 
 ## Stack
 
@@ -73,34 +69,6 @@ API externa
 6. `normalizePanelData` valida el payload externo.
 7. El frontend recibe solo datos normalizados.
 8. La UI mapea cada titulo a una fila de mercado.
-
-## Decisiones tecnicas
-
-### API route como proxy
-
-El navegador nunca llama directo a la API externa. Las credenciales (`API_USERNAME`,
-`API_PASSWORD`) y el token viven solo del lado servidor.
-
-### `server-only` para cliente externo
-
-El cliente `iolFetch` esta en `src/lib/server/iol.ts` y usa `server-only` para evitar
-imports accidentales desde componentes cliente.
-
-### Cache en memoria de 30 segundos
-
-`/api/panel` cachea respuestas exitosas por tipo de panel durante 30 segundos. Para un
-proyecto de portfolio esto mantiene la solucion simple y evita golpear la API externa en
-cada refresh. No se cachean errores ni respuestas raw de debug.
-
-### Validacion de datos externos
-
-`normalizePanelData` descarta items sin `simbolo` o `descripcion` validos y conserva solo
-campos numericos finitos. El frontend trabaja con datos ya normalizados.
-
-### Debug bloqueado en produccion
-
-`/api/token` y `/api/panel?raw=1` solo pueden funcionar fuera de produccion si
-`ENABLE_TOKEN_DEBUG=1`. En produccion quedan bloqueados por codigo.
 
 ## Estructura
 
@@ -150,7 +118,7 @@ Crear `.env.local` a partir de `.env.local.example`.
 | `PANEL_LIDER_ENDPOINT` | Si | Endpoint del panel lider |
 | `PANEL_GENERAL_ENDPOINT` | Si | Endpoint del panel general |
 | `PANEL_CEDEARS_ENDPOINT` | Si | Endpoint de CEDEARs |
-| `ENABLE_TOKEN_DEBUG` | No | Debug local. Debe quedar `0` o sin definir en produccion |
+| `ENABLE_TOKEN_DEBUG` | No | Habilita herramientas de debug local cuando vale `1` |
 | `NEXT_PUBLIC_APP_ORIGIN` | No | Origen publico de la app si se usan Server Actions |
 
 Ejemplo:
@@ -185,15 +153,7 @@ http://localhost:3000
 
 1. Importar el repositorio en Vercel.
 2. Configurar las variables de entorno requeridas.
-3. No definir `ENABLE_TOKEN_DEBUG=1` en produccion.
-4. Ejecutar el build con `npm run build`.
-
-Notas:
-
-- `/api/panel` corre en runtime Node.js.
-- `/api/token` esta bloqueado en produccion.
-- `/api/panel?raw=1` esta bloqueado en produccion.
-- El cache en memoria es intencionalmente simple y suficiente para este proyecto.
+3. Ejecutar el build con `npm run build`.
 
 ## Tests
 
@@ -211,27 +171,13 @@ npm run test
 npm run build
 ```
 
-## Limitaciones conocidas
+## Próximas mejoras
 
-- No guarda historico de precios.
-- No tiene autenticacion de usuarios.
-- Depende de la disponibilidad de la API externa.
-- El cache es en memoria y por instancia. Es una decision intencional para mantener simple
-  el proyecto de portfolio.
-- `npm audit` puede reportar una vulnerabilidad moderada transitiva de `postcss` dentro de
-  Next. No usar `npm audit fix --force` si propone bajar o romper la version de Next.
-
-## Que mejoraria si escalara
-
-Estas mejoras no son necesarias para el objetivo actual de portfolio, pero son buenos puntos
-para discutir en entrevista:
-
-- Cache compartido externo si hubiera alto trafico o varias instancias.
-- Rate limiting en API routes si el endpoint quedara abierto a mucho trafico.
-- Tests de API routes para validar comportamiento de produccion.
-- Monitoreo de errores y latencia.
-- Persistencia de datos historicos.
-- Tabla mas accesible usando semantica HTML de tabla o grid ARIA completo.
+- Agregar visualización histórica de precios.
+- Mejorar accesibilidad de la tabla de cotizaciones.
+- Sumar tests de integración para las API routes.
+- Agregar más filtros y opciones de búsqueda.
+- Mejorar la experiencia mobile.
 
 ## Puntos para explicar en entrevista
 
