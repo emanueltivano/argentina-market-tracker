@@ -1,201 +1,108 @@
-# Argentina Market Tracker — MVP
+# Argentina Market Tracker
 
-Panel en Next.js que consume una API protegida por token, normaliza distintos paneles de mercado (Líder, General y CEDEARs) y los muestra en una UI simple con estados de carga, error, vacío y datos.
+Dashboard de mercado argentino construido con Next.js, React, TypeScript y Tailwind CSS.
 
----
+El proyecto consume una API externa protegida por token, normaliza paneles de mercado
+argentino y los muestra en una interfaz simple con estados de carga, error, vacio y datos.
+Esta pensado como proyecto de portfolio: prioriza claridad, seguridad basica, buen tipado,
+tests y una arquitectura facil de explicar en entrevista.
 
-## ✨ Highlights
+## Screenshots
 
-* **Stack**: Next.js 16 · React 19 · Tailwind 4 · TypeScript 6
-* **Seguridad**: credenciales y token solo en servidor
-* **Cliente server-only**: `iolFetch` con cache de token, timeout y retry ante `401/403`
-* **API interna**: `/api/panel` como proxy/normalizador
-* **UI**: componentes reutilizables (`Panel`, `NavStocks`, `Stock`, `PageTitle`)
-* **DX**: configuración mínima, sin tooling pesado
+> Las capturas deben agregarse en estas rutas antes de publicar el README final.
 
----
+### Desktop
 
-## 🗺️ Arquitectura
+![Dashboard desktop](docs/screenshots/dashboard-desktop.png)
+
+### Mobile
+
+![Dashboard mobile](docs/screenshots/dashboard-mobile.png)
+
+## Que demuestra tecnicamente
+
+- Separacion entre frontend, API interna y cliente server-side.
+- Credenciales y token de API externa solo en servidor.
+- Proxy interno con `/api/panel` para no exponer la API externa al navegador.
+- Cache server-side corto por panel para evitar llamadas repetidas durante una demo.
+- Validacion y normalizacion de datos externos antes de llegar a la UI.
+- TypeScript en modo strict.
+- ESLint como barrera basica de calidad.
+- Vitest para tests unitarios de logica critica.
+- Estados de UI: loading, error, vacio y datos.
+
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript 6
+- Tailwind CSS 4
+- SWR
+- ESLint
+- Vitest
+
+## Arquitectura
 
 ```txt
-Client
+Browser
   Panel.tsx + SWR
-        │
-        │ fetch /api/panel?type=lider|general|cedears
-        ▼
-Next API route
-  /api/panel
-        │
-        │ normaliza payload
-        ▼
-{ ok: true, data: [] }
-        │
-        │ usa iolFetch(path)
-        ▼
-Server lib
-  lib/server/iol.ts
-        │
-        ├─ tokenCache.ts
-        ├─ fetchToken()
-        └─ callWithToken()
+        |
+        | fetch /api/panel?type=lider|general|cedears
+        v
+Next API Route
+  src/app/api/panel/route.ts
+        |
+        | cache corto por MarketPanelKey
+        | normalizacion con normalizePanelData()
+        v
+Server-only client
+  src/lib/server/iol.ts
+        |
+        | token cache + timeout + retry ante 401/403
+        v
+API externa
 ```
 
----
+## Flujo de datos
 
-## 🔁 Flujo general
+1. El usuario abre el dashboard.
+2. `Panel.tsx` consulta `/api/panel` usando SWR.
+3. La API route valida el panel solicitado (`lider`, `general`, `cedears`).
+4. Si existe cache vigente, responde desde memoria.
+5. Si no existe cache, `iolFetch` obtiene/reutiliza token y consulta la API externa.
+6. `normalizePanelData` valida el payload externo.
+7. El frontend recibe solo datos normalizados.
+8. La UI mapea cada titulo a una fila de mercado.
 
-1. El cliente renderiza `Panel`
-2. `Panel` usa SWR para consultar `/api/panel?type=...`
-3. La route interna llama a `iolFetch`
-4. `iolFetch` obtiene o reutiliza un token
-5. La respuesta del upstream se normaliza con `normalizePanelData`
-6. El cliente recibe `{ ok: true, data: [...] }`
-7. La UI mapea cada título a props de `Stock`
+## Decisiones tecnicas
 
----
+### API route como proxy
 
-## 🧩 Componentes principales
+El navegador nunca llama directo a la API externa. Las credenciales (`API_USERNAME`,
+`API_PASSWORD`) y el token viven solo del lado servidor.
 
-### `Panel`
+### `server-only` para cliente externo
 
-* consulta `/api/panel` con SWR
-* maneja estados de carga, error, vacío y éxito
-* cambia entre paneles (`lider`, `general`, `cedears`)
-* mapea datos a props de `Stock`
+El cliente `iolFetch` esta en `src/lib/server/iol.ts` y usa `server-only` para evitar
+imports accidentales desde componentes cliente.
 
-### `NavStocks`
+### Cache en memoria de 30 segundos
 
-Encabezado de columnas. Comparte la grilla con `Stock`.
+`/api/panel` cachea respuestas exitosas por tipo de panel durante 30 segundos. Para un
+proyecto de portfolio esto mantiene la solucion simple y evita golpear la API externa en
+cada refresh. No se cachean errores ni respuestas raw de debug.
 
-### `Stock`
+### Validacion de datos externos
 
-Fila memoizada que formatea:
+`normalizePanelData` descarta items sin `simbolo` o `descripcion` validos y conserva solo
+campos numericos finitos. El frontend trabaja con datos ya normalizados.
 
-* precios
-* cantidades
-* volumen
-* operaciones
-* variación porcentual
-* color según variación
+### Debug bloqueado en produccion
 
-### `PageTitle`
+`/api/token` y `/api/panel?raw=1` solo pueden funcionar fuera de produccion si
+`ENABLE_TOKEN_DEBUG=1`. En produccion quedan bloqueados por codigo.
 
-Renderiza el título principal.
-
----
-
-## ⚙️ Variables de entorno
-
-### Requeridas
-
-```env
-API_URL=https://api.example.com
-API_USERNAME=usuario
-API_PASSWORD=password
-
-PANEL_LIDER_ENDPOINT=api/v2/...
-PANEL_GENERAL_ENDPOINT=api/v2/...
-PANEL_CEDEARS_ENDPOINT=api/v2/...
-```
-
-### Opcionales
-
-```env
-TOKEN_ENDPOINT=token
-ENABLE_TOKEN_DEBUG=0
-NEXT_PUBLIC_APP_ORIGIN=https://tu-dominio.com
-```
-
----
-
-## 🚀 Puesta en marcha
-
-```bash
-npm install
-```
-
-Crear archivo de entorno:
-
-```bash
-cp .env.local.example .env.local
-```
-
-Completar:
-
-```env
-API_URL=
-API_USERNAME=
-API_PASSWORD=
-PANEL_LIDER_ENDPOINT=
-PANEL_GENERAL_ENDPOINT=
-PANEL_CEDEARS_ENDPOINT=
-```
-
-Levantar:
-
-```bash
-npm run dev
-```
-
-Abrir:
-
-```txt
-http://localhost:3000
-```
-
----
-
-## 📜 Scripts
-
-```json
-{
-  "dev": "next dev -p 3000",
-  "build": "next build",
-  "start": "next start -p 3000",
-  "type-check": "tsc --noEmit",
-  "deps:update": "npx npm-check-updates -u && npm install"
-}
-```
-
----
-
-## 🔒 Seguridad
-
-* Credenciales solo en servidor (`server-only`)
-* Token cacheado en memoria
-* Retry automático ante `401/403`
-* `/api/panel` actúa como proxy
-* `/api/token` bloqueado en producción
-* `/api/token` está bloqueado por defecto. Solo se habilita fuera de producción si `ENABLE_TOKEN_DEBUG=1`.
-
----
-
-## 🌐 API interna
-
-### `GET /api/panel?type=lider|general|cedears`
-
-```json
-{
-  "ok": true,
-  "data": []
-}
-```
-
-### `GET /api/panel?type=lider&raw=1`
-
-Modo debug (solo desarrollo):
-
-```json
-{
-  "ok": true,
-  "type": "lider",
-  "data": {}
-}
-```
-
----
-
-## 📁 Estructura
+## Estructura
 
 ```txt
 src/
@@ -210,27 +117,129 @@ src/
     page.tsx
 
   lib/
-    panel.ts
     market.ts
+    panel.ts
     server/
+      env.ts
+      iol.ts
+      tokenCache.ts
 ```
 
----
+## Scripts
 
-## 🧪 Validación
+| Script | Descripcion |
+| --- | --- |
+| `npm run dev` | Levanta Next en desarrollo en el puerto 3000 |
+| `npm run lint` | Ejecuta ESLint |
+| `npm run type-check` | Valida TypeScript sin emitir archivos |
+| `npm run test` | Corre tests unitarios con Vitest |
+| `npm run build` | Genera build de produccion |
+| `npm run start` | Sirve el build de produccion |
+| `npm run deps:update` | Actualiza dependencias con npm-check-updates |
+
+## Variables de entorno
+
+Crear `.env.local` a partir de `.env.local.example`.
+
+| Variable | Requerida | Descripcion |
+| --- | --- | --- |
+| `API_URL` | Si | URL base de la API externa, sin slash final |
+| `TOKEN_ENDPOINT` | No | Endpoint de token; default `token` |
+| `API_USERNAME` | Si | Usuario de API externa |
+| `API_PASSWORD` | Si | Password de API externa |
+| `PANEL_LIDER_ENDPOINT` | Si | Endpoint del panel lider |
+| `PANEL_GENERAL_ENDPOINT` | Si | Endpoint del panel general |
+| `PANEL_CEDEARS_ENDPOINT` | Si | Endpoint de CEDEARs |
+| `ENABLE_TOKEN_DEBUG` | No | Debug local. Debe quedar `0` o sin definir en produccion |
+| `NEXT_PUBLIC_APP_ORIGIN` | No | Origen publico de la app si se usan Server Actions |
+
+Ejemplo:
+
+```env
+API_URL="https://api.example.com"
+TOKEN_ENDPOINT="token"
+API_USERNAME="your_api_username"
+API_PASSWORD="your_api_password"
+PANEL_LIDER_ENDPOINT="api/v2/cotizaciones/acciones/merval/argentina"
+PANEL_GENERAL_ENDPOINT="api/v2/cotizaciones/acciones/panel%20general/argentina"
+PANEL_CEDEARS_ENDPOINT="api/v2/cotizaciones/acciones/cedears/argentina"
+ENABLE_TOKEN_DEBUG=0
+NEXT_PUBLIC_APP_ORIGIN="https://your-vercel-app.vercel.app"
+```
+
+## Puesta en marcha local
 
 ```bash
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
+
+Abrir:
+
+```txt
+http://localhost:3000
+```
+
+## Deploy en Vercel
+
+1. Importar el repositorio en Vercel.
+2. Configurar las variables de entorno requeridas.
+3. No definir `ENABLE_TOKEN_DEBUG=1` en produccion.
+4. Ejecutar el build con `npm run build`.
+
+Notas:
+
+- `/api/panel` corre en runtime Node.js.
+- `/api/token` esta bloqueado en produccion.
+- `/api/panel?raw=1` esta bloqueado en produccion.
+- El cache en memoria es intencionalmente simple y suficiente para este proyecto.
+
+## Tests
+
+Los tests actuales cubren la logica critica de normalizacion y validacion:
+
+- `src/lib/panel.test.ts`
+- `src/lib/market.test.ts`
+
+Comandos recomendados antes de publicar cambios:
+
+```bash
+npm run lint
 npm run type-check
+npm run test
 npm run build
 ```
 
----
+## Limitaciones conocidas
 
-## ⚠️ Consideraciones
+- No guarda historico de precios.
+- No tiene autenticacion de usuarios.
+- Depende de la disponibilidad de la API externa.
+- El cache es en memoria y por instancia. Es una decision intencional para mantener simple
+  el proyecto de portfolio.
+- `npm audit` puede reportar una vulnerabilidad moderada transitiva de `postcss` dentro de
+  Next. No usar `npm audit fix --force` si propone bajar o romper la version de Next.
 
-* El frontend **solo consume respuestas exitosas (`ok: true`)**
-* Los errores del backend se manejan vía `throw`
-* Respuestas inválidas del upstream generan error (no estado vacío)
-* Los errores detallados solo se exponen en desarrollo
+## Que mejoraria si escalara
 
----
+Estas mejoras no son necesarias para el objetivo actual de portfolio, pero son buenos puntos
+para discutir en entrevista:
+
+- Cache compartido externo si hubiera alto trafico o varias instancias.
+- Rate limiting en API routes si el endpoint quedara abierto a mucho trafico.
+- Tests de API routes para validar comportamiento de produccion.
+- Monitoreo de errores y latencia.
+- Persistencia de datos historicos.
+- Tabla mas accesible usando semantica HTML de tabla o grid ARIA completo.
+
+## Puntos para explicar en entrevista
+
+- Por que usar una API route como proxy.
+- Como se evita exponer credenciales al navegador.
+- Para que sirve `server-only`.
+- Como funciona el cache de token y el retry ante `401/403`.
+- Por que se normalizan datos externos antes de renderizar.
+- Que tradeoff implica usar cache en memoria en un proyecto de portfolio.
+- Que cubren los tests y que tests agregaria despues.
+- Que cambiaria si el proyecto tuviera trafico real.
