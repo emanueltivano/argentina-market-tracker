@@ -62,9 +62,10 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <p className='text-gray-500' role='status'>
-          Cargando datos...
-        </p>
+        <div className='flex items-center justify-center py-8' role='status'>
+          <span className='sr-only'>Cargando datos...</span>
+          <div className='loader' />
+        </div>
       </PanelContent>
     );
   }
