@@ -31,6 +31,8 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     isInitialError,
   } = useMarketPanel(activePanelKey);
 
+  const errorMessage = error?.message ?? 'Error desconocido';
+
   function handlePanelChange(key: MarketPanelKey) {
     const nextParams = new URLSearchParams(searchParams.toString());
 
@@ -48,7 +50,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <p className="text-red-400">Error cargando datos: {error.message}</p>
+        <p className='text-red-400'>Error cargando datos: {errorMessage}</p>
       </PanelContent>
     );
   }
@@ -60,7 +62,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <p className="text-gray-500" role="status">
+        <p className='text-gray-500' role='status'>
           Cargando datos...
         </p>
       </PanelContent>
@@ -75,12 +77,12 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         onChange={handlePanelChange}
       >
         {hasError && (
-          <p className="mb-2 text-sm text-yellow-400" role="status">
+          <p className='mb-2 text-sm text-yellow-400' role='status'>
             No se pudo actualizar. Mostrando últimos datos disponibles.
           </p>
         )}
 
-        <p className="text-gray-500" role="status">
+        <p className='text-gray-500' role='status'>
           No hay datos disponibles.
         </p>
       </PanelContent>
@@ -94,15 +96,15 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       onChange={handlePanelChange}
     >
       {hasError && (
-        <p className="mb-2 text-sm text-yellow-400" role="status">
+        <p className='mb-2 text-sm text-yellow-400' role='status'>
           No se pudo actualizar. Mostrando últimos datos disponibles.
         </p>
       )}
 
       <div
-        className="divide-y divide-gray-200"
-        role="grid"
-        aria-label="Panel de acciones"
+        className='divide-y divide-gray-200'
+        role='grid'
+        aria-label='Panel de acciones'
       >
         {rows.map((row) => (
           <Stock key={row.ticker} {...row} />
