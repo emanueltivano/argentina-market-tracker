@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* =========================
    Theme variables
@@ -13,9 +13,10 @@
   --text-color: #042b5d;
 
   --positive-color: #00c28f;
-  --positive-light-color: #33d6aa;
+  --positive-light-color: #63f7ca;
+
   --negative-color: #eb0a3a;
-  --negative-light-color: #f04565;
+  --negative-light-color: #e96a7f;
 
   --background-light: #ffffff;
   --link-color: #002c65;
@@ -63,11 +64,11 @@
   }
 
   .stock-row {
-    @apply px-2 items-center tabular-nums;
+    @apply px-2 py-0 items-center tabular-nums;
   }
 
   .stock-cell {
-    @apply min-w-0 whitespace-nowrap px-2 py-1 text-xs sm:px-3 sm:py-2 sm:text-sm;
+    @apply min-w-0 whitespace-nowrap text-xs sm:px-3 sm:py-2 sm:text-sm;
   }
 }
 
@@ -77,6 +78,8 @@
 
 .page-title {
   color: var(--text-color);
+  font-size: 28px;
+  font-weight: 800;
 }
 
 /* =========================
@@ -88,6 +91,8 @@
   border: var(--main-color) 1px solid;
   background-color: var(--background-light);
   color: var(--text-color);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .panel-menu-button:hover {
@@ -118,6 +123,8 @@
   color: var(--text-color);
   background-color: var(--select-color);
   text-align: center;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .nav-stocks abbr {
@@ -156,16 +163,16 @@
 .stock-row {
   color: var(--text-color);
   text-align: center;
-  padding: 0%;
 }
 
 .stock-ticker {
-  font-size: large;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .stock-price {
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -178,7 +185,8 @@
   border-radius: 0.375rem;
   padding: 0.25rem 0.625rem;
   color: white;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
@@ -204,10 +212,35 @@
   background-color: var(--negative-color);
 }
 
+.stock-cell {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.stock-price,
+.stock-buy,
+.stock-sell {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.stock-buy,
+.stock-sell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+}
+
 .stock-buy {
   background-color: var(--buy-color);
 }
 
 .stock-sell {
   background-color: var(--sell-color);
+}
+
+.stock-buy:not(.hidden),
+.stock-sell:not(.hidden) {
+  display: flex;
 }
