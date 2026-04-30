@@ -65,14 +65,19 @@ export default function StockDetailsModal({
   onClose,
 }: StockDetailsModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    const activeElement = document.activeElement;
 
     if (!dialog) {
       return;
     }
+
+    openerRef.current =
+      activeElement instanceof HTMLElement ? activeElement : null;
 
     if (!dialog.open) {
       dialog.showModal();
@@ -81,6 +86,10 @@ export default function StockDetailsModal({
     return () => {
       if (dialog.open) {
         dialog.close();
+      }
+
+      if (openerRef.current?.isConnected) {
+        openerRef.current.focus();
       }
     };
   }, []);

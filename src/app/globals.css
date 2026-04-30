@@ -244,6 +244,8 @@
 
 .stock-details-dialog {
   width: min(640px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   padding: 0;
   border: 0;
   border-radius: 0.5rem;
@@ -258,6 +260,8 @@
 }
 
 .stock-details-modal {
+  max-height: inherit;
+  overflow-y: auto;
   padding: 1.25rem;
 }
 
