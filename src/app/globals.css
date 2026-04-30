@@ -199,10 +199,12 @@
 }
 
 .stock-var-positive {
+  color: #064e3b;
   background-color: var(--positive-light-color);
 }
 
 .stock-var-negative {
+  color: #7f1d1d;
   background-color: var(--negative-light-color);
 }
 
@@ -213,10 +215,12 @@
 }
 
 .stock-var-positive.stock-var-strong {
+  color: white;
   background-color: var(--positive-color);
 }
 
 .stock-var-negative.stock-var-strong {
+  color: white;
   background-color: var(--negative-color);
 }
 

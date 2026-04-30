@@ -34,8 +34,9 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    access_token: cached,
     cached: true,
+    status: 'cached',
+    message: 'Token is cached',
   })
 }
 
@@ -92,6 +93,7 @@ export async function POST() {
 
     const tokenData = data as Record<string, unknown>
     const accessToken = tokenData.access_token
+    const tokenType = tokenData.token_type
     const expiresIn = Number(tokenData.expires_in ?? 1800)
     const ttl = Number.isFinite(expiresIn) ? expiresIn : 1800
 
@@ -110,9 +112,11 @@ export async function POST() {
 
     return NextResponse.json({
       ok: true,
-      access_token: accessToken,
       expires_in: ttl,
+      ...(typeof tokenType === 'string' ? { token_type: tokenType } : {}),
       cached: false,
+      status: 'refreshed',
+      message: 'Token fetched and cached',
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err ?? 'unknown')
