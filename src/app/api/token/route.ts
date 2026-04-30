@@ -8,22 +8,29 @@ function isEnabled() {
   return ENV.NODE_ENV !== 'production' && process.env.ENABLE_TOKEN_DEBUG === '1'
 }
 
-function methodNotAllowed() {
+function notFound() {
   return NextResponse.json(
     {
       ok: false,
-      error: 'METHOD_NOT_ALLOWED',
+      error: 'NOT_FOUND',
     },
-    {
-      status: 405,
-      headers: { Allow: 'GET, POST' },
-    }
+    { status: 404 }
   )
 }
 
+function isSafeTokenType(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 32 &&
+    /^[A-Za-z][A-Za-z0-9_.-]*$/.test(value)
+  )
+}
+
+// Debug local only: never expose full OAuth tokens from this route.
 export async function GET() {
   if (!isEnabled()) {
-    return methodNotAllowed()
+    return notFound()
   }
 
   const cached = getCachedToken()
@@ -35,6 +42,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     cached: true,
+    expires_in: null,
     status: 'cached',
     message: 'Token is cached',
   })
@@ -42,7 +50,7 @@ export async function GET() {
 
 export async function POST() {
   if (!isEnabled()) {
-    return methodNotAllowed()
+    return notFound()
   }
 
   const url = new URL(ENV.TOKEN_ENDPOINT, `${ENV.API_URL}/`)
@@ -113,7 +121,7 @@ export async function POST() {
     return NextResponse.json({
       ok: true,
       expires_in: ttl,
-      ...(typeof tokenType === 'string' ? { token_type: tokenType } : {}),
+      ...(isSafeTokenType(tokenType) ? { token_type: tokenType } : {}),
       cached: false,
       status: 'refreshed',
       message: 'Token fetched and cached',
