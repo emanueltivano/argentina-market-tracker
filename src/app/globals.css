@@ -227,6 +227,7 @@
 .stock-sell {
   height: 50px;
   vertical-align: middle;
+  line-height: 35px;
 }
 
 .stock-buy {
