@@ -9,15 +9,13 @@ tests y una arquitectura facil de explicar en entrevista.
 
 ## Screenshots
 
-> Las capturas deben agregarse en estas rutas antes de publicar el README final.
-
 ### Desktop
 
-![Dashboard desktop](docs/screenshots/dashboard-desktop.png)
+![Argentina Market Tracker desktop](./docs/screenshots/desktop.png)
 
 ### Mobile
 
-![Dashboard mobile](docs/screenshots/dashboard-mobile.png)
+![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
 
 ## Decisiones técnicas destacadas
 
