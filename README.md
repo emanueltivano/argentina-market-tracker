@@ -13,10 +13,6 @@ tests y una arquitectura facil de explicar en entrevista.
 
 ![Argentina Market Tracker desktop](./docs/screenshots/desktop.png)
 
-### Mobile
-
-![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
-
 ## Decisiones técnicas destacadas
 
 - API route interna para proteger credenciales y evitar llamadas directas desde el navegador.

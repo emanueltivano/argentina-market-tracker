@@ -1,6 +1,5 @@
 # Screenshots
 
-Agregar las capturas reales del dashboard con estos nombres:
+Captura disponible del dashboard:
 
 - `desktop.png`: captura desktop del dashboard.
-- `mobile.png`: captura mobile del dashboard.
