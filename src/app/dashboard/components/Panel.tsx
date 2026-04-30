@@ -1,14 +1,16 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market';
-import Stock from './Stock';
+import Stock, { type StockData } from './Stock';
 import NavStocks from './NavStocks';
 import PanelContent from './PanelContent';
+import StockDetailsModal from './StockDetailsModal';
 import { useMarketPanel } from '../hooks/useMarketPanel';
 
 const STOCK_TABLE_COLUMN_COUNT = 12;
+const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)';
 
 type PanelProps = {
   defaultPanel?: MarketPanelKey;
@@ -35,6 +37,8 @@ function StockTableStatus({ children }: { children: ReactNode }) {
 }
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
+  const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
+  const [canOpenStockDetails, setCanOpenStockDetails] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -57,9 +61,44 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
 
   const errorMessage = error?.message ?? 'Error desconocido';
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+
+    function updateCanOpenStockDetails() {
+      const isDesktop = mediaQuery.matches;
+
+      setCanOpenStockDetails(isDesktop);
+
+      if (!isDesktop) {
+        setSelectedStock(null);
+      }
+    }
+
+    updateCanOpenStockDetails();
+    mediaQuery.addEventListener('change', updateCanOpenStockDetails);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateCanOpenStockDetails);
+    };
+  }, []);
+
+  const handleStockSelect = useCallback(
+    (stock: StockData) => {
+      if (canOpenStockDetails) {
+        setSelectedStock(stock);
+      }
+    },
+    [canOpenStockDetails],
+  );
+
+  const handleCloseStockDetails = useCallback(() => {
+    setSelectedStock(null);
+  }, []);
+
   function handlePanelChange(key: MarketPanelKey) {
     const nextParams = new URLSearchParams(searchParams.toString());
 
+    setSelectedStock(null);
     nextParams.set('panel', key);
 
     router.replace(`${pathname}?${nextParams.toString()}`, {
@@ -140,9 +179,21 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
 
       <StockTable>
         {rows.map((row) => (
-          <Stock key={row.ticker} {...row} />
+          <Stock
+            key={row.ticker}
+            {...row}
+            canOpenDetails={canOpenStockDetails}
+            onSelect={handleStockSelect}
+          />
         ))}
       </StockTable>
+
+      {selectedStock && (
+        <StockDetailsModal
+          stock={selectedStock}
+          onClose={handleCloseStockDetails}
+        />
+      )}
     </PanelContent>
   );
 }

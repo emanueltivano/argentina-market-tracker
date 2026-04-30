@@ -1,11 +1,11 @@
 import { type PanelTitulo } from '@/lib/panel'
-import { type StockProps } from './Stock'
+import { type StockData } from './Stock'
 
 function numberOrNull(value: number | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function getVariationType(value: number | null): StockProps['varType'] {
+function getVariationType(value: number | null): StockData['varType'] {
   if (value === null || value === 0) {
     return 'neutral'
   }
@@ -13,7 +13,7 @@ function getVariationType(value: number | null): StockProps['varType'] {
   return value > 0 ? 'positive' : 'negative'
 }
 
-export function mapPanelTituloToStockProps(item: PanelTitulo): StockProps {
+export function mapPanelTituloToStockProps(item: PanelTitulo): StockData {
   const variation = numberOrNull(item.variacionPorcentual)
 
   return {

@@ -1,7 +1,7 @@
 import { memo, type FC } from 'react';
 import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
 
-export interface StockProps {
+export interface StockData {
   ticker: string;
   description: string;
   price: number | null;
@@ -16,6 +16,11 @@ export interface StockProps {
   max: number | null;
   close: number | null;
   volume: number | null;
+}
+
+export interface StockProps extends StockData {
+  onSelect?: (stock: StockData) => void;
+  canOpenDetails?: boolean;
 }
 
 function formatNumber(
@@ -74,7 +79,7 @@ function formatSignedPercent(value: number | null | undefined, decimals = 2) {
 
 function getVariationAriaLabel(
   value: number | null,
-  type: StockProps['varType'],
+  type: StockData['varType'],
 ): string {
   if (value === null) {
     return 'Variación no disponible';
@@ -86,87 +91,105 @@ function getVariationAriaLabel(
 const GRID = STOCK_GRID_LAYOUT;
 
 const Stock: FC<StockProps> = (props) => {
+  const { onSelect, canOpenDetails = false, ...stock } = props;
   const varClass =
-    props.varType === 'positive'
+    stock.varType === 'positive'
       ? 'stock-var-positive'
-      : props.varType === 'negative'
+      : stock.varType === 'negative'
         ? 'stock-var-negative'
         : 'stock-var-neutral';
 
   const strengthClass =
-    props.var !== null && Math.abs(props.var) >= 3 ? 'stock-var-strong' : '';
+    stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
+
+  function handleTickerClick() {
+    if (canOpenDetails) {
+      onSelect?.(stock);
+    }
+  }
 
   return (
-    <tr className={`${GRID} stock-row`} data-symbol={props.ticker}>
+    <tr className={`${GRID} stock-row`} data-symbol={stock.ticker}>
       <th
         scope="row"
         className="stock-cell stock-ticker justify-self-start text-left font-mono"
-        title={`${props.description}`}
+        title={`${stock.description}`}
       >
-        {props.ticker}
+        {canOpenDetails ? (
+          <button
+            type="button"
+            className="stock-ticker-button"
+            onClick={handleTickerClick}
+            aria-label={`Ver más información de ${stock.ticker}`}
+          >
+            {stock.ticker}
+          </button>
+        ) : (
+          stock.ticker
+        )}
       </th>
 
       <td className="stock-cell stock-price">
-        {formatMoney(props.price)}
+        {formatMoney(stock.price)}
       </td>
 
       <td
         className="stock-cell"
-        aria-label={getVariationAriaLabel(props.var, props.varType)}
+        aria-label={getVariationAriaLabel(stock.var, stock.varType)}
       >
         <span className={`stock-var ${varClass} ${strengthClass}`}>
-          {formatSignedPercent(props.var)}
+          {formatSignedPercent(stock.var)}
         </span>
       </td>
 
       <td
         className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatInteger(props.buyQty)}
+        {formatInteger(stock.buyQty)}
       </td>
 
       <td className="stock-cell stock-buy">
-        {formatMoney(props.buyPrice)}
+        {formatMoney(stock.buyPrice)}
       </td>
 
       <td className="stock-cell stock-sell">
-        {formatMoney(props.sellPrice)}
+        {formatMoney(stock.sellPrice)}
       </td>
 
       <td
         className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatInteger(props.sellQty)}
+        {formatInteger(stock.sellQty)}
       </td>
 
       <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatMoney(props.open)}
+        {formatMoney(stock.open)}
       </td>
 
       <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatMoney(props.min)}
+        {formatMoney(stock.min)}
       </td>
 
       <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatMoney(props.max)}
+        {formatMoney(stock.max)}
       </td>
 
       <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatMoney(props.close)}
+        {formatMoney(stock.close)}
       </td>
 
       <td
         className={`stock-cell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
       >
-        {formatInteger(props.volume)}
+        {formatInteger(stock.volume)}
       </td>
     </tr>
   );
