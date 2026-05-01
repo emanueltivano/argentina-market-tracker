@@ -191,12 +191,22 @@
 }
 
 .stock-var-positive {
-  color: #064e3b;
+  color: white;
+  text-shadow:
+    -1px -1px 0 black,
+     1px -1px 0 black,
+    -1px  1px 0 black,
+     1px  1px 0 black;
   background-color: var(--positive-light-color);
 }
 
 .stock-var-negative {
-  color: #7f1d1d;
+  color: white;
+  text-shadow:
+    -1px -1px 0 black,
+     1px -1px 0 black,
+    -1px  1px 0 black,
+     1px  1px 0 black;
   background-color: var(--negative-light-color);
 }
 
