@@ -9,9 +9,16 @@ const COLUMNS = [
     title: 'Cantidad de compra',
     className: STOCK_COLUMN_VISIBILITY.desktopOnly,
   },
-  { label: 'PC', title: 'Precio de compra' },
-  { label: 'PV', title: 'Precio de venta' },
   {
+      label: 'PC',
+        title: 'Precio de compra',
+          className: STOCK_COLUMN_VISIBILITY.tabletUp,
+          },
+          {
+            label: 'PV',
+              title: 'Precio de venta',
+                className: STOCK_COLUMN_VISIBILITY.tabletUp,
+                },{
     label: 'CV',
     title: 'Cantidad de venta',
     className: STOCK_COLUMN_VISIBILITY.desktopOnly,

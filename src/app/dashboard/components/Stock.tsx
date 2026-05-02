@@ -148,13 +148,7 @@ const Stock: FC<StockProps> = (props) => {
         {formatInteger(stock.buyQty)}
       </td>
 
-      <td className="stock-cell stock-buy">
-        {formatMoney(stock.buyPrice)}
-      </td>
-
-      <td className="stock-cell stock-sell">
-        {formatMoney(stock.sellPrice)}
-      </td>
+      
 
       <td
         className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
