@@ -80,7 +80,7 @@
   }
 
   .stock-cell {
-    @apply min-w-0 whitespace-nowrap text-xs font-normal sm:px-3 sm:py-2 sm:text-sm;
+    @apply min-w-0 whitespace-nowrap text-sm font-normal sm:px-3 sm:py-2;
   }
 }
 
