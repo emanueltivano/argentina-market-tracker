@@ -6,7 +6,7 @@ export const STOCK_GRID_LAYOUT = [
   'items-center',
   'gap-0',
   'ps-2',
-  'py-0',
+  'py-2',
   'sm:px-0',
   'sm:py-0',
   'text-left',
