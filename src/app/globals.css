@@ -223,7 +223,7 @@
 .stock-price,
 .stock-buy,
 .stock-sell {
-  @apply text-[13px] sm:text-sm;
+  @apply text-sm;
   font-weight: 500;
 }
 
