@@ -85,13 +85,20 @@ function getVariationAriaLabel(
     return 'Variación no disponible';
   }
 
-  return `Variación ${type} ${formatNumber(Math.abs(value))}%`;
+  const labelByType: Record<StockData['varType'], string> = {
+    positive: 'positiva',
+    negative: 'negativa',
+    neutral: 'neutral',
+  };
+
+  return `Variación ${labelByType[type]} ${formatNumber(Math.abs(value))}%`;
 }
 
 const GRID = STOCK_GRID_LAYOUT;
 
 const Stock: FC<StockProps> = (props) => {
   const { onSelect, canOpenDetails = false, ...stock } = props;
+
   const varClass =
     stock.varType === 'positive'
       ? 'stock-var-positive'
@@ -113,7 +120,7 @@ const Stock: FC<StockProps> = (props) => {
       <th
         scope="row"
         className="stock-cell stock-ticker justify-self-start text-left font-mono"
-        title={`${stock.description}`}
+        title={stock.description}
       >
         {canOpenDetails ? (
           <button
@@ -129,9 +136,7 @@ const Stock: FC<StockProps> = (props) => {
         )}
       </th>
 
-      <td className="stock-cell stock-price">
-        {formatMoney(stock.price)}
-      </td>
+      <td className="stock-cell stock-price">{formatMoney(stock.price)}</td>
 
       <td
         className="stock-cell"
@@ -148,7 +153,15 @@ const Stock: FC<StockProps> = (props) => {
         {formatInteger(stock.buyQty)}
       </td>
 
-      
+      <td className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.tabletUp}`}>
+        {formatMoney(stock.buyPrice)}
+      </td>
+
+      <td
+        className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
+      >
+        {formatMoney(stock.sellPrice)}
+      </td>
 
       <td
         className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
@@ -156,33 +169,23 @@ const Stock: FC<StockProps> = (props) => {
         {formatInteger(stock.sellQty)}
       </td>
 
-      <td
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-      >
+      <td className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}>
         {formatMoney(stock.open)}
       </td>
 
-      <td
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-      >
+      <td className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}>
         {formatMoney(stock.min)}
       </td>
 
-      <td
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-      >
+      <td className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}>
         {formatMoney(stock.max)}
       </td>
 
-      <td
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
-      >
+      <td className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}>
         {formatMoney(stock.close)}
       </td>
 
-      <td
-        className={`stock-cell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
-      >
+      <td className={`stock-cell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}>
         {formatInteger(stock.volume)}
       </td>
     </tr>
