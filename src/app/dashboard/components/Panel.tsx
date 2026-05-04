@@ -16,6 +16,12 @@ type PanelProps = {
   defaultPanel?: MarketPanelKey;
 };
 
+const updatedAtFormatter = new Intl.DateTimeFormat('es-AR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
 function StockTable({
   children,
   isBusy,
@@ -42,6 +48,44 @@ function StockTableStatus({ children }: { children: ReactNode }) {
   );
 }
 
+function formatUpdatedAt(value: string | undefined): string {
+  if (!value) {
+    return 'Última actualización no disponible';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Última actualización no disponible';
+  }
+
+  return `Última actualización: ${updatedAtFormatter.format(date)}`;
+}
+
+function PanelFreshness({
+  fetchedAt,
+  isRefreshing,
+  onRefresh,
+}: {
+  fetchedAt: string | undefined;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+      <p aria-live="polite">{formatUpdatedAt(fetchedAt)}</p>
+      <button
+        type="button"
+        className="panel-refresh-button"
+        onClick={onRefresh}
+        disabled={isRefreshing}
+      >
+        {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+      </button>
+    </div>
+  );
+}
+
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
   const [canOpenStockDetails, setCanOpenStockDetails] = useState(false);
@@ -59,6 +103,8 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     activePanel,
     rows,
     error,
+    fetchedAt,
+    refresh,
     isInitialLoading,
     isRefreshing,
     hasStaleError,
@@ -102,6 +148,10 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     setSelectedStock(null);
   }, []);
 
+  const handleManualRefresh = useCallback(() => {
+    void refresh().catch(() => undefined);
+  }, [refresh]);
+
   function handlePanelChange(key: MarketPanelKey) {
     const nextParams = new URLSearchParams(searchParams.toString());
 
@@ -120,6 +170,11 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
+        <PanelFreshness
+          fetchedAt={fetchedAt}
+          isRefreshing={isRefreshing}
+          onRefresh={handleManualRefresh}
+        />
         <StockTable isBusy={false}>
           <StockTableStatus>
             <p className='text-red-400' role='alert'>
@@ -161,6 +216,11 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
+        <PanelFreshness
+          fetchedAt={fetchedAt}
+          isRefreshing={isRefreshing}
+          onRefresh={handleManualRefresh}
+        />
         <StockTable isBusy={false}>
           <StockTableStatus>
             <p className='text-gray-500' role='status' aria-live='polite'>
@@ -183,6 +243,12 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
           Actualizando datos...
         </p>
       )}
+
+      <PanelFreshness
+        fetchedAt={fetchedAt}
+        isRefreshing={isRefreshing}
+        onRefresh={handleManualRefresh}
+      />
 
       {hasStaleError && (
         <p className='mb-2 text-sm text-yellow-400' role='status' aria-live='polite'>

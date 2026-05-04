@@ -19,6 +19,9 @@ export interface PanelTitulo {
 export interface PanelSuccessResponse {
   ok: true
   data: PanelTitulo[]
+  fetchedAt: string
+  servedAt: string
+  cacheStatus: 'fresh' | 'memory-cache'
 }
 
 export interface PanelErrorResponse {

@@ -17,8 +17,26 @@ function setRequiredEnv(nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test') {
   }
 }
 
-function request(path: string) {
-  return new NextRequest(`http://localhost${path}`)
+function request(path: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
+  return new NextRequest(`http://localhost${path}`, init)
+}
+
+function remoteRequest(path: string) {
+  return new NextRequest(`https://preview.example.test${path}`)
+}
+
+function expectPanelSuccess(
+  body: unknown,
+  data: unknown[],
+  cacheStatus: 'fresh' | 'memory-cache' = 'fresh'
+) {
+  expect(body).toEqual({
+    ok: true,
+    data,
+    fetchedAt: expect.any(String),
+    servedAt: expect.any(String),
+    cacheStatus,
+  })
 }
 
 async function loadRoute(
@@ -65,10 +83,9 @@ describe('/api/panel route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({
-      ok: true,
-      data: [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
-    })
+    expectPanelSuccess(body, [
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
     expect(iolFetch).toHaveBeenCalledWith('lider-endpoint')
   })
 
@@ -88,10 +105,9 @@ describe('/api/panel route', () => {
     const response = await GET(request('/api/panel?type=general'))
     const body = await response.json()
 
-    expect(body).toEqual({
-      ok: true,
-      data: [{ simbolo: 'YPFD', descripcion: 'YPF', ultimoPrecio: 100 }],
-    })
+    expectPanelSuccess(body, [
+      { simbolo: 'YPFD', descripcion: 'YPF', ultimoPrecio: 100 },
+    ])
     expect(iolFetch).toHaveBeenCalledWith('general-endpoint')
   })
 
@@ -105,10 +121,7 @@ describe('/api/panel route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({
-      ok: true,
-      data: [{ simbolo: 'AAPL', descripcion: 'Apple' }],
-    })
+    expectPanelSuccess(body, [{ simbolo: 'AAPL', descripcion: 'Apple' }])
     expect(iolFetch).toHaveBeenCalledWith('cedears-endpoint')
   })
 
@@ -120,10 +133,7 @@ describe('/api/panel route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({
-      ok: true,
-      data: [],
-    })
+    expectPanelSuccess(body, [])
   })
 
   it('returns PANEL_ERROR with status 502 for invalid upstream payloads', async () => {
@@ -151,11 +161,29 @@ describe('/api/panel route', () => {
     const response = await GET(request('/api/panel?type=cedears'))
     const body = await response.json()
 
-    expect(body).toEqual({
-      ok: true,
-      data: [{ simbolo: 'ALUA', descripcion: 'Aluar' }],
-    })
+    expectPanelSuccess(
+      body,
+      [{ simbolo: 'ALUA', descripcion: 'Aluar' }],
+      'memory-cache'
+    )
     expect(iolFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('bypasses the memory cache when refresh=1 is requested', async () => {
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+    const { GET } = await loadRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    const response = await GET(request('/api/panel?type=lider&refresh=1'))
+    const body = await response.json()
+
+    expectPanelSuccess(body, [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expect(iolFetch).toHaveBeenCalledTimes(2)
   })
 
   it('deduplicates concurrent requests to the same uncached panel', async () => {
@@ -175,14 +203,12 @@ describe('/api/panel route', () => {
 
     const [firstResponse, secondResponse] = await Promise.all([first, second])
 
-    await expect(firstResponse.json()).resolves.toEqual({
-      ok: true,
-      data: [{ simbolo: 'COME', descripcion: 'Comercial del Plata' }],
-    })
-    await expect(secondResponse.json()).resolves.toEqual({
-      ok: true,
-      data: [{ simbolo: 'COME', descripcion: 'Comercial del Plata' }],
-    })
+    expectPanelSuccess(await firstResponse.json(), [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expectPanelSuccess(await secondResponse.json(), [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
     expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
@@ -215,32 +241,30 @@ describe('/api/panel route', () => {
     resolveFirst([{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }])
     resolveSecond([{ simbolo: 'YPFD', descripcion: 'YPF' }])
 
-    await expect(first.then((response) => response.json())).resolves.toEqual({
-      ok: true,
-      data: [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
-    })
-    await expect(second.then((response) => response.json())).resolves.toEqual({
-      ok: true,
-      data: [{ simbolo: 'YPFD', descripcion: 'YPF' }],
-    })
+    expectPanelSuccess(await first.then((response) => response.json()), [
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
+    expectPanelSuccess(await second.then((response) => response.json()), [
+      { simbolo: 'YPFD', descripcion: 'YPF' },
+    ])
     expect(iolFetch).toHaveBeenCalledTimes(2)
 
     const third = await GET(request('/api/panel?type=lider'))
 
-    await expect(third.json()).resolves.toEqual({
-      ok: true,
-      data: [{ simbolo: 'YPFD', descripcion: 'YPF' }],
-    })
+    expectPanelSuccess(
+      await third.json(),
+      [{ simbolo: 'YPFD', descripcion: 'YPF' }],
+      'memory-cache'
+    )
     expect(iolFetch).toHaveBeenCalledTimes(2)
 
     clearPanelCacheForTests()
 
     const fourth = await GET(request('/api/panel?type=lider'))
 
-    await expect(fourth.json()).resolves.toEqual({
-      ok: true,
-      data: [{ simbolo: 'PAMP', descripcion: 'Pampa Energia' }],
-    })
+    expectPanelSuccess(await fourth.json(), [
+      { simbolo: 'PAMP', descripcion: 'Pampa Energia' },
+    ])
     expect(iolFetch).toHaveBeenCalledTimes(3)
   })
 
@@ -256,6 +280,80 @@ describe('/api/panel route', () => {
       ok: false,
       error: 'PANEL_ERROR',
       details: 'upstream failed',
+    })
+  })
+
+  it('sets no-store cache headers for panel responses', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=lider'))
+
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('does not expose raw upstream payloads from non-local debug requests', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      {
+        simbolo: 'GGAL',
+        descripcion: 'Grupo Financiero Galicia',
+        rawOnly: 'hidden',
+      },
+    ])
+    const { GET } = await loadRoute(iolFetch, 'development')
+    process.env.ENABLE_TOKEN_DEBUG = '1'
+
+    const response = await GET(remoteRequest('/api/panel?type=lider&raw=1'))
+    const body = await response.json()
+
+    expectPanelSuccess(body, [
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
+  })
+
+  it('allows raw upstream payloads only for local debug requests', async () => {
+    const iolFetch = vi.fn().mockResolvedValue({ upstream: true })
+    const { GET } = await loadRoute(iolFetch, 'development')
+    process.env.ENABLE_TOKEN_DEBUG = '1'
+
+    const response = await GET(request('/api/panel?type=lider&raw=1'))
+    const body = await response.json()
+
+    expect(body).toEqual({
+      ok: true,
+      type: 'lider',
+      data: { upstream: true },
+    })
+  })
+
+  it('rate limits repeated requests from the same client', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+    let response = await GET(
+      request('/api/panel?type=lider', {
+        headers: { 'x-forwarded-for': '203.0.113.10' },
+      })
+    )
+
+    for (let index = 1; index < 121; index += 1) {
+      response = await GET(
+        request('/api/panel?type=lider', {
+          headers: { 'x-forwarded-for': '203.0.113.10' },
+        })
+      )
+    }
+
+    const body = await response.json()
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBe('60')
+    expect(body).toEqual({
+      ok: false,
+      error: 'RATE_LIMITED',
     })
   })
 

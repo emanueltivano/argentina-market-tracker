@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { getCachedToken } from '@/lib/server/tokenCache'
 import { ENV } from '@/lib/server/env'
 import {
@@ -9,6 +9,16 @@ import {
 
 function isEnabled() {
   return ENV.NODE_ENV !== 'production' && process.env.ENABLE_TOKEN_DEBUG === '1'
+}
+
+function isLocalDebugRequest(req: NextRequest): boolean {
+  const host = req.nextUrl.hostname
+
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+}
+
+function canUseDebugRoute(req: NextRequest): boolean {
+  return isEnabled() && isLocalDebugRequest(req)
 }
 
 function notFound() {
@@ -31,15 +41,15 @@ function isSafeTokenType(value: unknown): value is string {
 }
 
 // Debug local only: never expose full OAuth tokens from this route.
-export async function GET() {
-  if (!isEnabled()) {
+export async function GET(req: NextRequest) {
+  if (!canUseDebugRoute(req)) {
     return notFound()
   }
 
   const cached = getCachedToken()
 
   if (!cached) {
-    return POST()
+    return POST(req)
   }
 
   return NextResponse.json({
@@ -51,8 +61,8 @@ export async function GET() {
   })
 }
 
-export async function POST() {
-  if (!isEnabled()) {
+export async function POST(req: NextRequest) {
+  if (!canUseDebugRoute(req)) {
     return notFound()
   }
 

@@ -1,4 +1,4 @@
-import { memo, type FC, type KeyboardEvent } from 'react';
+import { memo, type FC } from 'react';
 import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
 import {
   formatMoney,
@@ -73,27 +73,11 @@ const Stock: FC<StockProps> = (props) => {
     }
   }
 
-  function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>) {
-    if (!canOpenDetails || (event.key !== 'Enter' && event.key !== ' ')) {
-      return;
-    }
-
-    event.preventDefault();
-    onSelect?.(stock);
-  }
-
   return (
     <tr
       className={`${GRID} stock-row ${canOpenDetails ? 'stock-row-interactive' : ''}`}
       data-symbol={stock.ticker}
-      tabIndex={canOpenDetails ? 0 : undefined}
-      aria-label={
-        canOpenDetails
-          ? `Abrir detalle de ${stock.ticker}, ${stock.description}`
-          : undefined
-      }
       onClick={handleRowClick}
-      onKeyDown={handleRowKeyDown}
     >
       <th
         scope="row"

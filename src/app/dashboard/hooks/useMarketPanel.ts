@@ -1,5 +1,4 @@
-// src/app/dashboard/hooks/useMarketPanel.ts
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import { type PanelResponse as MarketPanelResponse } from '@/lib/panel';
 import { type MarketPanelKey } from '@/lib/market';
@@ -16,7 +15,11 @@ function isMarketPanelSuccessResponse(
     typeof value === 'object' &&
     value !== null &&
     (value as { ok?: unknown }).ok === true &&
-    Array.isArray((value as { data?: unknown }).data)
+    Array.isArray((value as { data?: unknown }).data) &&
+    typeof (value as { fetchedAt?: unknown }).fetchedAt === 'string' &&
+    typeof (value as { servedAt?: unknown }).servedAt === 'string' &&
+    ((value as { cacheStatus?: unknown }).cacheStatus === 'fresh' ||
+      (value as { cacheStatus?: unknown }).cacheStatus === 'memory-cache')
   );
 }
 
@@ -98,7 +101,7 @@ const fetcher = async (url: string): Promise<MarketPanelSuccessResponse> => {
 export function useMarketPanel(activePanelKey: MarketPanelKey) {
   const activePanel = getMarketPanelOption(activePanelKey);
 
-  const { data, error, isLoading, isValidating } = useSWR<
+  const { data, error, isLoading, isValidating, mutate } = useSWR<
     MarketPanelSuccessResponse,
     Error
   >(
@@ -114,6 +117,15 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     },
   );
 
+  const refresh = useCallback(async () => {
+    const separator = activePanel.fetchUrl.includes('?') ? '&' : '?';
+
+    await mutate(() => fetcher(`${activePanel.fetchUrl}${separator}refresh=1`), {
+      populateCache: true,
+      revalidate: false,
+    });
+  }, [activePanel.fetchUrl, mutate]);
+
   const rows = useMemo(
     () => (data?.data ?? []).map(mapPanelTituloToStockProps),
     [data],
@@ -126,6 +138,10 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     activePanel,
     rows,
     error,
+    fetchedAt: data?.fetchedAt,
+    servedAt: data?.servedAt,
+    cacheStatus: data?.cacheStatus,
+    refresh,
     isInitialLoading: isLoading && !hasData,
     isRefreshing: isValidating && hasData && !hasError,
     hasError,
