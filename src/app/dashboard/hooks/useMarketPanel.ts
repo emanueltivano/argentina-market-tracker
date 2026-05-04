@@ -7,6 +7,7 @@ import { getMarketPanelOption } from '../lib/panelOptions';
 import { mapPanelTituloToStockProps } from '../components/panelMapper';
 
 type MarketPanelSuccessResponse = Extract<MarketPanelResponse, { ok: true }>;
+type MarketPanelErrorResponse = Extract<MarketPanelResponse, { ok: false }>;
 
 function isMarketPanelSuccessResponse(
   value: unknown,
@@ -19,6 +20,56 @@ function isMarketPanelSuccessResponse(
   );
 }
 
+function isMarketPanelErrorResponse(
+  value: unknown,
+): value is MarketPanelErrorResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { ok?: unknown }).ok === false &&
+    typeof (value as { error?: unknown }).error === 'string'
+  );
+}
+
+function panelErrorMessage(error: string): string {
+  switch (error) {
+    case 'PANEL_ERROR':
+      return 'No se pudo cargar el panel de mercado.';
+    case 'METHOD_NOT_ALLOWED':
+      return 'Método no permitido para cargar el panel.';
+    default:
+      return 'No se pudo cargar el panel.';
+  }
+}
+
+export async function getMarketPanelFetchError(
+  response: Response,
+): Promise<Error> {
+  let json: unknown;
+
+  try {
+    json = await response.json();
+  } catch {
+    return new Error(
+      `Error del servidor (${response.status}) al cargar el panel.`,
+    );
+  }
+
+  if (!isMarketPanelErrorResponse(json)) {
+    return new Error(
+      `Error del servidor (${response.status}) al cargar el panel.`,
+    );
+  }
+
+  const message = panelErrorMessage(json.error);
+
+  if (process.env.NODE_ENV !== 'production' && json.details) {
+    return new Error(`${message} Detalle: ${json.details}`);
+  }
+
+  return new Error(message);
+}
+
 const fetcher = async (url: string): Promise<MarketPanelSuccessResponse> => {
   const response = await fetch(url, {
     cache: 'no-store',
@@ -26,9 +77,7 @@ const fetcher = async (url: string): Promise<MarketPanelSuccessResponse> => {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`,
-    );
+    throw await getMarketPanelFetchError(response);
   }
 
   let json: unknown;
@@ -58,6 +107,8 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     {
       refreshInterval: 60_000,
       revalidateOnFocus: false,
+      // SWR keeps current-key data while revalidating. Keeping this false avoids
+      // rendering the previous panel's rows after the user switches panels.
       keepPreviousData: false,
       errorRetryCount: 1,
     },

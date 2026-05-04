@@ -95,6 +95,23 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledWith('general-endpoint')
   })
 
+  it('uses the cedears endpoint for type=cedears', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { simbolo: 'AAPL', descripcion: 'Apple' },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=cedears'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      ok: true,
+      data: [{ simbolo: 'AAPL', descripcion: 'Apple' }],
+    })
+    expect(iolFetch).toHaveBeenCalledWith('cedears-endpoint')
+  })
+
   it('returns an empty data array for an empty upstream payload', async () => {
     const iolFetch = vi.fn().mockResolvedValue({ data: [] })
     const { GET } = await loadRoute(iolFetch)
@@ -169,6 +186,64 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
+  it('clearPanelCacheForTests clears cached responses and in-flight requests', async () => {
+    let resolveFirst!: (value: unknown) => void
+    let resolveSecond!: (value: unknown) => void
+    const iolFetch = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve
+          })
+      )
+      .mockResolvedValue([{ simbolo: 'PAMP', descripcion: 'Pampa Energia' }])
+    const { GET, clearPanelCacheForTests } = await loadRoute(iolFetch)
+
+    const first = GET(request('/api/panel?type=lider'))
+
+    clearPanelCacheForTests()
+
+    const second = GET(request('/api/panel?type=lider'))
+
+    resolveFirst([{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }])
+    resolveSecond([{ simbolo: 'YPFD', descripcion: 'YPF' }])
+
+    await expect(first.then((response) => response.json())).resolves.toEqual({
+      ok: true,
+      data: [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
+    })
+    await expect(second.then((response) => response.json())).resolves.toEqual({
+      ok: true,
+      data: [{ simbolo: 'YPFD', descripcion: 'YPF' }],
+    })
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+
+    const third = await GET(request('/api/panel?type=lider'))
+
+    await expect(third.json()).resolves.toEqual({
+      ok: true,
+      data: [{ simbolo: 'YPFD', descripcion: 'YPF' }],
+    })
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+
+    clearPanelCacheForTests()
+
+    const fourth = await GET(request('/api/panel?type=lider'))
+
+    await expect(fourth.json()).resolves.toEqual({
+      ok: true,
+      data: [{ simbolo: 'PAMP', descripcion: 'Pampa Energia' }],
+    })
+    expect(iolFetch).toHaveBeenCalledTimes(3)
+  })
+
   it('returns PANEL_ERROR with status 502 for upstream errors', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('upstream failed'))
     const { GET } = await loadRoute(iolFetch)
@@ -221,5 +296,36 @@ describe('/api/panel route', () => {
       ok: false,
       error: 'PANEL_ERROR',
     })
+  })
+
+  it('exposes error details outside production', async () => {
+    const iolFetch = vi.fn().mockRejectedValue(new Error('development detail'))
+    const { GET } = await loadRoute(iolFetch, 'development')
+
+    const response = await GET(request('/api/panel?type=lider'))
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body).toEqual({
+      ok: false,
+      error: 'PANEL_ERROR',
+      details: 'development detail',
+    })
+  })
+
+  it('returns 405 and Allow GET for POST requests', async () => {
+    const iolFetch = vi.fn()
+    const { POST } = await loadRoute(iolFetch)
+
+    const response = POST()
+    const body = await response.json()
+
+    expect(response.status).toBe(405)
+    expect(response.headers.get('Allow')).toBe('GET')
+    expect(body).toEqual({
+      ok: false,
+      error: 'METHOD_NOT_ALLOWED',
+    })
+    expect(iolFetch).not.toHaveBeenCalled()
   })
 })

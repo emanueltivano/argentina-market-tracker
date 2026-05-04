@@ -79,6 +79,20 @@
     color: var(--text-color);
   }
 
+  .stock-row-interactive {
+    cursor: pointer;
+  }
+
+  .stock-row-interactive:hover,
+  .stock-row-interactive:focus-visible {
+    background-color: var(--hover-color);
+  }
+
+  .stock-row-interactive:focus-visible {
+    outline: 2px solid var(--main-light-color);
+    outline-offset: -2px;
+  }
+
   .stock-cell {
     @apply min-w-0 whitespace-nowrap px-2 py-2 text-sm font-normal sm:px-3 sm:py-2;
   }

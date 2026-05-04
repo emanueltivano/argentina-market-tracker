@@ -16,6 +16,7 @@ export default function StockDetailsModal({
   onClose,
 }: StockDetailsModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
@@ -34,6 +35,8 @@ export default function StockDetailsModal({
       dialog.showModal();
     }
 
+    closeButtonRef.current?.focus();
+
     return () => {
       if (dialog.open) {
         dialog.close();
@@ -49,6 +52,8 @@ export default function StockDetailsModal({
     <dialog
       ref={dialogRef}
       className="stock-details-dialog"
+      role="dialog"
+      aria-modal="true"
       aria-labelledby={titleId}
       onCancel={onClose}
       onClick={(event) => {
@@ -67,6 +72,7 @@ export default function StockDetailsModal({
           </div>
 
           <button
+            ref={closeButtonRef}
             type="button"
             className="stock-details-close"
             onClick={onClose}

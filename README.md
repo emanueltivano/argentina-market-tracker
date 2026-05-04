@@ -30,6 +30,10 @@ tests y una arquitectura fácil de explicar en entrevista.
 - Cache corto, deduplicación, timeout y retry controlado para llamadas a la API externa.
 - Estados de UI diferenciados para carga inicial, refresh, errores con datos previos, errores sin datos y paneles vacíos.
 
+## Cache en memoria
+
+`/api/panel` usa un cache en memoria por panel y deduplica requests concurrentes dentro del mismo proceso. Esto reduce llamadas repetidas a la API externa, pero en entornos serverless no debe asumirse como cache compartido ni persistente: cada instancia puede tener su propio cache y puede perderlo entre invocaciones.
+
 ## Stack
 
 - Next.js 16

@@ -1,4 +1,4 @@
-import { memo, type FC } from 'react';
+import { memo, type FC, type KeyboardEvent } from 'react';
 import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
 import {
   formatMoney,
@@ -67,8 +67,34 @@ const Stock: FC<StockProps> = (props) => {
     }
   }
 
+  function handleRowClick() {
+    if (canOpenDetails) {
+      onSelect?.(stock);
+    }
+  }
+
+  function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>) {
+    if (!canOpenDetails || (event.key !== 'Enter' && event.key !== ' ')) {
+      return;
+    }
+
+    event.preventDefault();
+    onSelect?.(stock);
+  }
+
   return (
-    <tr className={`${GRID} stock-row`} data-symbol={stock.ticker}>
+    <tr
+      className={`${GRID} stock-row ${canOpenDetails ? 'stock-row-interactive' : ''}`}
+      data-symbol={stock.ticker}
+      tabIndex={canOpenDetails ? 0 : undefined}
+      aria-label={
+        canOpenDetails
+          ? `Abrir detalle de ${stock.ticker}, ${stock.description}`
+          : undefined
+      }
+      onClick={handleRowClick}
+      onKeyDown={handleRowKeyDown}
+    >
       <th
         scope="row"
         className="stock-cell stock-ticker justify-self-start text-left font-mono"
@@ -78,8 +104,11 @@ const Stock: FC<StockProps> = (props) => {
           <button
             type="button"
             className="stock-ticker-button"
-            onClick={handleTickerClick}
-            aria-label={`Ver más información de ${stock.ticker}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleTickerClick();
+            }}
+            aria-label={`Abrir detalle de ${stock.ticker}, ${stock.description}`}
           >
             {stock.ticker}
           </button>
