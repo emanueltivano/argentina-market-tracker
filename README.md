@@ -25,10 +25,18 @@ tests y una arquitectura fácil de explicar en entrevista.
 - Cache corto y deduplicación de requests en vuelo para reducir llamadas repetidas a la API externa.
 - Respuestas de `/api/panel` con `fetchedAt`, `servedAt` y `cacheStatus` para mostrar frescura de datos.
 - Rate limit simple en memoria para proteger el endpoint público sin requerir infraestructura paga.
-- Headers HTTP conservadores para seguridad y política explícita de cache.
+- Headers HTTP conservadores para seguridad, HSTS en producción y política explícita de cache.
 - Normalización de datos antes de renderizar en la UI.
 - TypeScript estricto, lint y tests unitarios para lógica crítica.
 - Formatters compartidos para mantener consistente la salida visual de precios, enteros y porcentajes.
+
+## Arquitectura y seguridad
+
+La API externa requiere credenciales y token OAuth. Por eso el navegador nunca llama directo al proveedor: el frontend consulta `/api/panel` y esa API route actúa como backend-for-frontend. Esta capa permite mantener `API_USERNAME`, `API_PASSWORD` y el token de acceso solo del lado server, normalizar respuestas externas antes de enviarlas al cliente y devolver errores controlados.
+
+El cliente server-side vive en `src/lib/server/iol.ts` y está protegido con `server-only` para evitar imports accidentales desde componentes cliente. Además centraliza timeout, cache de token, retry único ante `401/403` y redacción básica de credenciales en mensajes de error.
+
+La API route no intenta ser un backend financiero completo. Su rol es acotado: validar el panel solicitado, aplicar cache/cooldown/rate limit local, llamar al upstream, normalizar el payload y entregar un contrato estable al frontend.
 
 ## Production readiness
 
@@ -49,6 +57,10 @@ La respuesta HTTP de `/api/panel` usa `Cache-Control: no-store`. La decisión es
 ## Rate limit
 
 `/api/panel` aplica un rate limit simple en memoria de 120 requests por minuto por IP detectada desde `x-forwarded-for` o `x-real-ip`. Es suficiente para un portfolio y no requiere servicios pagos, pero tiene las mismas limitaciones serverless que el cache: cada instancia mantiene su propio contador. Para producción con tráfico real, reemplazarlo por un store compartido como Redis, Vercel KV o una regla de WAF.
+
+El refresh manual con `refresh=1` tiene además un cooldown en memoria de 15 segundos por panel y client key/IP. Esto evita refrescos manuales excesivos contra la API externa dentro de una misma instancia, pero tampoco es un límite global distribuido en serverless.
+
+En una producción real con tráfico público, el rate limit debería vivir fuera del proceso: Redis, Vercel KV/Upstash o una regla de WAF/CDN. Eso permitiría compartir contadores entre instancias, aplicar ventanas por IP/API key y bloquear abuso antes de ejecutar la función serverless.
 
 ## Debug local
 
@@ -135,6 +147,8 @@ src/
       token/
     dashboard/
       components/
+      hooks/
+      lib/
     globals.css
     layout.tsx
     page.tsx
@@ -193,7 +207,6 @@ Crear `.env.local` a partir de `.env.local.example`.
 | `PANEL_GENERAL_ENDPOINT` | Sí | Endpoint del panel general |
 | `PANEL_CEDEARS_ENDPOINT` | Sí | Endpoint de CEDEARs |
 | `ENABLE_TOKEN_DEBUG` | No | Habilita herramientas de debug local cuando vale `1` |
-| `NEXT_PUBLIC_APP_ORIGIN` | No | Origen público de la app si se usan Server Actions |
 
 Ejemplo:
 
@@ -206,7 +219,6 @@ PANEL_LIDER_ENDPOINT="api/v2/cotizaciones/acciones/merval/argentina"
 PANEL_GENERAL_ENDPOINT="api/v2/cotizaciones/acciones/panel%20general/argentina"
 PANEL_CEDEARS_ENDPOINT="api/v2/cotizaciones/acciones/cedears/argentina"
 ENABLE_TOKEN_DEBUG=0
-NEXT_PUBLIC_APP_ORIGIN="https://your-vercel-app.vercel.app"
 ```
 
 ## Puesta en marcha local
@@ -227,30 +239,42 @@ http://localhost:3000
 
 1. Importar el repositorio en Vercel.
 2. Configurar las variables de entorno requeridas.
-3. Definir `NEXT_PUBLIC_APP_ORIGIN` con el dominio público si se mantienen Server Actions habilitadas.
-4. Mantener `ENABLE_TOKEN_DEBUG=0` o sin definir en producción.
-5. Ejecutar el build con `npm run build`.
+3. Mantener `ENABLE_TOKEN_DEBUG=0` o sin definir en producción.
+4. Ejecutar el build con `npm run build`.
 
 ### Production tradeoffs
 
 - `Cache-Control: no-store` evita caches externos opacos para datos financieros; el costo es que cada navegación/revalidación pasa por la API route.
 - El cache y rate limit en memoria son deliberadamente simples. Funcionan bien para portfolio y demos, pero no son compartidos entre instancias serverless.
-- El refresh manual usa `refresh=1` para saltear el cache local y actualizar `fetchedAt`.
-- No se agrega CSP estricta todavía para evitar romper scripts/assets de Next.js sin una auditoría dedicada.
+- El refresh manual usa `refresh=1` para saltear el cache local y actualizar `fetchedAt`, con cooldown local de 15 segundos por panel y client key/IP.
+- HSTS se agrega solo en producción. No se fuerza en desarrollo para evitar efectos indeseados sobre `localhost`.
+- No se agrega CSP todavía: una CSP útil en Next.js requiere auditar scripts, styles y assets generados por el framework. Agregar una política incompleta podría romper deploy o dar una falsa sensación de seguridad.
+
+### Fuera del MVP
+
+- Rate limit global distribuido con Redis/KV/WAF.
+- Persistencia histórica de precios o base de datos propia.
+- Observabilidad productiva completa: métricas, tracing, alertas y dashboard de errores.
+- Autenticación de usuarios finales.
+- CSP estricta auditada para todos los assets/scripts de Next.js.
 
 ## Tests
 
-Los tests actuales cubren lógica crítica y algunos contratos server-side:
+Los tests actuales cubren lógica crítica, contratos de datos y flujos principales de UI:
 
 - `src/lib/panel.test.ts`
 - `src/lib/market.test.ts`
 - `src/lib/formatters.test.ts`
 - `src/lib/server/tokenCache.test.ts`
+- `src/lib/server/iol.test.ts`
 - `src/app/api/panel/route.test.ts`
 - `src/app/api/token/route.test.ts`
+- `src/app/dashboard/hooks/useMarketPanel.test.ts`
 - `src/app/dashboard/components/Panel.test.tsx`
 - `src/app/dashboard/components/StockDetailsModal.test.tsx`
 - `e2e/dashboard.spec.ts`
+
+La cobertura se enfoca en normalización de payloads externos, cache de token, retry/timeout del cliente IOL, contratos de API, rate limit/cooldown local, manejo de errores del hook, estados principales del panel y E2E con `/api/panel` mockeado. Los tests no hacen requests reales al proveedor externo ni dependen de credenciales reales.
 
 Comandos recomendados antes de publicar cambios:
 
@@ -294,6 +318,7 @@ Playwright levanta `npm run dev:e2e` automáticamente y mockea `/api/panel`, as�
 
 ## Próximas mejoras
 
-- Agregar visualización histórica de precios.
-- Agregar más filtros y opciones de búsqueda.
+- Reemplazar rate limit/cooldown in-memory por un límite global si la app recibe tráfico público real.
+- Agregar observabilidad básica de errores y latencia de upstream.
 - Mejorar la experiencia mobile.
+- Agregar visualización histórica de precios cuando exista una fuente/persistencia adecuada.

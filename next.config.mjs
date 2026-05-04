@@ -5,11 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
-const allowedOrigins = [
-  process.env.NODE_ENV !== 'production' && 'http://localhost:3000',
-  process.env.NEXT_PUBLIC_APP_ORIGIN,
-].filter(Boolean)
+const isProduction = process.env.NODE_ENV === 'production'
 
 const securityHeaders = [
   {
@@ -28,6 +24,14 @@ const securityHeaders = [
     key: 'X-Frame-Options',
     value: 'DENY',
   },
+  ...(isProduction
+    ? [
+        {
+          key: 'Strict-Transport-Security',
+          value: 'max-age=31536000; includeSubDomains',
+        },
+      ]
+    : []),
 ]
 
 const nextConfig = {
@@ -35,12 +39,6 @@ const nextConfig = {
 
   turbopack: {
     root: __dirname,
-  },
-
-  experimental: {
-    serverActions: {
-      allowedOrigins,
-    },
   },
 
   async headers() {

@@ -68,6 +68,7 @@ describe('/api/panel route', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     vi.resetModules()
     process.env = OLD_ENV
@@ -186,6 +187,139 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledTimes(2)
   })
 
+  it('allows the first manual refresh for a panel and client key', async () => {
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+    const { GET } = await loadRoute(iolFetch)
+
+    await GET(
+      request('/api/panel?type=lider', {
+        headers: { 'x-forwarded-for': '203.0.113.30' },
+      })
+    )
+
+    const response = await GET(
+      request('/api/panel?type=lider&refresh=1', {
+        headers: { 'x-forwarded-for': '203.0.113.30' },
+      })
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expectPanelSuccess(body, [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('blocks repeated manual refreshes during the cooldown window', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+    const { GET } = await loadRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    await GET(request('/api/panel?type=lider&refresh=1'))
+
+    const response = await GET(request('/api/panel?type=lider&refresh=1'))
+    const body = await response.json()
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBe('15')
+    expect(body).toEqual({
+      ok: false,
+      error: 'REFRESH_COOLDOWN',
+    })
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps manual refresh in cooldown after an upstream refresh failure', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockRejectedValueOnce(new Error('upstream failed'))
+    const { GET } = await loadRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+
+    const failedRefresh = await GET(request('/api/panel?type=lider&refresh=1'))
+
+    expect(failedRefresh.status).toBe(502)
+    expect(await failedRefresh.json()).toEqual({
+      ok: false,
+      error: 'PANEL_ERROR',
+      details: 'upstream failed',
+    })
+
+    const blockedRefresh = await GET(request('/api/panel?type=lider&refresh=1'))
+    const body = await blockedRefresh.json()
+
+    expect(blockedRefresh.status).toBe(429)
+    expect(blockedRefresh.headers.get('Retry-After')).toBe('15')
+    expect(body).toEqual({
+      ok: false,
+      error: 'REFRESH_COOLDOWN',
+    })
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps normal cache reads working while manual refresh is in cooldown', async () => {
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+    const { GET } = await loadRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    await GET(request('/api/panel?type=lider&refresh=1'))
+
+    const response = await GET(request('/api/panel?type=lider'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expectPanelSuccess(
+      body,
+      [{ simbolo: 'COME', descripcion: 'Comercial del Plata' }],
+      'memory-cache'
+    )
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('allows manual refresh again after the cooldown window expires', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+      .mockResolvedValueOnce([{ simbolo: 'PAMP', descripcion: 'Pampa Energia' }])
+    const { GET } = await loadRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    await GET(request('/api/panel?type=lider&refresh=1'))
+
+    vi.setSystemTime(new Date('2026-05-04T16:00:16.000Z'))
+
+    const response = await GET(request('/api/panel?type=lider&refresh=1'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expectPanelSuccess(body, [
+      { simbolo: 'PAMP', descripcion: 'Pampa Energia' },
+    ])
+    expect(iolFetch).toHaveBeenCalledTimes(3)
+  })
+
   it('deduplicates concurrent requests to the same uncached panel', async () => {
     let resolvePanel!: (value: unknown) => void
     const iolFetch = vi.fn(
@@ -198,6 +332,32 @@ describe('/api/panel route', () => {
 
     const first = GET(request('/api/panel?type=lider'))
     const second = GET(request('/api/panel?type=lider'))
+
+    resolvePanel([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+
+    const [firstResponse, secondResponse] = await Promise.all([first, second])
+
+    expectPanelSuccess(await firstResponse.json(), [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expectPanelSuccess(await secondResponse.json(), [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expect(iolFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('deduplicates concurrent refresh requests to the same panel', async () => {
+    let resolvePanel!: (value: unknown) => void
+    const iolFetch = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolvePanel = resolve
+        })
+    )
+    const { GET } = await loadRoute(iolFetch)
+
+    const first = GET(request('/api/panel?type=lider&refresh=1'))
+    const second = GET(request('/api/panel?type=lider&refresh=1'))
 
     resolvePanel([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
 
@@ -355,6 +515,38 @@ describe('/api/panel route', () => {
       ok: false,
       error: 'RATE_LIMITED',
     })
+  })
+
+  it('prunes expired rate limit entries before counting a new window', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+
+    const iolFetch = vi.fn().mockResolvedValue([
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    for (let index = 0; index < 120; index += 1) {
+      await GET(
+        request('/api/panel?type=lider', {
+          headers: { 'x-forwarded-for': '203.0.113.20' },
+        })
+      )
+    }
+
+    vi.setSystemTime(new Date('2026-05-04T16:01:01.000Z'))
+
+    const response = await GET(
+      request('/api/panel?type=lider', {
+        headers: { 'x-forwarded-for': '203.0.113.20' },
+      })
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expectPanelSuccess(body, [
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
   })
 
   it('returns a controlled error when required env vars are missing', async () => {

@@ -15,6 +15,9 @@ export const runtime = 'nodejs'
 const PANEL_CACHE_TTL_MS = 30_000
 const PANEL_RATE_LIMIT_WINDOW_MS = 60_000
 const PANEL_RATE_LIMIT_MAX_REQUESTS = 120
+const PANEL_RATE_LIMIT_MAX_KEYS = 1_000
+const PANEL_REFRESH_COOLDOWN_MS = 15_000
+const PANEL_REFRESH_COOLDOWN_MAX_KEYS = 1_000
 const PANEL_CACHE_CONTROL = 'no-store'
 
 type PanelCacheEntry = {
@@ -28,9 +31,15 @@ type RateLimitEntry = {
   resetAt: number
 }
 
+type RefreshCooldownEntry = {
+  resetAt: number
+}
+
 const panelCache = new Map<MarketPanelKey, PanelCacheEntry>()
 const inFlightPanelRequests = new Map<MarketPanelKey, Promise<PanelResponse>>()
+const inFlightPanelRefreshRequests = new Map<MarketPanelKey, Promise<PanelResponse>>()
 const rateLimitStore = new Map<string, RateLimitEntry>()
+const refreshCooldownStore = new Map<string, RefreshCooldownEntry>()
 
 const JSON_HEADERS = {
   'Cache-Control': PANEL_CACHE_CONTROL,
@@ -130,7 +139,20 @@ function getOrCreatePanelResponse(
   bypassCache: boolean
 ): Promise<PanelResponse> {
   if (bypassCache) {
-    return fetchPanelResponse(type)
+    const inFlightRefresh = inFlightPanelRefreshRequests.get(type)
+
+    if (inFlightRefresh) {
+      return inFlightRefresh
+    }
+
+    const promise = fetchPanelResponse(type).finally(() => {
+      if (inFlightPanelRefreshRequests.get(type) === promise) {
+        inFlightPanelRefreshRequests.delete(type)
+      }
+    })
+
+    inFlightPanelRefreshRequests.set(type, promise)
+    return promise
   }
 
   const cached = getCachedPanelResponse(type)
@@ -158,7 +180,9 @@ function getOrCreatePanelResponse(
 export function clearPanelCacheForTests() {
   panelCache.clear()
   inFlightPanelRequests.clear()
+  inFlightPanelRefreshRequests.clear()
   rateLimitStore.clear()
+  refreshCooldownStore.clear()
 }
 
 function getRateLimitKey(req: NextRequest): string {
@@ -168,10 +192,35 @@ function getRateLimitKey(req: NextRequest): string {
   return forwardedFor || realIp || 'local'
 }
 
+function pruneRateLimitStore(now: number) {
+  for (const [key, entry] of rateLimitStore) {
+    if (now >= entry.resetAt) {
+      rateLimitStore.delete(key)
+    }
+  }
+
+  if (rateLimitStore.size <= PANEL_RATE_LIMIT_MAX_KEYS) {
+    return
+  }
+
+  const entriesByOldestReset = [...rateLimitStore.entries()].sort(
+    ([, first], [, second]) => first.resetAt - second.resetAt
+  )
+
+  for (const [key] of entriesByOldestReset.slice(
+    0,
+    rateLimitStore.size - PANEL_RATE_LIMIT_MAX_KEYS
+  )) {
+    rateLimitStore.delete(key)
+  }
+}
+
 function checkRateLimit(req: NextRequest):
   | { ok: true }
   | { ok: false; retryAfterSec: number } {
   const now = Date.now()
+  pruneRateLimitStore(now)
+
   const key = getRateLimitKey(req)
   const current = rateLimitStore.get(key)
 
@@ -192,6 +241,57 @@ function checkRateLimit(req: NextRequest):
   }
 
   current.count += 1
+  return { ok: true }
+}
+
+function getRefreshCooldownKey(req: NextRequest, type: MarketPanelKey): string {
+  return `${getRateLimitKey(req)}:${type}`
+}
+
+function pruneRefreshCooldownStore(now: number) {
+  for (const [key, entry] of refreshCooldownStore) {
+    if (now >= entry.resetAt) {
+      refreshCooldownStore.delete(key)
+    }
+  }
+
+  if (refreshCooldownStore.size <= PANEL_REFRESH_COOLDOWN_MAX_KEYS) {
+    return
+  }
+
+  const entriesByOldestReset = [...refreshCooldownStore.entries()].sort(
+    ([, first], [, second]) => first.resetAt - second.resetAt
+  )
+
+  for (const [key] of entriesByOldestReset.slice(
+    0,
+    refreshCooldownStore.size - PANEL_REFRESH_COOLDOWN_MAX_KEYS
+  )) {
+    refreshCooldownStore.delete(key)
+  }
+}
+
+function checkRefreshCooldown(
+  req: NextRequest,
+  type: MarketPanelKey
+): { ok: true } | { ok: false; retryAfterSec: number } {
+  const now = Date.now()
+  pruneRefreshCooldownStore(now)
+
+  const key = getRefreshCooldownKey(req, type)
+  const current = refreshCooldownStore.get(key)
+
+  if (current && now < current.resetAt) {
+    return {
+      ok: false,
+      retryAfterSec: Math.ceil((current.resetAt - now) / 1000),
+    }
+  }
+
+  refreshCooldownStore.set(key, {
+    resetAt: now + PANEL_REFRESH_COOLDOWN_MS,
+  })
+
   return { ok: true }
 }
 
@@ -229,6 +329,27 @@ export async function GET(req: NextRequest) {
         },
       }
     )
+  }
+
+  // Local in-memory cooldown for manual refresh. In serverless this protects
+  // only the current instance; it is not a global distributed limit.
+  if (bypassCache && !inFlightPanelRefreshRequests.has(type)) {
+    const refreshCooldown = checkRefreshCooldown(req, type)
+
+    if (!refreshCooldown.ok) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'REFRESH_COOLDOWN',
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(refreshCooldown.retryAfterSec),
+          },
+        }
+      )
+    }
   }
 
   try {

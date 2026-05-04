@@ -384,13 +384,24 @@ function formatErrorBody(text: string | null): string {
     return ''
   }
 
-  const normalized = text.trim().replace(/\s+/g, ' ')
+  const normalized = redactConfiguredCredentials(text.trim().replace(/\s+/g, ' '))
 
   if (normalized.length <= MAX_ERROR_BODY_LENGTH) {
     return normalized
   }
 
   return `${normalized.slice(0, MAX_ERROR_BODY_LENGTH)}…`
+}
+
+function redactConfiguredCredentials(text: string): string {
+  const secrets = [process.env.API_USERNAME, process.env.API_PASSWORD].filter(
+    (value): value is string => typeof value === 'string' && value.length > 0
+  )
+
+  return secrets.reduce(
+    (redacted, secret) => redacted.split(secret).join('[redacted]'),
+    text
+  )
 }
 
 export { iol as iolFetch }
