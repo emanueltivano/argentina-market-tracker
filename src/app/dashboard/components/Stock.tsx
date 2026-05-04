@@ -1,5 +1,11 @@
 import { memo, type FC } from 'react';
 import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
+import {
+  formatMoney,
+  formatInteger,
+  formatNumber,
+  formatSignedPercent,
+} from '../lib/formatters';
 
 export interface StockData {
   ticker: string;
@@ -21,60 +27,6 @@ export interface StockData {
 export interface StockProps extends StockData {
   onSelect?: (stock: StockData) => void;
   canOpenDetails?: boolean;
-}
-
-function formatNumber(
-  value: number | null | undefined,
-  decimals = 2,
-  locale = 'es-AR',
-): string {
-  if (
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(Number(value))
-  ) {
-    return '—';
-  }
-
-  return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(Number(value));
-}
-
-function formatMoney(value: number | null | undefined): string {
-  if (
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(Number(value))
-  ) {
-    return '—';
-  }
-
-  return `$ ${formatNumber(value)}`;
-}
-
-function formatInteger(value: number | null | undefined): string {
-  return formatNumber(value, 0);
-}
-
-function formatSignedPercent(value: number | null | undefined, decimals = 2) {
-  if (
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(Number(value))
-  ) {
-    return '—';
-  }
-
-  const n = Number(value);
-
-  if (n === 0) {
-    return `${formatNumber(0, decimals)}%`;
-  }
-
-  const sign = n > 0 ? '+ ' : '- ';
-  return `${sign}${formatNumber(Math.abs(n), decimals)}%`;
 }
 
 function getVariationAriaLabel(

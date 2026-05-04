@@ -17,9 +17,10 @@ tests y una arquitectura facil de explicar en entrevista.
 
 - API route interna para proteger credenciales y evitar llamadas directas desde el navegador.
 - Cliente server-side aislado con `server-only`.
-- Cache corto para reducir llamadas repetidas a la API externa.
+- Cache corto y deduplicacion de requests en vuelo para reducir llamadas repetidas a la API externa.
 - Normalización de datos antes de renderizar en la UI.
 - TypeScript estricto, lint y tests unitarios para lógica crítica.
+- Formatters compartidos para mantener consistente la salida visual de precios, enteros y porcentajes.
 
 ## Stack
 
@@ -99,6 +100,20 @@ src/
 | `npm run start` | Sirve el build de produccion |
 | `npm run deps:update` | Actualiza dependencias con npm-check-updates |
 
+## CI
+
+El repositorio incluye GitHub Actions en `.github/workflows/ci.yml`.
+
+El workflow corre en `push` y `pull_request` hacia `main` con Node 20, cache de npm y la misma validacion recomendada para cambios locales:
+
+```bash
+npm ci
+npm run lint
+npm run type-check
+npm run test
+npm run build
+```
+
 ## Variables de entorno
 
 Crear `.env.local` a partir de `.env.local.example`.
@@ -151,10 +166,13 @@ http://localhost:3000
 
 ## Tests
 
-Los tests actuales cubren la logica critica de normalizacion y validacion:
+Los tests actuales cubren logica critica y algunos contratos server-side:
 
 - `src/lib/panel.test.ts`
 - `src/lib/market.test.ts`
+- `src/app/dashboard/lib/formatters.test.ts`
+- `src/lib/server/tokenCache.test.ts`
+- `src/app/api/panel/route.test.ts`
 
 Comandos recomendados antes de publicar cambios:
 
@@ -168,7 +186,5 @@ npm run build
 ## Próximas mejoras
 
 - Agregar visualización histórica de precios.
-- Mejorar accesibilidad de la tabla de cotizaciones.
-- Sumar tests de integración para las API routes.
 - Agregar más filtros y opciones de búsqueda.
 - Mejorar la experiencia mobile.

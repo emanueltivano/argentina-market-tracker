@@ -1,6 +1,10 @@
 import 'server-only'
 import { ENV } from './env'
-import { getCachedToken, setCachedToken, clearCachedToken } from './tokenCache'
+import {
+  setCachedToken,
+  clearCachedToken,
+  getOrCreateToken,
+} from './tokenCache'
 
 /**
  * Configuración general
@@ -28,6 +32,28 @@ interface TokenResponse {
   access_token: string
   token_type?: string
   expires_in?: number
+}
+
+export interface TokenDebugInfo {
+  expiresIn: number
+  tokenType?: string
+}
+
+export class IolTokenUpstreamError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message)
+    this.name = 'IolTokenUpstreamError'
+  }
+}
+
+export class IolTokenFormatError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'IolTokenFormatError'
+  }
 }
 
 /**
@@ -91,13 +117,7 @@ async function fetchWithTimeout(
 /**
  * Obtiene y cachea un token de acceso.
  */
-async function fetchToken(): Promise<string> {
-  const cached = getCachedToken()
-
-  if (cached) {
-    return cached
-  }
-
+async function requestTokenResponse(): Promise<TokenResponse> {
   const url = buildUrl(ENV.TOKEN_ENDPOINT)
 
   const body = new URLSearchParams({
@@ -123,24 +143,58 @@ async function fetchToken(): Promise<string> {
 
   if (!res.ok) {
     const text = await safeText(res)
-    throw new Error(buildHttpErrorMessage('IOL token fetch failed', res, text))
+    throw new IolTokenUpstreamError(
+      buildHttpErrorMessage('IOL token fetch failed', res, text),
+      res.status
+    )
   }
 
-  const data = await readJson<TokenResponse>(res, 'IOL token response')
+  const data = await readJson<TokenResponse>(res, 'IOL token response').catch(
+    (error: unknown) => {
+      const message =
+        error instanceof Error ? error.message : 'Invalid token response'
+
+      throw new IolTokenFormatError(message)
+    }
+  )
 
   if (!data.access_token || typeof data.access_token !== 'string') {
-    throw new Error('IOL token response without access_token')
+    throw new IolTokenFormatError('Missing access_token')
   }
 
-  const expiresIn =
-    typeof data.expires_in === 'number' && Number.isFinite(data.expires_in)
-      ? data.expires_in
-      : undefined
+  return data
+}
+
+function getTokenExpiresIn(data: TokenResponse): number | undefined {
+  return typeof data.expires_in === 'number' && Number.isFinite(data.expires_in)
+    ? data.expires_in
+    : undefined
+}
+
+async function requestNewToken(): Promise<string> {
+  const data = await requestTokenResponse()
+  const expiresIn = getTokenExpiresIn(data)
 
   setCachedToken(data.access_token, expiresIn)
   devLog('token obtained, expires_in:', expiresIn ?? '(default)')
 
   return data.access_token
+}
+
+async function fetchToken(): Promise<string> {
+  return getOrCreateToken(requestNewToken)
+}
+
+export async function refreshTokenForDebug(): Promise<TokenDebugInfo> {
+  const data = await requestTokenResponse()
+  const expiresIn = getTokenExpiresIn(data) ?? 1800
+
+  setCachedToken(data.access_token, expiresIn)
+
+  return {
+    expiresIn,
+    tokenType: data.token_type,
+  }
 }
 
 /**

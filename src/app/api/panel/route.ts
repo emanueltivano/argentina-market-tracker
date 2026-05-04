@@ -22,6 +22,7 @@ type PanelCacheEntry = {
 }
 
 const panelCache = new Map<MarketPanelKey, PanelCacheEntry>()
+const inFlightPanelRequests = new Map<MarketPanelKey, Promise<PanelResponse>>()
 
 function getPanelType(req: NextRequest): MarketPanelKey {
   const type = req.nextUrl.searchParams.get('type')
@@ -55,22 +56,53 @@ function setCachedPanelResponse(type: MarketPanelKey, response: PanelResponse) {
   })
 }
 
+async function fetchPanelResponse(type: MarketPanelKey): Promise<PanelResponse> {
+  const data = await iolFetch(PANEL_ENDPOINTS[type])
+  const response: PanelResponse = {
+    ok: true,
+    data: normalizePanelData(data),
+  }
+
+  setCachedPanelResponse(type, response)
+  return response
+}
+
+function getOrCreatePanelResponse(type: MarketPanelKey): Promise<PanelResponse> {
+  const cached = getCachedPanelResponse(type)
+
+  if (cached) {
+    return Promise.resolve(cached)
+  }
+
+  const inFlight = inFlightPanelRequests.get(type)
+
+  if (inFlight) {
+    return inFlight
+  }
+
+  const promise = fetchPanelResponse(type).finally(() => {
+    if (inFlightPanelRequests.get(type) === promise) {
+      inFlightPanelRequests.delete(type)
+    }
+  })
+
+  inFlightPanelRequests.set(type, promise)
+  return promise
+}
+
+export function clearPanelCacheForTests() {
+  panelCache.clear()
+  inFlightPanelRequests.clear()
+}
+
 export async function GET(req: NextRequest) {
   const type = getPanelType(req)
   const shouldReturnRaw = shouldReturnRawData(req)
 
   try {
-    if (!shouldReturnRaw) {
-      const cached = getCachedPanelResponse(type)
-
-      if (cached) {
-        return NextResponse.json(cached)
-      }
-    }
-
-    const data = await iolFetch(PANEL_ENDPOINTS[type])
-
     if (shouldReturnRaw) {
+      const data = await iolFetch(PANEL_ENDPOINTS[type])
+
       return NextResponse.json({
         ok: true,
         type,
@@ -78,12 +110,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const response: PanelResponse = {
-      ok: true,
-      data: normalizePanelData(data),
-    }
-
-    setCachedPanelResponse(type, response)
+    const response = await getOrCreatePanelResponse(type)
 
     return NextResponse.json(response)
   } catch (err: unknown) {

@@ -6,6 +6,7 @@ type TokenRecord = {
 }
 
 let token: TokenRecord | null = null
+let inFlightTokenPromise: Promise<string> | null = null
 
 export function getCachedToken(): string | null {
   if (!token || Date.now() >= token.expiresAt) {
@@ -34,6 +35,31 @@ export function setCachedToken(
   }
 }
 
+export function getOrCreateToken(fetchToken: () => Promise<string>): Promise<string> {
+  const cached = getCachedToken()
+
+  if (cached) {
+    return Promise.resolve(cached)
+  }
+
+  if (inFlightTokenPromise) {
+    return inFlightTokenPromise
+  }
+
+  const promise = fetchToken().finally(() => {
+    if (inFlightTokenPromise === promise) {
+      inFlightTokenPromise = null
+    }
+  })
+
+  inFlightTokenPromise = promise
+  return promise
+}
+
 export function clearCachedToken() {
   token = null
+}
+
+export function clearInFlightTokenRequest() {
+  inFlightTokenPromise = null
 }

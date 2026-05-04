@@ -71,7 +71,7 @@
   }
 
   .stock-table {
-    @apply w-full border-collapse;
+    @apply w-full table-fixed border-collapse;
   }
 
   .stock-row {
@@ -80,7 +80,7 @@
   }
 
   .stock-cell {
-    @apply min-w-0 whitespace-nowrap text-sm font-normal sm:px-3 sm:py-2;
+    @apply min-w-0 whitespace-nowrap px-2 py-2 text-sm font-normal sm:px-3 sm:py-2;
   }
 }
 

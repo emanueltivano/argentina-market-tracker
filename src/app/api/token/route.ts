@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getCachedToken, setCachedToken } from '@/lib/server/tokenCache'
+import { getCachedToken } from '@/lib/server/tokenCache'
 import { ENV } from '@/lib/server/env'
-
-const TOKEN_TIMEOUT = 15_000
+import {
+  IolTokenFormatError,
+  IolTokenUpstreamError,
+  refreshTokenForDebug,
+} from '@/lib/server/iol'
 
 function isEnabled() {
   return ENV.NODE_ENV !== 'production' && process.env.ENABLE_TOKEN_DEBUG === '1'
@@ -53,80 +56,40 @@ export async function POST() {
     return notFound()
   }
 
-  const url = new URL(ENV.TOKEN_ENDPOINT, `${ENV.API_URL}/`)
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), TOKEN_TIMEOUT)
-
   try {
-    const body = new URLSearchParams({
-      username: ENV.API_USERNAME,
-      password: ENV.API_PASSWORD,
-      grant_type: 'password',
-    })
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body,
-      signal: ctrl.signal,
-      cache: 'no-store',
-    })
-
-    if (!res.ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'TOKEN_UPSTREAM',
-          status: res.status,
-        },
-        { status: 502 }
-      )
-    }
-
-    const data: unknown = await res.json()
-
-    if (!data || typeof data !== 'object') {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'TOKEN_FORMAT',
-          details: 'Invalid token response',
-        },
-        { status: 502 }
-      )
-    }
-
-    const tokenData = data as Record<string, unknown>
-    const accessToken = tokenData.access_token
-    const tokenType = tokenData.token_type
-    const expiresIn = Number(tokenData.expires_in ?? 1800)
-    const ttl = Number.isFinite(expiresIn) ? expiresIn : 1800
-
-    if (typeof accessToken !== 'string' || accessToken.length === 0) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'TOKEN_FORMAT',
-          details: 'Missing access_token',
-        },
-        { status: 502 }
-      )
-    }
-
-    setCachedToken(accessToken, ttl)
+    const token = await refreshTokenForDebug()
 
     return NextResponse.json({
       ok: true,
-      expires_in: ttl,
-      ...(isSafeTokenType(tokenType) ? { token_type: tokenType } : {}),
+      expires_in: token.expiresIn,
+      ...(isSafeTokenType(token.tokenType) ? { token_type: token.tokenType } : {}),
       cached: false,
       status: 'refreshed',
       message: 'Token fetched and cached',
     })
   } catch (err: unknown) {
+    if (err instanceof IolTokenUpstreamError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'TOKEN_UPSTREAM',
+          status: err.status,
+        },
+        { status: 502 }
+      )
+    }
+
+    if (err instanceof IolTokenFormatError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'TOKEN_FORMAT',
+          details: err.message,
+        },
+        { status: 502 }
+      )
+    }
+
     const message = err instanceof Error ? err.message : String(err ?? 'unknown')
 
     return NextResponse.json(
@@ -137,7 +100,5 @@ export async function POST() {
       },
       { status: 500 }
     )
-  } finally {
-    clearTimeout(timer)
   }
 }
