@@ -10,12 +10,6 @@ export const runtime = 'nodejs'
 
 const PANEL_CACHE_TTL_MS = 30_000
 
-const PANEL_ENDPOINTS: Record<MarketPanelKey, string> = {
-  lider: ENV.PANEL_LIDER_ENDPOINT,
-  general: ENV.PANEL_GENERAL_ENDPOINT,
-  cedears: ENV.PANEL_CEDEARS_ENDPOINT,
-}
-
 type PanelCacheEntry = {
   response: PanelResponse
   expiresAt: number
@@ -38,6 +32,17 @@ function shouldReturnRawData(req: NextRequest): boolean {
   return isDebugEnabled() && req.nextUrl.searchParams.get('raw') === '1'
 }
 
+function getPanelEndpoint(type: MarketPanelKey): string {
+  switch (type) {
+    case 'lider':
+      return ENV.PANEL_LIDER_ENDPOINT
+    case 'general':
+      return ENV.PANEL_GENERAL_ENDPOINT
+    case 'cedears':
+      return ENV.PANEL_CEDEARS_ENDPOINT
+  }
+}
+
 function getCachedPanelResponse(type: MarketPanelKey): PanelResponse | null {
   const cached = panelCache.get(type)
 
@@ -57,7 +62,7 @@ function setCachedPanelResponse(type: MarketPanelKey, response: PanelResponse) {
 }
 
 async function fetchPanelResponse(type: MarketPanelKey): Promise<PanelResponse> {
-  const data = await iolFetch(PANEL_ENDPOINTS[type])
+  const data = await iolFetch(getPanelEndpoint(type))
   const response: PanelResponse = {
     ok: true,
     data: normalizePanelData(data),
@@ -101,7 +106,7 @@ export async function GET(req: NextRequest) {
 
   try {
     if (shouldReturnRaw) {
-      const data = await iolFetch(PANEL_ENDPOINTS[type])
+      const data = await iolFetch(getPanelEndpoint(type))
 
       return NextResponse.json({
         ok: true,

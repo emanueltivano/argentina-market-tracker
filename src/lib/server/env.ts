@@ -19,16 +19,35 @@ function normalizeBaseUrl(value: string): string {
 }
 
 export const ENV = {
-  API_URL: normalizeBaseUrl(required('API_URL')),
+  get API_URL() {
+    return normalizeBaseUrl(required('API_URL'))
+  },
 
-  TOKEN_ENDPOINT: normalizePath(process.env.TOKEN_ENDPOINT ?? 'token'),
+  get TOKEN_ENDPOINT() {
+    return normalizePath(process.env.TOKEN_ENDPOINT ?? 'token')
+  },
 
-  API_USERNAME: required('API_USERNAME'),
-  API_PASSWORD: required('API_PASSWORD'),
+  get API_USERNAME() {
+    return required('API_USERNAME')
+  },
 
-  PANEL_LIDER_ENDPOINT: normalizePath(required('PANEL_LIDER_ENDPOINT')),
-  PANEL_GENERAL_ENDPOINT: normalizePath(required('PANEL_GENERAL_ENDPOINT')),
-  PANEL_CEDEARS_ENDPOINT: normalizePath(required('PANEL_CEDEARS_ENDPOINT')),
+  get API_PASSWORD() {
+    return required('API_PASSWORD')
+  },
 
-  NODE_ENV: process.env.NODE_ENV ?? 'development',
+  get PANEL_LIDER_ENDPOINT() {
+    return normalizePath(required('PANEL_LIDER_ENDPOINT'))
+  },
+
+  get PANEL_GENERAL_ENDPOINT() {
+    return normalizePath(required('PANEL_GENERAL_ENDPOINT'))
+  },
+
+  get PANEL_CEDEARS_ENDPOINT() {
+    return normalizePath(required('PANEL_CEDEARS_ENDPOINT'))
+  },
+
+  get NODE_ENV() {
+    return process.env.NODE_ENV ?? 'development'
+  },
 }

@@ -33,6 +33,17 @@ async function loadRoute(
   return import('./route')
 }
 
+async function loadRouteWithoutRequiredEnv(iolFetch: ReturnType<typeof vi.fn>) {
+  vi.resetModules()
+  process.env = {
+    NODE_ENV: 'test',
+  }
+  vi.doMock('server-only', () => ({}))
+  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+
+  return import('./route')
+}
+
 describe('/api/panel route', () => {
   beforeEach(() => {
     setRequiredEnv()
@@ -170,6 +181,31 @@ describe('/api/panel route', () => {
       ok: false,
       error: 'PANEL_ERROR',
       details: 'upstream failed',
+    })
+  })
+
+  it('returns a controlled error when required env vars are missing', async () => {
+    const iolFetch = vi.fn()
+    const { GET } = await loadRouteWithoutRequiredEnv(iolFetch)
+
+    const response = await GET(request('/api/panel?type=lider'))
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body).toEqual({
+      ok: false,
+      error: 'PANEL_ERROR',
+      details: 'Missing PANEL_LIDER_ENDPOINT',
+    })
+    expect(iolFetch).not.toHaveBeenCalled()
+  })
+
+  it('can be imported without required env vars during build-time analysis', async () => {
+    const iolFetch = vi.fn()
+
+    await expect(loadRouteWithoutRequiredEnv(iolFetch)).resolves.toMatchObject({
+      dynamic: 'force-dynamic',
+      runtime: 'nodejs',
     })
   })
 
