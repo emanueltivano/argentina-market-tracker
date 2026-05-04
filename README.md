@@ -3,9 +3,9 @@
 Dashboard de mercado argentino construido con Next.js, React, TypeScript y Tailwind CSS.
 
 El proyecto consume una API externa protegida por token, normaliza paneles de mercado
-argentino y los muestra en una interfaz simple con estados de carga, error, vacio y datos.
-Esta pensado como proyecto de portfolio: prioriza claridad, seguridad basica, buen tipado,
-tests y una arquitectura facil de explicar en entrevista.
+argentino y los muestra en una interfaz simple con estados de carga, error, vacío y datos.
+Está pensado como proyecto de portfolio: prioriza claridad, seguridad básica, buen tipado,
+tests y una arquitectura fácil de explicar en entrevista.
 
 ## Screenshots
 
@@ -17,10 +17,18 @@ tests y una arquitectura facil de explicar en entrevista.
 
 - API route interna para proteger credenciales y evitar llamadas directas desde el navegador.
 - Cliente server-side aislado con `server-only`.
-- Cache corto y deduplicacion de requests en vuelo para reducir llamadas repetidas a la API externa.
+- Cache corto y deduplicación de requests en vuelo para reducir llamadas repetidas a la API externa.
 - Normalización de datos antes de renderizar en la UI.
 - TypeScript estricto, lint y tests unitarios para lógica crítica.
 - Formatters compartidos para mantener consistente la salida visual de precios, enteros y porcentajes.
+
+## Production readiness
+
+- CI con GitHub Actions ejecutando lint, type-check, tests y build en Node 20.
+- Tests unitarios y de integración livianos para formatters, normalización y la API route de paneles.
+- Credenciales manejadas solo server-side mediante API routes y cliente `server-only`.
+- Cache corto, deduplicación, timeout y retry controlado para llamadas a la API externa.
+- Estados de UI diferenciados para carga inicial, refresh, errores con datos previos, errores sin datos y paneles vacíos.
 
 ## Stack
 
@@ -44,7 +52,7 @@ Next API Route
   src/app/api/panel/route.ts
         |
         | cache corto por MarketPanelKey
-        | normalizacion con normalizePanelData()
+        | normalización con normalizePanelData()
         v
 Server-only client
   src/lib/server/iol.ts
@@ -63,7 +71,7 @@ API externa
 5. Si no existe cache, `iolFetch` obtiene/reutiliza token y consulta la API externa.
 6. `normalizePanelData` valida el payload externo.
 7. El frontend recibe solo datos normalizados.
-8. La UI mapea cada titulo a una fila de mercado.
+8. La UI mapea cada título a una fila de mercado.
 
 ## Estructura
 
@@ -90,21 +98,21 @@ src/
 
 ## Scripts
 
-| Script | Descripcion |
+| Script | Descripción |
 | --- | --- |
 | `npm run dev` | Levanta Next en desarrollo en el puerto 3000 |
 | `npm run lint` | Ejecuta ESLint |
 | `npm run type-check` | Valida TypeScript sin emitir archivos |
 | `npm run test` | Corre tests unitarios con Vitest |
-| `npm run build` | Genera build de produccion |
-| `npm run start` | Sirve el build de produccion |
+| `npm run build` | Genera build de producción |
+| `npm run start` | Sirve el build de producción |
 | `npm run deps:update` | Actualiza dependencias con npm-check-updates |
 
 ## CI
 
 El repositorio incluye GitHub Actions en `.github/workflows/ci.yml`.
 
-El workflow corre en `push` y `pull_request` hacia `main` con Node 20, cache de npm y la misma validacion recomendada para cambios locales:
+El workflow corre en `push` y `pull_request` con Node 20, cache de npm y la misma validación recomendada para cambios locales:
 
 ```bash
 npm ci
@@ -118,17 +126,17 @@ npm run build
 
 Crear `.env.local` a partir de `.env.local.example`.
 
-| Variable | Requerida | Descripcion |
+| Variable | Requerida | Descripción |
 | --- | --- | --- |
-| `API_URL` | Si | URL base de la API externa, sin slash final |
+| `API_URL` | Sí | URL base de la API externa, sin slash final |
 | `TOKEN_ENDPOINT` | No | Endpoint de token; default `token` |
-| `API_USERNAME` | Si | Usuario de API externa |
-| `API_PASSWORD` | Si | Password de API externa |
-| `PANEL_LIDER_ENDPOINT` | Si | Endpoint del panel lider |
-| `PANEL_GENERAL_ENDPOINT` | Si | Endpoint del panel general |
-| `PANEL_CEDEARS_ENDPOINT` | Si | Endpoint de CEDEARs |
+| `API_USERNAME` | Sí | Usuario de API externa |
+| `API_PASSWORD` | Sí | Password de API externa |
+| `PANEL_LIDER_ENDPOINT` | Sí | Endpoint del panel líder |
+| `PANEL_GENERAL_ENDPOINT` | Sí | Endpoint del panel general |
+| `PANEL_CEDEARS_ENDPOINT` | Sí | Endpoint de CEDEARs |
 | `ENABLE_TOKEN_DEBUG` | No | Habilita herramientas de debug local cuando vale `1` |
-| `NEXT_PUBLIC_APP_ORIGIN` | No | Origen publico de la app si se usan Server Actions |
+| `NEXT_PUBLIC_APP_ORIGIN` | No | Origen público de la app si se usan Server Actions |
 
 Ejemplo:
 
@@ -166,11 +174,11 @@ http://localhost:3000
 
 ## Tests
 
-Los tests actuales cubren logica critica y algunos contratos server-side:
+Los tests actuales cubren lógica crítica y algunos contratos server-side:
 
 - `src/lib/panel.test.ts`
 - `src/lib/market.test.ts`
-- `src/app/dashboard/lib/formatters.test.ts`
+- `src/lib/formatters.test.ts`
 - `src/lib/server/tokenCache.test.ts`
 - `src/app/api/panel/route.test.ts`
 

@@ -49,7 +49,10 @@ const fetcher = async (url: string): Promise<MarketPanelSuccessResponse> => {
 export function useMarketPanel(activePanelKey: MarketPanelKey) {
   const activePanel = getMarketPanelOption(activePanelKey);
 
-  const { data, error, isLoading } = useSWR<MarketPanelSuccessResponse, Error>(
+  const { data, error, isLoading, isValidating } = useSWR<
+    MarketPanelSuccessResponse,
+    Error
+  >(
     activePanel.fetchUrl,
     fetcher,
     {
@@ -64,14 +67,19 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     () => (data?.data ?? []).map(mapPanelTituloToStockProps),
     [data],
   );
+  const hasData = data !== undefined;
+  const hasRows = rows.length > 0;
+  const hasError = !!error;
 
   return {
     activePanel,
     rows,
     error,
-    isLoading,
-    hasError: !!error,
-    isEmpty: rows.length === 0,
-    isInitialError: !!error && !data,
+    isInitialLoading: isLoading && !hasData,
+    isRefreshing: isValidating && hasData && !hasError,
+    hasError,
+    hasStaleError: hasError && hasData,
+    isErrorWithoutData: hasError && !hasData,
+    isEmpty: hasData && !hasError && !hasRows,
   };
 }

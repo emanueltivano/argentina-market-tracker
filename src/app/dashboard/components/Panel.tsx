@@ -16,9 +16,15 @@ type PanelProps = {
   defaultPanel?: MarketPanelKey;
 };
 
-function StockTable({ children }: { children: ReactNode }) {
+function StockTable({
+  children,
+  isBusy,
+}: {
+  children: ReactNode;
+  isBusy: boolean;
+}) {
   return (
-    <table className='stock-table'>
+    <table className='stock-table' aria-busy={isBusy}>
       <caption className='sr-only'>Panel de acciones</caption>
       <NavStocks />
       <tbody className='divide-y divide-gray-200'>{children}</tbody>
@@ -53,10 +59,11 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     activePanel,
     rows,
     error,
-    isLoading,
-    hasError,
+    isInitialLoading,
+    isRefreshing,
+    hasStaleError,
     isEmpty,
-    isInitialError,
+    isErrorWithoutData,
   } = useMarketPanel(activePanelKey);
 
   const errorMessage = error?.message ?? 'Error desconocido';
@@ -106,32 +113,38 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     });
   }
 
-  if (isInitialError) {
+  if (isErrorWithoutData) {
     return (
       <PanelContent
         title={activePanel.title}
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <StockTable>
+        <StockTable isBusy={false}>
           <StockTableStatus>
-            <p className='text-red-400'>Error cargando datos: {errorMessage}</p>
+            <p className='text-red-400' role='alert'>
+              Error cargando datos: {errorMessage}
+            </p>
           </StockTableStatus>
         </StockTable>
       </PanelContent>
     );
   }
 
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <PanelContent
         title={activePanel.title}
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <StockTable>
+        <StockTable isBusy>
           <StockTableStatus>
-            <div className='flex items-center justify-center py-8' role='status'>
+            <div
+              className='flex items-center justify-center py-8'
+              role='status'
+              aria-live='polite'
+            >
               <span className='sr-only'>Cargando datos...</span>
               <div className='loader' />
             </div>
@@ -148,15 +161,9 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         activePanelKey={activePanelKey}
         onChange={handlePanelChange}
       >
-        <StockTable>
+        <StockTable isBusy={false}>
           <StockTableStatus>
-            {hasError && (
-              <p className='mb-2 text-sm text-yellow-400' role='status'>
-                No se pudo actualizar. Mostrando últimos datos disponibles.
-              </p>
-            )}
-
-            <p className='text-gray-500' role='status'>
+            <p className='text-gray-500' role='status' aria-live='polite'>
               No hay datos disponibles.
             </p>
           </StockTableStatus>
@@ -171,13 +178,19 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       activePanelKey={activePanelKey}
       onChange={handlePanelChange}
     >
-      {hasError && (
-        <p className='mb-2 text-sm text-yellow-400' role='status'>
+      {isRefreshing && (
+        <p className='mb-2 text-sm text-gray-500' role='status' aria-live='polite'>
+          Actualizando datos...
+        </p>
+      )}
+
+      {hasStaleError && (
+        <p className='mb-2 text-sm text-yellow-400' role='status' aria-live='polite'>
           No se pudo actualizar. Mostrando últimos datos disponibles.
         </p>
       )}
 
-      <StockTable>
+      <StockTable isBusy={isRefreshing}>
         {rows.map((row) => (
           <Stock
             key={row.ticker}

@@ -84,6 +84,35 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledWith('general-endpoint')
   })
 
+  it('returns an empty data array for an empty upstream payload', async () => {
+    const iolFetch = vi.fn().mockResolvedValue({ data: [] })
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=lider'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      ok: true,
+      data: [],
+    })
+  })
+
+  it('returns PANEL_ERROR with status 502 for invalid upstream payloads', async () => {
+    const iolFetch = vi.fn().mockResolvedValue({ items: [] })
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=lider'))
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body).toEqual({
+      ok: false,
+      error: 'PANEL_ERROR',
+      details: 'Invalid upstream payload structure',
+    })
+  })
+
   it('uses cache for a second request to the same panel', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'ALUA', descripcion: 'Aluar' },

@@ -27,6 +27,8 @@ export default function PanelMenu({
             type="button"
             onClick={() => onChange(option.key)}
             aria-current={isActive ? 'page' : undefined}
+            aria-pressed={isActive}
+            aria-label={`Mostrar panel ${option.label}`}
             className={`panel-menu-button ${
               isActive ? 'panel-menu-button-active' : ''
             }`}

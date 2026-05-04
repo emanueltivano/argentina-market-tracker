@@ -5,7 +5,7 @@ import {
   formatInteger,
   formatNumber,
   formatSignedPercent,
-} from '../lib/formatters';
+} from '@/lib/formatters';
 
 export interface StockData {
   ticker: string;

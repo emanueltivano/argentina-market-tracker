@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { type MarketPanelKey } from '@/lib/market';
 import PanelMenu from './PanelMenu';
 import Title from './PageTitle';
@@ -17,9 +17,11 @@ export default function PanelContent({
   onChange,
   children,
 }: PanelContentProps) {
+  const titleId = useId();
+
   return (
-    <section className="py-4">
-      <Title>{title}</Title>
+    <section className="py-4" aria-labelledby={titleId}>
+      <Title id={titleId}>{title}</Title>
 
       <PanelMenu
         activePanelKey={activePanelKey}

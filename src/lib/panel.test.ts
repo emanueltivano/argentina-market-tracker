@@ -36,6 +36,29 @@ describe('normalizePanelData', () => {
     ])
   })
 
+  it('accepts a payload with data', () => {
+    expect(
+      normalizePanelData({
+        data: [
+          {
+            simbolo: 'MIRG',
+            descripcion: 'Mirgor',
+          },
+        ],
+      })
+    ).toEqual([
+      {
+        simbolo: 'MIRG',
+        descripcion: 'Mirgor',
+      },
+    ])
+  })
+
+  it('accepts an empty payload as no results', () => {
+    expect(normalizePanelData([])).toEqual([])
+    expect(normalizePanelData({ data: [] })).toEqual([])
+  })
+
   it('discards invalid items', () => {
     expect(
       normalizePanelData([
@@ -55,6 +78,15 @@ describe('normalizePanelData', () => {
     expect(() => normalizePanelData({ items: [] })).toThrow(
       'Invalid upstream payload structure'
     )
+  })
+
+  it('throws when a non-empty payload has no valid items', () => {
+    expect(() =>
+      normalizePanelData([
+        { simbolo: '', descripcion: 'Missing ticker' },
+        { simbolo: 'ALUA', descripcion: '' },
+      ])
+    ).toThrow('Upstream payload contains no valid items')
   })
 
   it('normalizes only finite numeric fields', () => {

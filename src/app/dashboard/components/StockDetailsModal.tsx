@@ -4,7 +4,7 @@ import {
   formatMoney,
   formatInteger,
   formatSignedPercent,
-} from '../lib/formatters';
+} from '@/lib/formatters';
 
 type StockDetailsModalProps = {
   stock: StockData;

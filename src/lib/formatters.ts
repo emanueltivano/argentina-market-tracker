@@ -36,7 +36,7 @@ export function formatInteger(value: number | null | undefined): string {
 export function formatSignedPercent(
   value: number | null | undefined,
   decimals = 2,
-) {
+): string {
   if (
     value === null ||
     value === undefined ||

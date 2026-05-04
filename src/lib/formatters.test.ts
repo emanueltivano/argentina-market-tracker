@@ -6,7 +6,7 @@ import {
   formatSignedPercent,
 } from './formatters'
 
-describe('dashboard formatters', () => {
+describe('formatters', () => {
   it('formats finite numbers with es-AR decimals', () => {
     expect(formatNumber(1234.5)).toBe('1.234,50')
     expect(formatNumber(1234.567, 1)).toBe('1.234,6')
