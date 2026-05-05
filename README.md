@@ -173,6 +173,7 @@ src/
 | `npm run test:e2e` | Corre E2E con Playwright y mocks de `/api/panel` |
 | `npm run test:e2e:ui` | Abre el runner interactivo de Playwright |
 | `npm run build` | Genera build de producción |
+| `npm run validate` | Ejecuta lint, type-check, tests unitarios y build |
 | `npm run start` | Sirve el build de producción |
 | `npm run deps:update` | Actualiza dependencias con npm-check-updates |
 
@@ -279,11 +280,8 @@ La cobertura se enfoca en normalización de payloads externos, cache de token, r
 Comandos recomendados antes de publicar cambios:
 
 ```bash
-npm run lint
-npm run type-check
-npm run test
+npm run validate
 npm run test:e2e
-npm run build
 ```
 
 ### E2E local

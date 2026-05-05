@@ -125,4 +125,21 @@ describe('Panel', () => {
       headers: { accept: 'application/json' },
     })
   })
+
+  it('updates the panel query param when changing panel', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(panelResponse([])))
+    )
+
+    renderPanel()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Mostrar panel Panel General' })
+    )
+
+    expect(replace).toHaveBeenCalledWith('/?panel=general', {
+      scroll: false,
+    })
+  })
 })

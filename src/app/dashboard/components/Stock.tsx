@@ -71,7 +71,7 @@ const Stock: FC<StockProps> = (props) => {
     <tr
       className={`${GRID} stock-row ${canOpenDetails ? 'stock-row-interactive' : ''}`}
       data-symbol={stock.ticker}
-      onClick={handleSelect}
+      onClick={canOpenDetails ? handleSelect : undefined}
     >
       <th
         scope="row"
