@@ -1,14 +1,12 @@
 import { type MarketPanelKey } from '@/lib/market'
+import { type MarketPanelOption } from '../lib/panelOptions'
 
-type MarketPanelOption = {
-  key: MarketPanelKey
-  label: string
-}
+type PanelMenuOption = Pick<MarketPanelOption, 'key' | 'label'>
 
 type Props = {
   activePanelKey: MarketPanelKey
   onChange: (key: MarketPanelKey) => void
-  options: MarketPanelOption[]
+  options: PanelMenuOption[]
 }
 
 export default function PanelMenu({

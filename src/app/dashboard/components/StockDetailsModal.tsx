@@ -48,6 +48,20 @@ export default function StockDetailsModal({
     };
   }, []);
 
+  const detailRows = [
+    ['Último precio', formatMoney(stock.price)],
+    ['Variación', formatSignedPercent(stock.var)],
+    ['Cantidad compra', formatInteger(stock.buyQty)],
+    ['Precio compra', formatMoney(stock.buyPrice)],
+    ['Precio venta', formatMoney(stock.sellPrice)],
+    ['Cantidad venta', formatInteger(stock.sellQty)],
+    ['Apertura', formatMoney(stock.open)],
+    ['Mínimo', formatMoney(stock.min)],
+    ['Máximo', formatMoney(stock.max)],
+    ['Último cierre', formatMoney(stock.close)],
+    ['Volumen', formatInteger(stock.volume)],
+  ];
+
   return (
     <dialog
       ref={dialogRef}
@@ -83,50 +97,12 @@ export default function StockDetailsModal({
         </header>
 
         <dl className="stock-details-grid">
-          <div>
-            <dt>Último precio</dt>
-            <dd>{formatMoney(stock.price)}</dd>
-          </div>
-          <div>
-            <dt>Variación</dt>
-            <dd>{formatSignedPercent(stock.var)}</dd>
-          </div>
-          <div>
-            <dt>Cantidad compra</dt>
-            <dd>{formatInteger(stock.buyQty)}</dd>
-          </div>
-          <div>
-            <dt>Precio compra</dt>
-            <dd>{formatMoney(stock.buyPrice)}</dd>
-          </div>
-          <div>
-            <dt>Precio venta</dt>
-            <dd>{formatMoney(stock.sellPrice)}</dd>
-          </div>
-          <div>
-            <dt>Cantidad venta</dt>
-            <dd>{formatInteger(stock.sellQty)}</dd>
-          </div>
-          <div>
-            <dt>Apertura</dt>
-            <dd>{formatMoney(stock.open)}</dd>
-          </div>
-          <div>
-            <dt>Mínimo</dt>
-            <dd>{formatMoney(stock.min)}</dd>
-          </div>
-          <div>
-            <dt>Máximo</dt>
-            <dd>{formatMoney(stock.max)}</dd>
-          </div>
-          <div>
-            <dt>Último cierre</dt>
-            <dd>{formatMoney(stock.close)}</dd>
-          </div>
-          <div>
-            <dt>Volumen</dt>
-            <dd>{formatInteger(stock.volume)}</dd>
-          </div>
+          {detailRows.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
         </dl>
       </div>
     </dialog>

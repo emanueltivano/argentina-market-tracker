@@ -18,12 +18,12 @@
   --negative-color: #eb0a3a;
   --negative-light-color: #e96a7f;
 
-  --background-light: #ffffff;
-  --hover-color: #e5e5e5;
-  --select-color: #eeeeee;
+  --surface: #ffffff;
+  --surface-hover: #e5e5e5;
+  --surface-selected: #eeeeee;
 
-  --buy-color: #e6f9f4;
-  --sell-color: #fde7eb;
+  --buy-bg: #e6f9f4;
+  --sell-bg: #fde7eb;
 }
 
 /* =========================
@@ -38,7 +38,7 @@
 }
 
 /* =========================
-   Tailwind component utilities
+   Components
 ========================= */
 
 @layer components {
@@ -51,19 +51,48 @@
     @apply ms-2 mb-4 flex flex-wrap gap-2;
   }
 
-  .panel-menu-button {
+  .panel-menu-button,
+  .panel-refresh-button,
+  .stock-details-close {
     @apply rounded-md border px-3 py-1 text-[13px] font-semibold transition;
-    cursor: pointer;
     border-color: var(--main-color);
-    background-color: var(--background-light);
+    background-color: var(--surface);
     color: var(--text-color);
+    cursor: pointer;
+  }
+
+  .panel-menu-button:hover,
+  .panel-refresh-button:hover:not(:disabled),
+  .stock-details-close:hover {
+    background-color: var(--main-color);
+    color: white;
+  }
+
+  .panel-menu-button:focus-visible,
+  .panel-refresh-button:focus-visible,
+  .stock-details-close:focus-visible,
+  .stock-ticker-button:focus-visible {
+    outline: 2px solid var(--main-light-color);
+    outline-offset: 2px;
+  }
+
+  .panel-menu-button-active,
+  .panel-menu-button-active:hover {
+    border-color: var(--main-color);
+    background-color: var(--main-color);
+    color: white;
+  }
+
+  .panel-refresh-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
   }
 
   .nav-stocks {
     @apply w-full border-b px-2 text-center text-xs font-bold sm:text-sm;
-    border-color: var(--hover-color);
+    border-color: var(--surface-hover);
     color: var(--text-color);
-    background-color: var(--select-color);
+    background-color: var(--surface-selected);
   }
 
   .nav-stocks-cell {
@@ -75,7 +104,7 @@
   }
 
   .stock-row {
-    @apply px-2 py-0 items-center tabular-nums text-center;
+    @apply items-center px-2 py-0 text-center tabular-nums;
     color: var(--text-color);
   }
 
@@ -85,7 +114,7 @@
 
   .stock-row-interactive:hover,
   .stock-row-interactive:focus-visible {
-    background-color: var(--hover-color);
+    background-color: var(--surface-hover);
   }
 
   .stock-row-interactive:focus-visible {
@@ -96,59 +125,6 @@
   .stock-cell {
     @apply min-w-0 whitespace-nowrap px-2 py-2 text-sm font-normal sm:px-3 sm:py-2;
   }
-}
-
-/* =========================
-   Panel menu
-========================= */
-
-.panel-menu-button:hover {
-  border-color: var(--main-light-color);
-  background-color: var(--main-light-color);
-  color: white;
-}
-
-.panel-menu-button:focus-visible {
-  outline: 2px solid var(--main-light-color);
-  outline-offset: 2px;
-}
-
-.panel-menu-button-active {
-  border-color: var(--main-color);
-  background-color: var(--main-color);
-  color: white;
-}
-
-.panel-menu-button-active:hover {
-  border-color: var(--main-color);
-  background-color: var(--main-color);
-  color: white;
-}
-
-.panel-refresh-button {
-  border: 1px solid var(--main-color);
-  border-radius: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  background-color: white;
-  color: var(--text-color);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.panel-refresh-button:hover:not(:disabled) {
-  background-color: var(--main-color);
-  color: white;
-}
-
-.panel-refresh-button:focus-visible {
-  outline: 2px solid var(--main-light-color);
-  outline-offset: 2px;
-}
-
-.panel-refresh-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
 }
 
 /* =========================
@@ -170,7 +146,7 @@
 .loader {
   width: 32px;
   height: 32px;
-  border: 4px solid #1c36be;
+  border: 4px solid var(--main-color);
   border-top-color: transparent;
   border-radius: 9999px;
   animation: spin 0.8s linear infinite;
@@ -213,73 +189,60 @@
   text-underline-offset: 0.18em;
 }
 
-.stock-ticker-button:focus-visible {
-  outline: 2px solid var(--main-light-color);
-  outline-offset: 2px;
-}
-
 .stock-var {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  @apply inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-bold;
   min-width: 4.25rem;
   box-sizing: border-box;
-  border-radius: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  font-size: 12px;
-  font-weight: 700;
+}
+
+.stock-var-positive,
+.stock-var-negative {
+  color: white;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
 }
 
 .stock-var-positive {
-  color: white;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   background-color: var(--positive-light-color);
 }
 
 .stock-var-negative {
-  color: white;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   background-color: var(--negative-light-color);
 }
 
-.stock-var.stock-var-neutral {
-  color: var(--text-color);
-  background-color: transparent;
+.stock-var-neutral {
   border: 1px solid var(--text-color);
+  background-color: transparent;
+  color: var(--text-color);
 }
 
 .stock-var-positive.stock-var-strong {
-  color: white;
   background-color: var(--positive-color);
 }
 
 .stock-var-negative.stock-var-strong {
-  color: white;
   background-color: var(--negative-color);
 }
 
 .stock-price,
 .stock-buy,
 .stock-sell {
-  @apply text-sm;
-  font-weight: 500;
+  @apply text-sm font-medium;
 }
 
 .stock-buy,
 .stock-sell {
   height: 50px;
   vertical-align: middle;
-  line-height: 35px;  /* visual alignment for single-line bid/ask cells */
+  line-height: 35px; /* visual alignment for single-line bid/ask cells */
 }
 
 .stock-buy {
-  background-color: var(--buy-color);
+  background-color: var(--buy-bg);
 }
 
 .stock-sell {
-  background-color: var(--sell-color);
+  background-color: var(--sell-bg);
 }
 
 /* =========================
@@ -293,7 +256,7 @@
   padding: 0;
   border: 0;
   border-radius: 0.5rem;
-  background-color: white;
+  background-color: var(--surface);
   color: var(--text-color);
   box-shadow: 0 24px 64px rgb(4 43 93 / 24%);
   margin: auto;
@@ -315,7 +278,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--hover-color);
+  border-bottom: 1px solid var(--surface-hover);
 }
 
 .stock-details-title {
@@ -329,27 +292,6 @@
   margin-top: 0.25rem;
   color: #4b5563;
   font-size: 0.875rem;
-}
-
-.stock-details-close {
-  border: 1px solid var(--main-color);
-  border-radius: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  background-color: white;
-  color: var(--text-color);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.stock-details-close:hover {
-  background-color: var(--main-color);
-  color: white;
-}
-
-.stock-details-close:focus-visible {
-  outline: 2px solid var(--main-light-color);
-  outline-offset: 2px;
 }
 
 .stock-details-grid {

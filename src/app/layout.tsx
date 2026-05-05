@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Argentina Market Tracker — MVP',
+  title: 'Argentina Market Tracker',
   description: 'Paneles de mercado — InvertirOnline',
 }
 

@@ -24,6 +24,12 @@ export interface StockData {
   volume: number | null;
 }
 
+const VARIATION_LABEL_BY_TYPE: Record<StockData['varType'], string> = {
+  positive: 'positiva',
+  negative: 'negativa',
+  neutral: 'neutral',
+};
+
 export interface StockProps extends StockData {
   onSelect?: (stock: StockData) => void;
   canOpenDetails?: boolean;
@@ -37,37 +43,25 @@ function getVariationAriaLabel(
     return 'Variación no disponible';
   }
 
-  const labelByType: Record<StockData['varType'], string> = {
-    positive: 'positiva',
-    negative: 'negativa',
-    neutral: 'neutral',
-  };
-
-  return `Variación ${labelByType[type]} ${formatNumber(Math.abs(value))}%`;
+  return `Variación ${VARIATION_LABEL_BY_TYPE[type]} ${formatNumber(Math.abs(value))}%`;
 }
 
 const GRID = STOCK_GRID_LAYOUT;
 
+const VAR_CLASS_BY_TYPE: Record<StockData['varType'], string> = {
+  positive: 'stock-var-positive',
+  negative: 'stock-var-negative',
+  neutral: 'stock-var-neutral',
+};
+
 const Stock: FC<StockProps> = (props) => {
   const { onSelect, canOpenDetails = false, ...stock } = props;
 
-  const varClass =
-    stock.varType === 'positive'
-      ? 'stock-var-positive'
-      : stock.varType === 'negative'
-        ? 'stock-var-negative'
-        : 'stock-var-neutral';
-
+  const varClass = VAR_CLASS_BY_TYPE[stock.varType];
   const strengthClass =
     stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
 
-  function handleTickerClick() {
-    if (canOpenDetails) {
-      onSelect?.(stock);
-    }
-  }
-
-  function handleRowClick() {
+  function handleSelect() {
     if (canOpenDetails) {
       onSelect?.(stock);
     }
@@ -77,7 +71,7 @@ const Stock: FC<StockProps> = (props) => {
     <tr
       className={`${GRID} stock-row ${canOpenDetails ? 'stock-row-interactive' : ''}`}
       data-symbol={stock.ticker}
-      onClick={handleRowClick}
+      onClick={handleSelect}
     >
       <th
         scope="row"
@@ -90,7 +84,7 @@ const Stock: FC<StockProps> = (props) => {
             className="stock-ticker-button"
             onClick={(event) => {
               event.stopPropagation();
-              handleTickerClick();
+              handleSelect();
             }}
             aria-label={`Abrir detalle de ${stock.ticker}, ${stock.description}`}
           >
