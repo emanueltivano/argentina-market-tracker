@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import { type MarketPanelKey } from '@/lib/market';
-import { getMarketPanelOption } from '../lib/panelOptions';
-import { mapPanelTituloToStockProps } from '../components/panelMapper';
+import { getMarketPanelOption } from '../lib/marketPanelOptions';
+import { mapPanelTituloToStockProps } from '../components/panelTitleToStock';
 import {
   fetchMarketPanel,
   getMarketPanelFetchError,

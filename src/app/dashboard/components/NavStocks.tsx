@@ -1,4 +1,4 @@
-import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
+import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockTableLayout';
 
 const COLUMNS = [
   { label: 'Ticker', className: 'font-medium text-left' },

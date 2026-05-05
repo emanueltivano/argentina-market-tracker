@@ -1,5 +1,5 @@
 import { type MarketPanelKey } from '@/lib/market'
-import { type MarketPanelOption } from '../lib/panelOptions'
+import { type MarketPanelOption } from '../lib/marketPanelOptions'
 
 type PanelMenuOption = Pick<MarketPanelOption, 'key' | 'label'>
 

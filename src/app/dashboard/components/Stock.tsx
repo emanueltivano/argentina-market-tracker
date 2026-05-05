@@ -1,5 +1,5 @@
 import { memo, type FC } from 'react';
-import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockGrid';
+import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockTableLayout';
 import {
   formatMoney,
   formatInteger,

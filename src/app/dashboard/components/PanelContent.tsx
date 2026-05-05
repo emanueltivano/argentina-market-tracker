@@ -2,7 +2,7 @@ import { useId, type ReactNode } from 'react';
 import { type MarketPanelKey } from '@/lib/market';
 import PanelMenu from './PanelMenu';
 import Title from './PageTitle';
-import { MARKET_PANEL_OPTIONS } from '../lib/panelOptions';
+import { MARKET_PANEL_OPTIONS } from '../lib/marketPanelOptions';
 
 type PanelContentProps = {
   title: string;
