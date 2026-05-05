@@ -79,6 +79,22 @@ describe('getMarketPanelFetchError', () => {
     );
   });
 
+  it('maps invalid panel type errors to a specific message', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const error = await getMarketPanelFetchError(
+      jsonResponse(
+        {
+          ok: false,
+          error: 'INVALID_PANEL_TYPE',
+        },
+        400,
+      ),
+    );
+
+    expect(error.message).toBe('Panel de mercado inválido.');
+  });
+
   it('falls back to a controlled HTTP message for invalid error payloads', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 

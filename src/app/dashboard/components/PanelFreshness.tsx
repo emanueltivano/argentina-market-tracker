@@ -21,7 +21,7 @@ function formatUpdatedAt(value: string | undefined): string {
 type PanelFreshnessProps = {
   fetchedAt: string | undefined;
   isRefreshing: boolean;
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
 };
 
 export default function PanelFreshness({
@@ -29,14 +29,22 @@ export default function PanelFreshness({
   isRefreshing,
   onRefresh,
 }: PanelFreshnessProps) {
+  const handleRefresh = () => {
+    if (isRefreshing) return;
+
+    void onRefresh().catch(() => undefined);
+  };
+
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+    <div className="panel-refresh">
       <p aria-live="polite">{formatUpdatedAt(fetchedAt)}</p>
+
       <button
         type="button"
-        className="panel-refresh-button"
-        onClick={onRefresh}
+        className={`panel-refresh-button${isRefreshing ? ' loading' : ''}`}
+        onClick={handleRefresh}
         disabled={isRefreshing}
+        aria-busy={isRefreshing}
       >
         {isRefreshing ? 'Actualizando...' : 'Actualizar'}
       </button>

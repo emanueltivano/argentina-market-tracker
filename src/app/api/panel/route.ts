@@ -45,10 +45,16 @@ const JSON_HEADERS = {
   'Cache-Control': PANEL_CACHE_CONTROL,
 }
 
-function getPanelType(req: NextRequest): MarketPanelKey {
+function getPanelType(
+  req: NextRequest
+): { ok: true; type: MarketPanelKey } | { ok: false } {
   const type = req.nextUrl.searchParams.get('type')
 
-  return isMarketPanelKey(type) ? type : 'lider'
+  if (type === null) {
+    return { ok: true, type: 'lider' }
+  }
+
+  return isMarketPanelKey(type) ? { ok: true, type } : { ok: false }
 }
 
 function isDebugEnabled() {
@@ -186,6 +192,8 @@ export function clearPanelCacheForTests() {
 }
 
 function getRateLimitKey(req: NextRequest): string {
+  // MVP/portfolio protection only. In production behind multiple instances,
+  // move this to Redis/KV/WAF and trust IP headers only from the edge proxy.
   const forwardedFor = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
   const realIp = req.headers.get('x-real-ip')?.trim()
 
@@ -311,7 +319,19 @@ function jsonResponse(body: unknown, init: ResponseInit = {}) {
 }
 
 export async function GET(req: NextRequest) {
-  const type = getPanelType(req)
+  const panelType = getPanelType(req)
+
+  if (!panelType.ok) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'INVALID_PANEL_TYPE',
+      },
+      { status: 400 }
+    )
+  }
+
+  const type = panelType.type
   const shouldReturnRaw = shouldReturnRawData(req)
   const bypassCache = shouldBypassPanelCache(req)
   const rateLimit = checkRateLimit(req)

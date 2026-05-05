@@ -1,3 +1,22 @@
+const numberFormatters = new Map<string, Intl.NumberFormat>();
+
+function getNumberFormatter(locale: string, decimals: number): Intl.NumberFormat {
+  const key = `${locale}:${decimals}`;
+  const cached = numberFormatters.get(key);
+
+  if (cached) {
+    return cached;
+  }
+
+  const formatter = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  numberFormatters.set(key, formatter);
+  return formatter;
+}
+
 export function formatNumber(
   value: number | null | undefined,
   decimals = 2,
@@ -11,10 +30,7 @@ export function formatNumber(
     return '—';
   }
 
-  return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(Number(value));
+  return getNumberFormatter(locale, decimals).format(Number(value));
 }
 
 export function formatMoney(value: number | null | undefined): string {

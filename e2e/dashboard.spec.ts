@@ -214,4 +214,23 @@ test.describe('dashboard', () => {
     await expect(dialog).toBeHidden()
     await expect(opener).toBeFocused()
   })
+
+  test('opens stock details when responsive columns are hidden', async ({
+    page,
+  }) => {
+    await mockPanelApi(page)
+    await page.goto('/')
+
+    await page
+      .getByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+      .click()
+
+    const dialog = page.getByRole('dialog', { name: 'GGAL' })
+
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText('Cantidad compra')).toBeVisible()
+    await expect(dialog.getByText('Volumen')).toBeVisible()
+  })
 })

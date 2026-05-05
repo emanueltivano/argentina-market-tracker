@@ -19,6 +19,12 @@ export default defineConfig({
         viewport: { width: 1280, height: 900 },
       },
     },
+    {
+      name: 'mobile-chrome',
+      use: {
+        ...devices['Pixel 5'],
+      },
+    },
   ],
   webServer: {
     command: 'npm run dev:e2e',

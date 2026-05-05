@@ -32,6 +32,8 @@ function panelErrorMessage(error: string): string {
       return 'Actualización reciente. Esperá unos segundos e intentá nuevamente.';
     case 'METHOD_NOT_ALLOWED':
       return 'Método no permitido para cargar el panel.';
+    case 'INVALID_PANEL_TYPE':
+      return 'Panel de mercado inválido.';
     default:
       return 'No se pudo cargar el panel.';
   }

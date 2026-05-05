@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market';
 import Stock, { type StockData } from './Stock';
@@ -10,15 +10,13 @@ import StockDetailsModal from './StockDetailsModal';
 import { StockTable, StockTableStatus } from './StockTable';
 import { useMarketPanel } from '../hooks/useMarketPanel';
 
-const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)';
-
 type PanelProps = {
   defaultPanel?: MarketPanelKey;
 };
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
-  const [canOpenStockDetails, setCanOpenStockDetails] = useState(false);
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -44,43 +42,16 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
 
   const errorMessage = error?.message ?? 'Error desconocido';
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
-
-    function updateCanOpenStockDetails() {
-      const isDesktop = mediaQuery.matches;
-
-      setCanOpenStockDetails(isDesktop);
-
-      if (!isDesktop) {
-        setSelectedStock(null);
-      }
-    }
-
-    updateCanOpenStockDetails();
-    mediaQuery.addEventListener('change', updateCanOpenStockDetails);
-
-    return () => {
-      mediaQuery.removeEventListener('change', updateCanOpenStockDetails);
-    };
-  }, []);
-
   const handleStockSelect = useCallback(
     (stock: StockData) => {
-      if (canOpenStockDetails) {
-        setSelectedStock(stock);
-      }
+      setSelectedStock(stock);
     },
-    [canOpenStockDetails],
+    [],
   );
 
   const handleCloseStockDetails = useCallback(() => {
     setSelectedStock(null);
   }, []);
-
-  const handleManualRefresh = useCallback(() => {
-    void refresh().catch(() => undefined);
-  }, [refresh]);
 
   function handlePanelChange(key: MarketPanelKey) {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -97,7 +68,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     <PanelFreshness
       fetchedAt={fetchedAt}
       isRefreshing={isRefreshing}
-      onRefresh={handleManualRefresh}
+      onRefresh={refresh}
     />
   );
 
@@ -105,58 +76,58 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
 
   if (isErrorWithoutData) {
     content = (
-      <>
-        {freshnessControls}
-        <StockTable isBusy={false}>
-          <StockTableStatus>
-            <p className='text-red-400' role='alert'>
-              Error cargando datos: {errorMessage}
-            </p>
-          </StockTableStatus>
-        </StockTable>
-      </>
+      <StockTable isBusy={false}>
+        <StockTableStatus>
+          <p className="text-red-400" role="alert">
+            Error cargando datos: {errorMessage}
+          </p>
+        </StockTableStatus>
+      </StockTable>
     );
   } else if (isInitialLoading) {
     content = (
       <StockTable isBusy>
         <StockTableStatus>
           <div
-            className='flex items-center justify-center py-8'
-            role='status'
-            aria-live='polite'
+            className="flex items-center justify-center py-8"
+            role="status"
+            aria-live="polite"
           >
-            <span className='sr-only'>Cargando datos...</span>
-            <div className='loader' />
+            <span className="sr-only">Cargando datos...</span>
+            <div className="loader" />
           </div>
         </StockTableStatus>
       </StockTable>
     );
   } else if (isEmpty) {
     content = (
-      <>
-        {freshnessControls}
-        <StockTable isBusy={false}>
-          <StockTableStatus>
-            <p className='text-gray-500' role='status' aria-live='polite'>
-              No hay datos disponibles.
-            </p>
-          </StockTableStatus>
-        </StockTable>
-      </>
+      <StockTable isBusy={false}>
+        <StockTableStatus>
+          <p className="text-gray-500" role="status" aria-live="polite">
+            No hay datos disponibles.
+          </p>
+        </StockTableStatus>
+      </StockTable>
     );
   } else {
     content = (
       <>
         {isRefreshing && (
-          <p className='mb-2 text-sm text-gray-500' role='status' aria-live='polite'>
+          <p
+            className="mb-2 text-sm text-gray-500"
+            role="status"
+            aria-live="polite"
+          >
             Actualizando datos...
           </p>
         )}
 
-        {freshnessControls}
-
         {hasStaleError && (
-          <p className='mb-2 text-sm text-yellow-400' role='status' aria-live='polite'>
+          <p
+            className="mb-2 text-sm text-yellow-400"
+            role="status"
+            aria-live="polite"
+          >
             No se pudo actualizar. Mostrando últimos datos disponibles.
           </p>
         )}
@@ -166,7 +137,6 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
             <Stock
               key={row.ticker}
               {...row}
-              canOpenDetails={canOpenStockDetails}
               onSelect={handleStockSelect}
             />
           ))}
@@ -187,6 +157,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       title={activePanel.title}
       activePanelKey={activePanelKey}
       onChange={handlePanelChange}
+      actions={freshnessControls}
     >
       {content}
     </PanelContent>

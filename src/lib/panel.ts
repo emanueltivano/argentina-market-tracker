@@ -44,7 +44,13 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-function isPanelTitulo(
+export function isOptionalFiniteNumber(
+  value: unknown
+): value is number | undefined {
+  return value === undefined || isFiniteNumber(value)
+}
+
+function hasPanelTituloIdentity(
   value: unknown
 ): value is Record<'simbolo' | 'descripcion', string> & Record<string, unknown> {
   return (
@@ -71,6 +77,47 @@ type NumericPanelField = Exclude<
 >
 
 type PuntaField = keyof NonNullable<PanelTitulo['puntas']>
+
+export const NUMERIC_PANEL_FIELDS = [
+  'ultimoPrecio',
+  'variacionPorcentual',
+  'apertura',
+  'maximo',
+  'minimo',
+  'ultimoCierre',
+  'volumen',
+] as const satisfies readonly NumericPanelField[]
+
+export const PUNTA_FIELDS = [
+  'cantidadCompra',
+  'precioCompra',
+  'precioVenta',
+  'cantidadVenta',
+] as const satisfies readonly PuntaField[]
+
+export function isPanelTitulo(value: unknown): value is PanelTitulo {
+  if (!hasPanelTituloIdentity(value)) {
+    return false
+  }
+
+  for (const field of NUMERIC_PANEL_FIELDS) {
+    if (!isOptionalFiniteNumber(value[field])) {
+      return false
+    }
+  }
+
+  const puntas = value.puntas
+
+  if (puntas === undefined) {
+    return true
+  }
+
+  if (!isRecord(puntas)) {
+    return false
+  }
+
+  return PUNTA_FIELDS.every((field) => isOptionalFiniteNumber(puntas[field]))
+}
 
 function setFiniteNumber(
   target: PanelTitulo,
@@ -108,7 +155,7 @@ function normalizePuntas(value: unknown): PanelTitulo['puntas'] {
 }
 
 function normalizePanelTitulo(value: unknown): PanelTitulo | null {
-  if (!isPanelTitulo(value)) {
+  if (!hasPanelTituloIdentity(value)) {
     return null
   }
 

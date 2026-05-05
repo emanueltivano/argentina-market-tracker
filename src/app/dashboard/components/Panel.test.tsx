@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { SWRConfig } from 'swr'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Panel from './Panel'
@@ -45,6 +45,7 @@ describe('Panel', () => {
 
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -92,6 +93,59 @@ describe('Panel', () => {
   })
 
   it('renders rows and refreshes manually with a cache bypass request', async () => {
+    let resolveRefresh: (value: Response) => void
+    const refreshResponse = new Promise<Response>((resolve) => {
+      resolveRefresh = resolve
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+      .mockReturnValueOnce(refreshResponse)
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel()
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    const loadingButton = await screen.findByRole('button', {
+      name: 'Actualizando...',
+    }) as HTMLButtonElement
+    expect(loadingButton.disabled).toBe(true)
+
+    await userEvent.click(loadingButton)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    resolveRefresh!(
+      Response.json(panelResponse([{ simbolo: 'YPFD', descripcion: 'YPF' }]))
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
+    ).not.toBeNull()
+    expect(
+      (screen.getByRole('button', { name: 'Actualizar' }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false)
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/panel?type=lider&refresh=1', {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    })
+  })
+
+  it('keeps stale rows visible when manual refresh fails', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -102,7 +156,13 @@ describe('Panel', () => {
         )
       )
       .mockResolvedValueOnce(
-        Response.json(panelResponse([{ simbolo: 'YPFD', descripcion: 'YPF' }]))
+        Response.json(
+          {
+            ok: false,
+            error: 'PANEL_ERROR',
+          },
+          { status: 502 }
+        )
       )
 
     vi.stubGlobal('fetch', fetchMock)
@@ -118,9 +178,64 @@ describe('Panel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
 
     expect(
+      await screen.findByText(
+        'No se pudo actualizar. Mostrando últimos datos disponibles.'
+      )
+    ).not.toBeNull()
+    expect(
+      screen.getByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
+  })
+
+  it('auto-refreshes without bypassing the server cache', async () => {
+    let intervalCallback: (() => void) | undefined
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+      .mockResolvedValueOnce(
+        Response.json(panelResponse([{ simbolo: 'YPFD', descripcion: 'YPF' }]))
+      )
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(window, 'setInterval').mockImplementation((callback, delay) => {
+      if (delay === 60_000) {
+        intervalCallback = () => {
+          if (typeof callback === 'function') {
+            callback()
+          }
+        }
+      }
+
+      return 1 as unknown as ReturnType<typeof window.setInterval>
+    })
+    vi.spyOn(window, 'clearInterval').mockImplementation(() => undefined)
+
+    renderPanel()
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
+
+    await act(async () => {
+      intervalCallback?.()
+    })
+
+    expect(intervalCallback).toBeDefined()
+
+    expect(
       await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
     ).not.toBeNull()
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/panel?type=lider&refresh=1', {
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/panel?type=lider', {
       cache: 'no-store',
       headers: { accept: 'application/json' },
     })

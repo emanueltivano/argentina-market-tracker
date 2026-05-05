@@ -1,5 +1,7 @@
-import { useId, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+
 import { type MarketPanelKey } from '@/lib/market';
+
 import PanelMenu from './PanelMenu';
 import Title from './PageTitle';
 import { MARKET_PANEL_OPTIONS } from '../lib/marketPanelOptions';
@@ -8,6 +10,7 @@ type PanelContentProps = {
   title: string;
   activePanelKey: MarketPanelKey;
   onChange: (key: MarketPanelKey) => void;
+  actions?: ReactNode;
   children: ReactNode;
 };
 
@@ -15,23 +18,24 @@ export default function PanelContent({
   title,
   activePanelKey,
   onChange,
+  actions,
   children,
 }: PanelContentProps) {
-  const titleId = useId();
-
   return (
-    <section className="py-4" aria-labelledby={titleId}>
-      <Title id={titleId}>{title}</Title>
+    <section className="dashboard-container py-4">
+      <Title>{title}</Title>
 
-      <PanelMenu
-        activePanelKey={activePanelKey}
-        onChange={onChange}
-        options={MARKET_PANEL_OPTIONS}
-      />
+      <div className="panel-toolbar">
+        <PanelMenu
+          activePanelKey={activePanelKey}
+          onChange={onChange}
+          options={MARKET_PANEL_OPTIONS}
+        />
 
-      <div className="overflow-x-auto">
-        {children}
+        {actions}
       </div>
+
+      <div className="stock-table-container">{children}</div>
     </section>
   );
 }

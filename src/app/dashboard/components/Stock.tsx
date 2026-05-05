@@ -32,7 +32,6 @@ const VARIATION_LABEL_BY_TYPE: Record<StockData['varType'], string> = {
 
 export interface StockProps extends StockData {
   onSelect?: (stock: StockData) => void;
-  canOpenDetails?: boolean;
 }
 
 function getVariationAriaLabel(
@@ -55,44 +54,38 @@ const VAR_CLASS_BY_TYPE: Record<StockData['varType'], string> = {
 };
 
 const Stock: FC<StockProps> = (props) => {
-  const { onSelect, canOpenDetails = false, ...stock } = props;
+  const { onSelect, ...stock } = props;
 
   const varClass = VAR_CLASS_BY_TYPE[stock.varType];
   const strengthClass =
     stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
 
   function handleSelect() {
-    if (canOpenDetails) {
-      onSelect?.(stock);
-    }
+    onSelect?.(stock);
   }
 
   return (
     <tr
-      className={`${GRID} stock-row ${canOpenDetails ? 'stock-row-interactive' : ''}`}
+      className={`${GRID} stock-row stock-row-interactive`}
       data-symbol={stock.ticker}
-      onClick={canOpenDetails ? handleSelect : undefined}
+      onClick={handleSelect}
     >
       <th
         scope="row"
         className="stock-cell stock-ticker justify-self-start text-left font-mono"
         title={stock.description}
       >
-        {canOpenDetails ? (
-          <button
-            type="button"
-            className="stock-ticker-button"
-            onClick={(event) => {
-              event.stopPropagation();
-              handleSelect();
-            }}
-            aria-label={`Abrir detalle de ${stock.ticker}, ${stock.description}`}
-          >
-            {stock.ticker}
-          </button>
-        ) : (
-          stock.ticker
-        )}
+        <button
+          type="button"
+          className="stock-ticker-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleSelect();
+          }}
+          aria-label={`Abrir detalle de ${stock.ticker}, ${stock.description}`}
+        >
+          {stock.ticker}
+        </button>
       </th>
 
       <td className="stock-cell stock-price">{formatMoney(stock.price)}</td>
@@ -109,23 +102,23 @@ const Stock: FC<StockProps> = (props) => {
       <td
         className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatInteger(stock.buyQty)}
+        <span>{formatInteger(stock.buyQty)}</span>
       </td>
 
       <td className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.tabletUp}`}>
-        {formatMoney(stock.buyPrice)}
+        <span>{formatMoney(stock.buyPrice)}</span>
       </td>
 
       <td
         className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
       >
-        {formatMoney(stock.sellPrice)}
+        <span>{formatMoney(stock.sellPrice)}</span>
       </td>
 
       <td
         className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
-        {formatInteger(stock.sellQty)}
+        <span>{formatInteger(stock.sellQty)}</span>
       </td>
 
       <td className={`stock-cell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}>

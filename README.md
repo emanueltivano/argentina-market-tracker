@@ -62,6 +62,8 @@ El refresh manual con `refresh=1` tiene además un cooldown en memoria de 15 seg
 
 En una producción real con tráfico público, el rate limit debería vivir fuera del proceso: Redis, Vercel KV/Upstash o una regla de WAF/CDN. Eso permitiría compartir contadores entre instancias, aplicar ventanas por IP/API key y bloquear abuso antes de ejecutar la función serverless.
 
+El auto-refresh del dashboard usa requests normales a `/api/panel` para que este cache corto del server absorba ráfagas entre clientes. Solo el botón manual usa `refresh=1` para pedir datos frescos saltando el cache local.
+
 ## Debug local
 
 Las herramientas de debug están deshabilitadas por defecto. `/api/token` y `/api/panel?raw=1` solo responden cuando se cumplen todas estas condiciones:

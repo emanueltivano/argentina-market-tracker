@@ -74,13 +74,28 @@ describe('/api/panel route', () => {
     process.env = OLD_ENV
   })
 
-  it('falls back to lider when the panel type is invalid', async () => {
+  it('returns 400 when the panel type is invalid', async () => {
+    const iolFetch = vi.fn()
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=invalid'))
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body).toEqual({
+      ok: false,
+      error: 'INVALID_PANEL_TYPE',
+    })
+    expect(iolFetch).not.toHaveBeenCalled()
+  })
+
+  it('falls back to lider when the panel type is omitted', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
     const { GET } = await loadRoute(iolFetch)
 
-    const response = await GET(request('/api/panel?type=invalid'))
+    const response = await GET(request('/api/panel'))
     const body = await response.json()
 
     expect(response.status).toBe(200)
