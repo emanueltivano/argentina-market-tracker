@@ -387,6 +387,35 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
+  it('deduplicates normal requests behind an in-flight manual refresh', async () => {
+    let resolvePanel!: (value: unknown) => void
+    const iolFetch = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolvePanel = resolve
+        })
+    )
+    const { GET } = await loadRoute(iolFetch)
+
+    const refresh = GET(request('/api/panel?type=lider&refresh=1'))
+    const normal = GET(request('/api/panel?type=lider'))
+
+    resolvePanel([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+
+    const [refreshResponse, normalResponse] = await Promise.all([
+      refresh,
+      normal,
+    ])
+
+    expectPanelSuccess(await refreshResponse.json(), [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expectPanelSuccess(await normalResponse.json(), [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expect(iolFetch).toHaveBeenCalledTimes(1)
+  })
+
   it('clearPanelCacheForTests clears cached responses and in-flight requests', async () => {
     let resolveFirst!: (value: unknown) => void
     let resolveSecond!: (value: unknown) => void

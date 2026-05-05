@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market';
 import Stock, { type StockData } from './Stock';
@@ -15,7 +15,7 @@ type PanelProps = {
 };
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
-  const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -41,22 +41,26 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   } = useMarketPanel(activePanelKey);
 
   const errorMessage = error?.message ?? 'Error desconocido';
+  const selectedStock = useMemo(
+    () => rows.find((row) => row.ticker === selectedTicker) ?? null,
+    [rows, selectedTicker],
+  );
 
   const handleStockSelect = useCallback(
     (stock: StockData) => {
-      setSelectedStock(stock);
+      setSelectedTicker(stock.ticker);
     },
     [],
   );
 
   const handleCloseStockDetails = useCallback(() => {
-    setSelectedStock(null);
+    setSelectedTicker(null);
   }, []);
 
   function handlePanelChange(key: MarketPanelKey) {
     const nextParams = new URLSearchParams(searchParams.toString());
 
-    setSelectedStock(null);
+    setSelectedTicker(null);
     nextParams.set('panel', key);
 
     router.replace(`${pathname}?${nextParams.toString()}`, {

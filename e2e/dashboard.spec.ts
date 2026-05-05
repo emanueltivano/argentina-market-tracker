@@ -215,9 +215,14 @@ test.describe('dashboard', () => {
     await expect(opener).toBeFocused()
   })
 
-  test('opens stock details when responsive columns are hidden', async ({
+  test('mobile opens stock details when responsive columns are hidden', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'mobile-chrome',
+      'Responsive hidden-column coverage is mobile-specific.'
+    )
+
     await mockPanelApi(page)
     await page.goto('/')
 

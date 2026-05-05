@@ -24,9 +24,24 @@ export interface PanelSuccessResponse {
   cacheStatus: 'fresh' | 'memory-cache'
 }
 
+export type PanelErrorCode =
+  | 'PANEL_ERROR'
+  | 'RATE_LIMITED'
+  | 'REFRESH_COOLDOWN'
+  | 'METHOD_NOT_ALLOWED'
+  | 'INVALID_PANEL_TYPE'
+
+export const PANEL_ERROR_CODES = [
+  'PANEL_ERROR',
+  'RATE_LIMITED',
+  'REFRESH_COOLDOWN',
+  'METHOD_NOT_ALLOWED',
+  'INVALID_PANEL_TYPE',
+] as const satisfies readonly PanelErrorCode[]
+
 export interface PanelErrorResponse {
   ok: false
-  error: string
+  error: PanelErrorCode
   details?: string
 }
 
@@ -42,6 +57,13 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
+}
+
+export function isPanelErrorCode(value: unknown): value is PanelErrorCode {
+  return (
+    typeof value === 'string' &&
+    PANEL_ERROR_CODES.includes(value as PanelErrorCode)
+  )
 }
 
 export function isOptionalFiniteNumber(

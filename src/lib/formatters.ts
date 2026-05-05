@@ -1,3 +1,4 @@
+// Locale and decimal combinations are controlled by app formatters.
 const numberFormatters = new Map<string, Intl.NumberFormat>();
 
 function getNumberFormatter(locale: string, decimals: number): Intl.NumberFormat {

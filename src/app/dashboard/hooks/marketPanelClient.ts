@@ -1,4 +1,8 @@
-import { type PanelResponse as MarketPanelResponse } from '@/lib/panel';
+import {
+  isPanelErrorCode,
+  type PanelErrorCode,
+  type PanelResponse as MarketPanelResponse,
+} from '@/lib/panel';
 import { assertMarketPanelSuccessResponse } from './marketPanelValidation';
 
 export type MarketPanelSuccessResponse = Extract<
@@ -18,24 +22,26 @@ function isMarketPanelErrorResponse(
   return (
     isRecord(value) &&
     (value as { ok?: unknown }).ok === false &&
-    typeof (value as { error?: unknown }).error === 'string'
+    isPanelErrorCode((value as { error?: unknown }).error)
   );
 }
 
-function panelErrorMessage(error: string): string {
+const PANEL_ERROR_MESSAGE: Record<PanelErrorCode, string> = {
+  PANEL_ERROR: 'No se pudo cargar el panel de mercado.',
+  RATE_LIMITED: 'Demasiadas solicitudes. Esperá unos segundos e intentá nuevamente.',
+  REFRESH_COOLDOWN: 'Actualización reciente. Esperá unos segundos e intentá nuevamente.',
+  METHOD_NOT_ALLOWED: 'Método no permitido para cargar el panel.',
+  INVALID_PANEL_TYPE: 'Panel de mercado inválido.',
+};
+
+function panelErrorMessage(error: PanelErrorCode): string {
   switch (error) {
     case 'PANEL_ERROR':
-      return 'No se pudo cargar el panel de mercado.';
     case 'RATE_LIMITED':
-      return 'Demasiadas solicitudes. Esperá unos segundos e intentá nuevamente.';
     case 'REFRESH_COOLDOWN':
-      return 'Actualización reciente. Esperá unos segundos e intentá nuevamente.';
     case 'METHOD_NOT_ALLOWED':
-      return 'Método no permitido para cargar el panel.';
     case 'INVALID_PANEL_TYPE':
-      return 'Panel de mercado inválido.';
-    default:
-      return 'No se pudo cargar el panel.';
+      return PANEL_ERROR_MESSAGE[error];
   }
 }
 

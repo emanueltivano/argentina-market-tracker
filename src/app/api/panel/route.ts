@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market'
 import {
   normalizePanelData,
+  type PanelErrorCode,
+  type PanelErrorResponse,
   type PanelResponse,
   type PanelTitulo,
 } from '@/lib/panel'
@@ -173,6 +175,12 @@ function getOrCreatePanelResponse(
     return inFlight
   }
 
+  const inFlightRefresh = inFlightPanelRefreshRequests.get(type)
+
+  if (inFlightRefresh) {
+    return inFlightRefresh
+  }
+
   const promise = fetchPanelResponse(type).finally(() => {
     if (inFlightPanelRequests.get(type) === promise) {
       inFlightPanelRequests.delete(type)
@@ -318,17 +326,25 @@ function jsonResponse(body: unknown, init: ResponseInit = {}) {
   })
 }
 
+function panelErrorResponse(
+  error: PanelErrorCode,
+  init: ResponseInit,
+  details?: string
+) {
+  const body: PanelErrorResponse = {
+    ok: false,
+    error,
+    ...(details ? { details } : {}),
+  }
+
+  return jsonResponse(body, init)
+}
+
 export async function GET(req: NextRequest) {
   const panelType = getPanelType(req)
 
   if (!panelType.ok) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'INVALID_PANEL_TYPE',
-      },
-      { status: 400 }
-    )
+    return panelErrorResponse('INVALID_PANEL_TYPE', { status: 400 })
   }
 
   const type = panelType.type
@@ -337,18 +353,12 @@ export async function GET(req: NextRequest) {
   const rateLimit = checkRateLimit(req)
 
   if (!rateLimit.ok) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'RATE_LIMITED',
+    return panelErrorResponse('RATE_LIMITED', {
+      status: 429,
+      headers: {
+        'Retry-After': String(rateLimit.retryAfterSec),
       },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(rateLimit.retryAfterSec),
-        },
-      }
-    )
+    })
   }
 
   // Local in-memory cooldown for manual refresh. In serverless this protects
@@ -357,18 +367,12 @@ export async function GET(req: NextRequest) {
     const refreshCooldown = checkRefreshCooldown(req, type)
 
     if (!refreshCooldown.ok) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: 'REFRESH_COOLDOWN',
+      return panelErrorResponse('REFRESH_COOLDOWN', {
+        status: 429,
+        headers: {
+          'Retry-After': String(refreshCooldown.retryAfterSec),
         },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': String(refreshCooldown.retryAfterSec),
-          },
-        }
-      )
+      })
     }
   }
 
@@ -390,23 +394,17 @@ export async function GET(req: NextRequest) {
     const message = err instanceof Error ? err.message : String(err ?? 'unknown')
     const isProd = ENV.NODE_ENV === 'production'
 
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'PANEL_ERROR',
-        ...(isProd ? {} : { details: message }),
-      },
-      { status: 502 }
+    return panelErrorResponse(
+      'PANEL_ERROR',
+      { status: 502 },
+      isProd ? undefined : message
     )
   }
 }
 
 export function POST() {
-  return jsonResponse(
-    {
-      ok: false,
-      error: 'METHOD_NOT_ALLOWED',
-    },
+  return panelErrorResponse(
+    'METHOD_NOT_ALLOWED',
     {
       status: 405,
       headers: { Allow: 'GET' },

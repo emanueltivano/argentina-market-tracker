@@ -33,14 +33,16 @@ function renderPanel() {
 
 describe('Panel', () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(() => ({
-        matches: true,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }))
-    )
+    HTMLDialogElement.prototype.showModal = vi.fn(function showModal(
+      this: HTMLDialogElement
+    ) {
+      this.setAttribute('open', '')
+    })
+    HTMLDialogElement.prototype.close = vi.fn(function close(
+      this: HTMLDialogElement
+    ) {
+      this.removeAttribute('open')
+    })
   })
 
   afterEach(() => {
@@ -239,6 +241,83 @@ describe('Panel', () => {
       cache: 'no-store',
       headers: { accept: 'application/json' },
     })
+  })
+
+  it('keeps an open stock details modal synced after refresh', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          panelResponse([
+            {
+              simbolo: 'GGAL',
+              descripcion: 'Grupo Financiero Galicia',
+              ultimoPrecio: 100,
+            },
+          ])
+        )
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          panelResponse([
+            {
+              simbolo: 'GGAL',
+              descripcion: 'Grupo Financiero Galicia',
+              ultimoPrecio: 125,
+            },
+          ])
+        )
+      )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel()
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    )
+
+    let dialog = screen.getByRole('dialog', { name: 'GGAL' })
+    expect(dialog.textContent).toContain('$ 100,00')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    dialog = await screen.findByRole('dialog', { name: 'GGAL' })
+    expect(dialog.textContent).toContain('$ 125,00')
+  })
+
+  it('closes the stock details modal when the selected ticker disappears', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+      .mockResolvedValueOnce(
+        Response.json(panelResponse([{ simbolo: 'YPFD', descripcion: 'YPF' }]))
+      )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel()
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    )
+
+    expect(screen.getByRole('dialog', { name: 'GGAL' })).not.toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    expect(await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })).not.toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'GGAL' })).toBeNull()
   })
 
   it('updates the panel query param when changing panel', async () => {
