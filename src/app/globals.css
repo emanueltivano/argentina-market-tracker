@@ -166,6 +166,10 @@
     @apply min-w-0 whitespace-nowrap px-2 py-2.5 sm:px-3;
   }
 
+  .nav-stocks .nav-stocks-cell-center {
+    text-align: center ;
+  }
+
   .stock-table {
     @apply w-full table-fixed border-collapse;
     background-color: var(--surface);

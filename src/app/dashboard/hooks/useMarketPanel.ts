@@ -11,6 +11,12 @@ import {
 
 export { fetchMarketPanel, getMarketPanelFetchError };
 
+function withRefreshParam(url: string): string {
+  const separator = url.includes('?') ? '&' : '?';
+
+  return `${url}${separator}refresh=1`;
+}
+
 export function useMarketPanel(activePanelKey: MarketPanelKey) {
   const activePanel = getMarketPanelOption(activePanelKey);
   const isRefreshInFlightRef = useRef(false);
@@ -44,10 +50,8 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
 
     try {
       if (bypassCache) {
-        const separator = activePanel.fetchUrl.includes('?') ? '&' : '?';
-
         await mutate(
-          () => fetchMarketPanel(`${activePanel.fetchUrl}${separator}refresh=1`),
+          () => fetchMarketPanel(withRefreshParam(activePanel.fetchUrl)),
           {
             populateCache: true,
             revalidate: false,

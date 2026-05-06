@@ -3,26 +3,26 @@ import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockTableLayout';
 const COLUMNS = [
   { label: 'Ticker', className: 'font-medium text-left' },
   { label: 'Precio' },
-  { label: 'Var %', title: 'Variación porcentual' },
+  { label: 'Var %', title: 'Variación porcentual', className: 'nav-stocks-cell-center' },
   {
     label: 'CC',
     title: 'Cantidad de compra',
-    className: STOCK_COLUMN_VISIBILITY.desktopOnly,
+    className: `${STOCK_COLUMN_VISIBILITY.desktopOnly} nav-stocks-cell-center`,
   },
   {
     label: 'PC',
     title: 'Precio de compra',
-    className: STOCK_COLUMN_VISIBILITY.tabletUp,
+    className: `${STOCK_COLUMN_VISIBILITY.tabletUp} nav-stocks-cell-center`,
   },
   {
     label: 'PV',
     title: 'Precio de venta',
-    className: STOCK_COLUMN_VISIBILITY.tabletUp,
+    className: `${STOCK_COLUMN_VISIBILITY.tabletUp} nav-stocks-cell-center`,
   },
   {
     label: 'CV',
     title: 'Cantidad de venta',
-    className: STOCK_COLUMN_VISIBILITY.desktopOnly,
+    className: `${STOCK_COLUMN_VISIBILITY.desktopOnly} nav-stocks-cell-center`,
   },
   { label: 'Apertura', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
   { label: 'Mínimo', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
@@ -40,7 +40,7 @@ export default function NavStocks() {
         {COLUMNS.map((column) => (
           <th
             key={column.label}
-            scope="col"
+            scope='col'
             className={`nav-stocks-cell ${column.className ?? ''}`}
           >
             {column.title ? (
