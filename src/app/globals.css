@@ -208,6 +208,15 @@
     @apply min-w-0 whitespace-nowrap px-2 py-2.5 text-sm font-normal sm:px-3;
     color: #374151;
   }
+
+  .stock-cell-center {
+    text-align: center;
+  }
+
+  .stock-cell-center > * {
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 /* =========================
@@ -411,75 +420,120 @@
    Stock details modal
 ========================= */
 
-.stock-details-dialog {
+dialog.stock-details-dialog {
   width: min(640px, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
-  max-height: calc(100dvh - 2rem);
+  max-height: calc(100vh - 3rem);
+  max-height: calc(100dvh - 3rem);
+  overflow: hidden;
   padding: 0;
-  border: 0;
-  border-radius: 0.75rem;
+  border: 1px solid rgb(219 234 254 / 90%);
+  border-radius: 1rem;
   background-color: var(--surface);
   color: var(--text-color);
-  box-shadow: 0 24px 64px rgb(4 43 93 / 24%);
+  box-shadow:
+    0 28px 72px rgb(4 43 93 / 28%),
+    0 0 0 1px rgb(255 255 255 / 70%) inset;
   margin: auto;
   transition:
     opacity 0.18s ease,
     transform 0.18s ease;
 }
 
-.stock-details-dialog::backdrop {
-  background-color: rgb(4 43 93 / 45%);
+dialog.stock-details-dialog::backdrop {
+  background-color: rgb(4 43 93 / 50%);
 }
 
-.stock-details-modal {
+dialog.stock-details-dialog .stock-details-modal {
   max-height: inherit;
   overflow-y: auto;
-  padding: 1.25rem;
+  overscroll-behavior: contain;
+  padding: 0;
 }
 
-.stock-details-header {
+dialog.stock-details-dialog .stock-details-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
+  gap: 0.875rem;
+  padding: 1rem 1rem 0.875rem;
+  border-bottom: 1px solid rgb(219 234 254 / 95%);
+  background:
+    linear-gradient(135deg, rgb(238 242 255 / 95%), rgb(255 255 255 / 98%)),
+    var(--surface);
 }
 
-.stock-details-title {
+dialog.stock-details-dialog .stock-details-title {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  line-height: 1.1;
   font-weight: 800;
+  letter-spacing: 0;
 }
 
-.stock-details-description {
-  margin-top: 0.25rem;
+dialog.stock-details-dialog .stock-details-description {
+  max-width: 34rem;
+  margin-top: 0.35rem;
   color: var(--muted-text);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+dialog.stock-details-dialog .stock-details-close {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.8rem;
+  border-color: rgb(28 54 190 / 32%);
+  background-color: rgb(255 255 255 / 96%);
+  box-shadow:
+    0 8px 18px rgb(4 43 93 / 10%),
+    0 1px 0 rgb(255 255 255 / 85%) inset;
   font-size: 0.875rem;
 }
 
-.stock-details-grid {
+dialog.stock-details-dialog .stock-details-close:hover {
+  border-color: var(--main-color);
+  box-shadow: 0 8px 18px rgb(28 54 190 / 20%);
+  color: var(--main-color) !important;
+}
+
+dialog.stock-details-dialog .stock-details-close:focus {
+  outline: 2px solid var(--main-light-color);
+  outline-offset: 2px;
+}
+
+dialog.stock-details-dialog .stock-details-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem 1rem;
-  margin: 1rem 0 0;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 1rem;
+  background-color: #f8fafc;
 }
 
-.stock-details-grid > div {
+dialog.stock-details-dialog .stock-details-grid > div {
   min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgb(219 234 254 / 85%);
+  border-radius: 0.625rem;
+  background-color: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
 }
 
-.stock-details-grid > div > dt {
+dialog.stock-details-dialog .stock-details-grid > div > dt {
   color: var(--muted-text);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.stock-details-grid > div > dd {
-  margin: 0.125rem 0 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
+dialog.stock-details-dialog .stock-details-grid > div > dd {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-color);
 }
 
 /* =========================
@@ -517,7 +571,22 @@
     min-width: 4.75rem;
   }
 
-  .stock-details-grid {
+  dialog.stock-details-dialog {
+    width: min(640px, calc(100vw - 1rem));
+    max-height: calc(100vh - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  dialog.stock-details-dialog .stock-details-grid {
     grid-template-columns: 1fr;
+    padding: 0.875rem;
+  }
+
+  dialog.stock-details-dialog .stock-details-header {
+    padding: 0.875rem;
+  }
+
+  dialog.stock-details-dialog .stock-details-title {
+    font-size: 1.35rem;
   }
 }

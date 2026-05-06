@@ -27,8 +27,8 @@ const COLUMNS = [
   { label: 'Apertura', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
   { label: 'Mínimo', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
   { label: 'Máximo', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
-  { label: 'Último cierre', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
-  { label: 'Total operado', className: STOCK_COLUMN_VISIBILITY.tabletUp },
+  { label: 'Cierre', className: STOCK_COLUMN_VISIBILITY.desktopOnly },
+  { label: 'Operado', className: STOCK_COLUMN_VISIBILITY.tabletUp },
 ];
 
 const GRID = STOCK_GRID_LAYOUT;

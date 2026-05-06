@@ -91,7 +91,7 @@ function Stock(props: StockProps) {
       <td className="stock-cell stock-price">{formatMoney(stock.price)}</td>
 
       <td
-        className="stock-cell"
+        className="stock-cell stock-cell-center"
         aria-label={getVariationAriaLabel(stock.var, stock.varType)}
       >
         <span className={`stock-var ${varClass} ${strengthClass}`}>
@@ -100,23 +100,25 @@ function Stock(props: StockProps) {
       </td>
 
       <td
-        className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
+        className={`stock-cell stock-cell-center stock-buy ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
         <span>{formatInteger(stock.buyQty)}</span>
       </td>
 
-      <td className={`stock-cell stock-buy ${STOCK_COLUMN_VISIBILITY.tabletUp}`}>
+      <td
+        className={`stock-cell stock-cell-center stock-buy ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
+      >
         <span>{formatMoney(stock.buyPrice)}</span>
       </td>
 
       <td
-        className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
+        className={`stock-cell stock-cell-center stock-sell ${STOCK_COLUMN_VISIBILITY.tabletUp}`}
       >
         <span>{formatMoney(stock.sellPrice)}</span>
       </td>
 
       <td
-        className={`stock-cell stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
+        className={`stock-cell stock-cell-center stock-sell ${STOCK_COLUMN_VISIBILITY.desktopOnly}`}
       >
         <span>{formatInteger(stock.sellQty)}</span>
       </td>

@@ -24,20 +24,15 @@ export interface PanelSuccessResponse {
   cacheStatus: 'fresh' | 'memory-cache'
 }
 
-export type PanelErrorCode =
-  | 'PANEL_ERROR'
-  | 'RATE_LIMITED'
-  | 'REFRESH_COOLDOWN'
-  | 'METHOD_NOT_ALLOWED'
-  | 'INVALID_PANEL_TYPE'
-
 export const PANEL_ERROR_CODES = [
   'PANEL_ERROR',
   'RATE_LIMITED',
   'REFRESH_COOLDOWN',
   'METHOD_NOT_ALLOWED',
   'INVALID_PANEL_TYPE',
-] as const satisfies readonly PanelErrorCode[]
+] as const
+
+export type PanelErrorCode = (typeof PANEL_ERROR_CODES)[number]
 
 export interface PanelErrorResponse {
   ok: false

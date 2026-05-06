@@ -68,14 +68,6 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     });
   }
 
-  const freshnessControls = (
-    <PanelFreshness
-      fetchedAt={fetchedAt}
-      isRefreshing={isRefreshing}
-      onRefresh={refresh}
-    />
-  );
-
   let content: ReactNode;
 
   if (isErrorWithoutData) {
@@ -116,16 +108,6 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   } else {
     content = (
       <>
-        {isRefreshing && (
-          <p
-            className="mb-2 text-sm text-gray-500"
-            role="status"
-            aria-live="polite"
-          >
-            Actualizando datos...
-          </p>
-        )}
-
         {hasStaleError && (
           <p
             className="mb-2 text-sm text-yellow-400"
@@ -161,7 +143,13 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       title={activePanel.title}
       activePanelKey={activePanelKey}
       onChange={handlePanelChange}
-      actions={freshnessControls}
+      actions={
+        <PanelFreshness
+          fetchedAt={fetchedAt}
+          isRefreshing={isRefreshing}
+          onRefresh={refresh}
+        />
+      }
     >
       {content}
     </PanelContent>
