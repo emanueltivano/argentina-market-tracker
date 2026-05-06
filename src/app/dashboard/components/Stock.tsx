@@ -1,4 +1,4 @@
-import { memo, type FC } from 'react';
+import { memo } from 'react';
 import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockTableLayout';
 import {
   formatMoney,
@@ -53,7 +53,7 @@ const VAR_CLASS_BY_TYPE: Record<StockData['varType'], string> = {
   neutral: 'stock-var-neutral',
 };
 
-const Stock: FC<StockProps> = (props) => {
+function Stock(props: StockProps) {
   const { onSelect, ...stock } = props;
 
   const varClass = VAR_CLASS_BY_TYPE[stock.varType];
@@ -142,6 +142,6 @@ const Stock: FC<StockProps> = (props) => {
       </td>
     </tr>
   );
-};
+}
 
 export default memo(Stock);
