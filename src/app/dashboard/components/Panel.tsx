@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market';
 import Stock, { type StockData } from './Stock';
@@ -14,6 +14,8 @@ import {
   type StockSortKey,
 } from './stockSorting';
 import {
+  parseStoredStockSort,
+  parseStockSortSearchParams,
   resolveInitialStockSort,
   serializeStockSort,
   setStockSortSearchParams,
@@ -31,6 +33,8 @@ import { useMarketPanel } from '../hooks/useMarketPanel';
 type PanelProps = {
   defaultPanel?: MarketPanelKey;
 };
+
+const STOCK_SORT_STORAGE_EVENT = 'stock-sort-storage-change';
 
 function readStoredStockSort() {
   if (typeof window === 'undefined') {
@@ -51,25 +55,59 @@ function writeStoredStockSort(sort: StockSort) {
 
   try {
     window.localStorage.setItem(STOCK_SORT_STORAGE_KEY, serializeStockSort(sort));
+    window.dispatchEvent(new Event(STOCK_SORT_STORAGE_EVENT));
   } catch {
     // Sorting must keep working even if storage is unavailable.
   }
 }
 
-function isSameStockSort(left: StockSort, right: StockSort) {
-  return left.key === right.key && left.direction === right.direction;
+function subscribeStoredStockSort(onStoreChange: () => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  function handleStorageChange(event: StorageEvent) {
+    if (event.key === STOCK_SORT_STORAGE_KEY) {
+      onStoreChange();
+    }
+  }
+
+  window.addEventListener(STOCK_SORT_STORAGE_EVENT, onStoreChange);
+  window.addEventListener('storage', handleStorageChange);
+
+  return () => {
+    window.removeEventListener(STOCK_SORT_STORAGE_EVENT, onStoreChange);
+    window.removeEventListener('storage', handleStorageChange);
+  };
+}
+
+function useStoredStockSort() {
+  const storedValue = useSyncExternalStore(
+    subscribeStoredStockSort,
+    readStoredStockSort,
+    () => null
+  );
+
+  return useMemo(() => parseStoredStockSort(storedValue), [storedValue]);
 }
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [localSort, setLocalSort] = useState<StockSort | null>(null);
 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [sort, setSort] = useState(() =>
-    resolveInitialStockSort(searchParams, null)
+  const storedSort = useStoredStockSort();
+  const urlSort = useMemo(
+    () => parseStockSortSearchParams(searchParams),
+    [searchParams]
   );
-  const searchParamsSnapshot = searchParams.toString();
+  const hasSortSearchParams =
+    searchParams.get('sort') !== null || searchParams.get('dir') !== null;
+  const sort = hasSortSearchParams
+    ? urlSort ?? resolveInitialStockSort(searchParams, null)
+    : localSort ?? storedSort ?? resolveInitialStockSort(searchParams, null);
 
   const panelParam = searchParams.get('panel');
 
@@ -106,24 +144,13 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     setSelectedTicker(null);
   }, []);
 
-  useEffect(() => {
-    const nextSort = resolveInitialStockSort(
-      new URLSearchParams(searchParamsSnapshot),
-      readStoredStockSort()
-    );
-
-    setSort((currentSort) =>
-      isSameStockSort(currentSort, nextSort) ? currentSort : nextSort
-    );
-  }, [searchParamsSnapshot]);
-
   const handleSortChange = useCallback((key: StockSortKey) => {
     const nextSort = getNextStockSort(sort, key);
     const nextParams = new URLSearchParams(searchParams.toString());
 
     setStockSortSearchParams(nextParams, nextSort);
     writeStoredStockSort(nextSort);
-    setSort(nextSort);
+    setLocalSort(nextSort);
 
     router.replace(`${pathname}?${nextParams.toString()}`, {
       scroll: false,
