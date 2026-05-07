@@ -183,11 +183,15 @@ describe('Panel', () => {
       })
     ).not.toBeNull()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+    const idleButton = screen.getByRole('button', { name: 'Actualizar' })
+    expect(idleButton).not.toBeNull()
+
+    await userEvent.click(idleButton)
 
     const loadingButton = await screen.findByRole('button', {
       name: 'Actualizando...',
     }) as HTMLButtonElement
+    expect(loadingButton.getAttribute('aria-busy')).toBe('true')
     expect(loadingButton.disabled).toBe(true)
 
     await userEvent.click(loadingButton)
