@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { type MarketPanelKey } from '@/lib/market';
 import { type StockData } from './Stock';
 import StockFavoriteButton from './StockFavoriteButton';
-import StockHistoryChart from './StockHistoryChart';
+import LightweightStockChart from './LightweightStockChart';
 import {
   formatMoney,
   formatInteger,
@@ -284,7 +284,7 @@ export default function StockDetailsModal({
                   : 'stock-history-chart-wrap'
               }
             >
-              <StockHistoryChart
+              <LightweightStockChart
                 points={historyPoints}
                 symbol={stock.ticker}
               />
