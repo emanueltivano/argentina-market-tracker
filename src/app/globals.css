@@ -92,7 +92,21 @@
   }
 
   .panel-menu-button {
+    display: inline-flex;
+    align-items: center;
     backdrop-filter: blur(6px);
+  }
+
+  .panel-menu-button-icon {
+    display: inline-flex;
+    margin-right: 0.35rem;
+    color: #f59e0b;
+    line-height: 1;
+  }
+
+  .panel-menu-button:hover .panel-menu-button-icon,
+  .panel-menu-button-active .panel-menu-button-icon {
+    color: #f59e0b;
   }
 
   .panel-menu-button:hover,
