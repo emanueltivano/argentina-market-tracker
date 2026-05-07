@@ -31,7 +31,7 @@ export default function PanelMenu({
           >
             {option.key === 'favorites' && (
               <span aria-hidden="true" className="panel-menu-button-icon">
-                ★
+                ☆
               </span>
             )}
             <span>{option.label}</span>

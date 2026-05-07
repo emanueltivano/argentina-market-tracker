@@ -25,10 +25,10 @@ describe('PanelMenu', () => {
       name: 'Panel Líder',
     })
 
-    expect(within(favoritesButton).getByText('★').getAttribute('aria-hidden')).toBe(
+    expect(within(favoritesButton).getByText('☆').getAttribute('aria-hidden')).toBe(
       'true'
     )
     expect(within(favoritesButton).getByText('Favoritos')).not.toBeNull()
-    expect(within(liderButton).queryByText('★')).toBeNull()
+    expect(within(liderButton).queryByText('☆')).toBeNull()
   })
 })

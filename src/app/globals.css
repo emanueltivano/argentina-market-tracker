@@ -99,14 +99,15 @@
 
   .panel-menu-button-icon {
     display: inline-flex;
-    margin-right: 0.35rem;
-    color: #f59e0b;
+    margin-right: 0.3rem;
+    color: var(--main-color);
+    font-size: 0.95rem;
     line-height: 1;
   }
 
   .panel-menu-button:hover .panel-menu-button-icon,
   .panel-menu-button-active .panel-menu-button-icon {
-    color: #f59e0b;
+    color: white;
   }
 
   .panel-menu-button:hover,
