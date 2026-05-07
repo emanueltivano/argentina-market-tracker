@@ -11,6 +11,12 @@ type StockDetailsModalProps = {
   onClose: () => void;
 };
 
+const VAR_CLASS_BY_TYPE: Record<StockData['varType'], string> = {
+  positive: 'stock-var-positive',
+  negative: 'stock-var-negative',
+  neutral: 'stock-var-neutral',
+};
+
 export default function StockDetailsModal({
   stock,
   onClose,
@@ -48,18 +54,42 @@ export default function StockDetailsModal({
     };
   }, []);
 
+  const varClass = VAR_CLASS_BY_TYPE[stock.varType];
+  const strengthClass =
+    stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
+
   const detailRows = [
-    ['Último precio', formatMoney(stock.price)],
-    ['Variación', formatSignedPercent(stock.var)],
-    ['Cantidad compra', formatInteger(stock.buyQty)],
-    ['Precio compra', formatMoney(stock.buyPrice)],
-    ['Precio venta', formatMoney(stock.sellPrice)],
-    ['Cantidad venta', formatInteger(stock.sellQty)],
-    ['Apertura', formatMoney(stock.open)],
-    ['Mínimo', formatMoney(stock.min)],
-    ['Máximo', formatMoney(stock.max)],
-    ['Último cierre', formatMoney(stock.close)],
-    ['Volumen', formatInteger(stock.volume)],
+    { label: 'Último precio', value: formatMoney(stock.price) },
+    {
+      label: 'Variación',
+      value: formatSignedPercent(stock.var),
+      valueClassName: `stock-var ${varClass} ${strengthClass}`.trim(),
+    },
+    {
+      label: 'Cantidad compra',
+      value: formatInteger(stock.buyQty),
+      className: 'stock-details-quote-cell',
+    },
+    {
+      label: 'Precio compra',
+      value: formatMoney(stock.buyPrice),
+      className: 'stock-details-quote-cell',
+    },
+    {
+      label: 'Precio venta',
+      value: formatMoney(stock.sellPrice),
+      className: 'stock-details-quote-cell',
+    },
+    {
+      label: 'Cantidad venta',
+      value: formatInteger(stock.sellQty),
+      className: 'stock-details-quote-cell',
+    },
+    { label: 'Apertura', value: formatMoney(stock.open) },
+    { label: 'Mínimo', value: formatMoney(stock.min) },
+    { label: 'Máximo', value: formatMoney(stock.max) },
+    { label: 'Último cierre', value: formatMoney(stock.close) },
+    { label: 'Volumen', value: formatInteger(stock.volume) },
   ];
 
   return (
@@ -97,10 +127,10 @@ export default function StockDetailsModal({
         </header>
 
         <dl className="stock-details-grid">
-          {detailRows.map(([label, value]) => (
-            <div key={label}>
+          {detailRows.map(({ label, value, className, valueClassName }) => (
+            <div key={label} className={className}>
               <dt>{label}</dt>
-              <dd>{value}</dd>
+              <dd className={valueClassName}>{value}</dd>
             </div>
           ))}
         </dl>

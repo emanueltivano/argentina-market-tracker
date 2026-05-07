@@ -11,6 +11,12 @@ import {
 
 export { fetchMarketPanel, getMarketPanelFetchError };
 
+export type MarketPanelViewStatus = 'loading' | 'error' | 'empty' | 'success';
+
+function unknownToError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err ?? 'unknown'));
+}
+
 function withRefreshParam(url: string): string {
   const separator = url.includes('?') ? '&' : '?';
 
@@ -19,12 +25,25 @@ function withRefreshParam(url: string): string {
 
 export function useMarketPanel(activePanelKey: MarketPanelKey) {
   const activePanel = getMarketPanelOption(activePanelKey);
-  const isRefreshInFlightRef = useRef(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshInFlightKeysRef = useRef(new Set<string>());
+  const [refreshingKeys, setRefreshingKeys] = useState<string[]>([]);
   const [refreshError, setRefreshError] = useState<{
     key: string;
     error: Error;
   } | null>(null);
+
+  const setRefreshInFlight = useCallback((key: string, isInFlight: boolean) => {
+    const nextKeys = new Set(refreshInFlightKeysRef.current);
+
+    if (isInFlight) {
+      nextKeys.add(key);
+    } else {
+      nextKeys.delete(key);
+    }
+
+    refreshInFlightKeysRef.current = nextKeys;
+    setRefreshingKeys([...nextKeys]);
+  }, []);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<
     MarketPanelSuccessResponse,
@@ -42,41 +61,42 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
   );
 
   const runRefresh = useCallback(async (bypassCache: boolean) => {
-    if (isRefreshInFlightRef.current) return;
+    const fetchUrl = activePanel.fetchUrl;
 
-    isRefreshInFlightRef.current = true;
-    setIsRefreshing(true);
-    setRefreshError(null);
+    if (refreshInFlightKeysRef.current.has(fetchUrl)) return;
+
+    setRefreshInFlight(fetchUrl, true);
+    setRefreshError((currentError) =>
+      currentError?.key === fetchUrl ? null : currentError,
+    );
 
     try {
       if (bypassCache) {
         await mutate(
-          () => fetchMarketPanel(withRefreshParam(activePanel.fetchUrl)),
+          () => fetchMarketPanel(withRefreshParam(fetchUrl)),
           {
             populateCache: true,
             revalidate: false,
           },
         );
       } else {
-        await mutate(() => fetchMarketPanel(activePanel.fetchUrl), {
+        await mutate(() => fetchMarketPanel(fetchUrl), {
           populateCache: true,
           revalidate: false,
         });
       }
     } catch (err: unknown) {
-      const nextError =
-        err instanceof Error ? err : new Error(String(err ?? 'unknown'));
+      const nextError = unknownToError(err);
 
       setRefreshError({
-        key: activePanel.fetchUrl,
+        key: fetchUrl,
         error: nextError,
       });
       throw nextError;
     } finally {
-      isRefreshInFlightRef.current = false;
-      setIsRefreshing(false);
+      setRefreshInFlight(fetchUrl, false);
     }
-  }, [activePanel.fetchUrl, mutate]);
+  }, [activePanel.fetchUrl, mutate, setRefreshInFlight]);
 
   const refresh = useCallback(() => runRefresh(true), [runRefresh]);
   const autoRefresh = useCallback(() => runRefresh(false), [runRefresh]);
@@ -101,6 +121,16 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     refreshError?.key === activePanel.fetchUrl ? refreshError.error : null;
   const displayError = activeRefreshError ?? error;
   const hasError = !!displayError;
+  const isActivePanelRefreshing =
+    refreshingKeys.includes(activePanel.fetchUrl) ||
+    (isValidating && hasData && !hasError);
+  const viewStatus: MarketPanelViewStatus = isLoading && !hasData
+    ? 'loading'
+    : hasError && !hasData
+      ? 'error'
+      : !hasRows
+        ? 'empty'
+        : 'success';
 
   return {
     activePanel,
@@ -110,11 +140,12 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     servedAt: data?.servedAt,
     cacheStatus: data?.cacheStatus,
     refresh,
-    isInitialLoading: isLoading && !hasData,
-    isRefreshing: isRefreshing || (isValidating && hasData && !hasError),
+    viewStatus,
+    isInitialLoading: viewStatus === 'loading',
+    isRefreshing: isActivePanelRefreshing,
     hasError,
     hasStaleError: hasError && hasData,
-    isErrorWithoutData: hasError && !hasData,
-    isEmpty: hasData && !hasError && !hasRows,
+    isErrorWithoutData: viewStatus === 'error',
+    isEmpty: viewStatus === 'empty',
   };
 }

@@ -227,8 +227,68 @@
   text-decoration: none;
 }
 
+.nav-stocks-sort-button {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  justify-content: inherit;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.nav-stocks-sort-button:hover,
+.nav-stocks-sort-button-active {
+  color: var(--main-color);
+}
+
+.nav-stocks-sort-button:focus-visible {
+  outline: 2px solid var(--main-light-color);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+.nav-stocks-sort-indicator {
+  width: 0.9rem;
+  flex: 0 0 0.9rem;
+  color: currentColor;
+  font-size: 0.75rem;
+  line-height: 1;
+  opacity: 0.72;
+}
+
 .stock-status-cell {
   padding: 0;
+}
+
+.stock-table-state {
+  display: flex;
+  min-height: 8rem;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--muted-text);
+  text-align: center;
+}
+
+.stock-table-state p {
+  margin: 0;
+}
+
+.stock-table-state-error {
+  color: var(--negative-light-color);
+}
+
+.stock-table-stale-error {
+  margin: 0 0 0.5rem;
+  color: #b45309;
+  font-size: 0.875rem;
 }
 
 /* =========================
@@ -262,6 +322,7 @@
   .stock-row,
   .stock-ticker-button,
   .stock-var,
+  .stock-skeleton-bar,
   .stock-details-dialog {
     transition: none;
   }
@@ -416,6 +477,42 @@
   background-color: var(--sell-bg);
 }
 
+.stock-row-skeleton {
+  pointer-events: none;
+}
+
+.stock-skeleton-bar {
+  display: block;
+  width: 100%;
+  max-width: 5.5rem;
+  height: 0.9rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgb(226 232 240 / 85%),
+    rgb(241 245 249 / 95%),
+    rgb(226 232 240 / 85%)
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.stock-row-skeleton .stock-cell:first-child .stock-skeleton-bar {
+  max-width: 4.25rem;
+}
+
+.stock-row-skeleton .stock-cell:nth-child(3) .stock-skeleton-bar {
+  max-width: 3.7rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@keyframes skeleton-pulse {
+  to {
+    background-position: -200% 0;
+  }
+}
+
 /* =========================
    Stock details modal
 ========================= */
@@ -503,7 +600,7 @@ dialog.stock-details-dialog .stock-details-close:focus {
 
 dialog.stock-details-dialog .stock-details-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.625rem;
   margin: 0;
   padding: 1rem;
@@ -511,12 +608,17 @@ dialog.stock-details-dialog .stock-details-grid {
 }
 
 dialog.stock-details-dialog .stock-details-grid > div {
+  grid-column: span 2;
   min-width: 0;
   padding: 0.7rem 0.8rem;
   border: 1px solid rgb(219 234 254 / 85%);
   border-radius: 0.625rem;
   background-color: var(--surface);
   box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+dialog.stock-details-dialog .stock-details-grid > .stock-details-quote-cell {
+  grid-column: span 1;
 }
 
 dialog.stock-details-dialog .stock-details-grid > div > dt {
@@ -534,6 +636,23 @@ dialog.stock-details-dialog .stock-details-grid > div > dd {
   font-weight: 800;
   line-height: 1.2;
   color: var(--text-color);
+}
+
+dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  color: var(--text-color);
+}
+
+dialog.stock-details-dialog
+  .stock-details-grid
+  > div
+  > dd.stock-var-positive,
+dialog.stock-details-dialog
+  .stock-details-grid
+  > div
+  > dd.stock-var-negative {
+  color: white;
 }
 
 /* =========================
@@ -580,6 +699,11 @@ dialog.stock-details-dialog .stock-details-grid > div > dd {
   dialog.stock-details-dialog .stock-details-grid {
     grid-template-columns: 1fr;
     padding: 0.875rem;
+  }
+
+  dialog.stock-details-dialog .stock-details-grid > div,
+  dialog.stock-details-dialog .stock-details-grid > .stock-details-quote-cell {
+    grid-column: auto;
   }
 
   dialog.stock-details-dialog .stock-details-header {
