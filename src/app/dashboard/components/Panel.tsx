@@ -2,7 +2,11 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market';
+import {
+  isMarketPanelKey,
+  type MarketDataPanelKey,
+  type MarketPanelKey,
+} from '@/lib/market';
 import Stock, { type StockData } from './Stock';
 import PanelContent from './PanelContent';
 import PanelFreshness from './PanelFreshness';
@@ -15,14 +19,17 @@ import {
   StockTable,
   StockTableEmptyState,
   StockTableErrorState,
+  StockTableFavoritesEmptyState,
   StockTableLoadingState,
   StockTableStaleErrorState,
 } from './StockTable';
 import { useMarketPanel } from '../hooks/useMarketPanel';
+import { useFavoriteStocks } from '../hooks/useFavoriteStocks';
 import { useStockSortState } from '../hooks/useStockSortState';
+import { getMarketPanelOption } from '../lib/marketPanelOptions';
 
 type PanelProps = {
-  defaultPanel?: MarketPanelKey;
+  defaultPanel?: MarketDataPanelKey;
 };
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
@@ -32,15 +39,18 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { sort, handleSortChange } = useStockSortState();
+  const { isFavorite, toggleFavorite } = useFavoriteStocks();
 
   const panelParam = searchParams.get('panel');
 
   const activePanelKey = isMarketPanelKey(panelParam)
     ? panelParam
     : defaultPanel;
+  const isFavoritesPanel = activePanelKey === 'favorites';
+  const dataPanelKey = isFavoritesPanel ? defaultPanel : activePanelKey;
+  const activePanel = getMarketPanelOption(activePanelKey);
 
   const {
-    activePanel,
     rows,
     error,
     fetchedAt,
@@ -48,14 +58,24 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     isRefreshing,
     hasStaleError,
     viewStatus,
-  } = useMarketPanel(activePanelKey);
+  } = useMarketPanel(dataPanelKey);
 
   const errorMessage = error?.message ?? 'Error desconocido';
-  const selectedStock = useMemo(
-    () => rows.find((row) => row.ticker === selectedTicker) ?? null,
-    [rows, selectedTicker],
+  const filteredRows = useMemo(
+    () =>
+      isFavoritesPanel
+        ? rows.filter((row) => isFavorite(row.ticker))
+        : rows,
+    [isFavorite, isFavoritesPanel, rows],
   );
-  const sortedRows = useMemo(() => sortStocks(rows, sort), [rows, sort]);
+  const selectedStock = useMemo(
+    () => filteredRows.find((row) => row.ticker === selectedTicker) ?? null,
+    [filteredRows, selectedTicker],
+  );
+  const sortedRows = useMemo(
+    () => sortStocks(filteredRows, sort),
+    [filteredRows, sort],
+  );
 
   const handleStockSelect = useCallback(
     (stock: StockData) => {
@@ -122,7 +142,11 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
             sort={sort}
             onSortChange={handleSortChange}
           >
-            <StockTableEmptyState />
+            {isFavoritesPanel ? (
+              <StockTableFavoritesEmptyState />
+            ) : (
+              <StockTableEmptyState />
+            )}
           </StockTable>
         </>
       )}
@@ -136,9 +160,19 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
             sort={sort}
             onSortChange={handleSortChange}
           >
-            {sortedRows.map((row) => (
-              <Stock key={row.ticker} {...row} onSelect={handleStockSelect} />
-            ))}
+            {isFavoritesPanel && sortedRows.length === 0 ? (
+              <StockTableFavoritesEmptyState />
+            ) : (
+              sortedRows.map((row) => (
+                <Stock
+                  key={row.ticker}
+                  {...row}
+                  isFavorite={isFavorite(row.ticker)}
+                  onSelect={handleStockSelect}
+                  onToggleFavorite={toggleFavorite}
+                />
+              ))
+            )}
           </StockTable>
 
           {selectedStock && (

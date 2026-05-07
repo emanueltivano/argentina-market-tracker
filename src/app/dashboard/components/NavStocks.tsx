@@ -7,6 +7,7 @@ import {
 } from './stockSorting';
 
 const COLUMNS = [
+  { label: '★', title: 'Favorito', className: 'stock-favorite-cell' },
   { label: 'Ticker', sortKey: 'ticker', className: 'font-medium text-left' },
   { label: 'Precio', sortKey: 'price' },
   { label: 'Var %', sortKey: 'var', title: 'Variación porcentual', className: 'nav-stocks-cell-center' },

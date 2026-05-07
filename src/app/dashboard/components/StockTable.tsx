@@ -3,8 +3,9 @@ import NavStocks from './NavStocks';
 import { DEFAULT_STOCK_SORT, type StockSort, type StockSortKey } from './stockSorting';
 import { STOCK_COLUMN_VISIBILITY } from './stockTableLayout';
 
-const STOCK_TABLE_COLUMN_COUNT = 12;
+const STOCK_TABLE_COLUMN_COUNT = 13;
 const STOCK_TABLE_SKELETON_CELLS = [
+  'stock-favorite-cell',
   '',
   '',
   'stock-cell-center',
@@ -94,6 +95,16 @@ export function StockTableEmptyState() {
     <StockTableStatus>
       <div className='stock-table-state' role='status' aria-live='polite'>
         <p>No hay datos disponibles.</p>
+      </div>
+    </StockTableStatus>
+  );
+}
+
+export function StockTableFavoritesEmptyState() {
+  return (
+    <StockTableStatus>
+      <div className='stock-table-state' role='status' aria-live='polite'>
+        <p>Todavía no agregaste favoritos.</p>
       </div>
     </StockTableStatus>
   );

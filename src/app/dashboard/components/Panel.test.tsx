@@ -8,6 +8,7 @@ import {
   serializeStockSort,
   STOCK_SORT_STORAGE_KEY,
 } from './stockSortPersistence'
+import { FAVORITE_STOCKS_STORAGE_KEY } from '../hooks/useFavoriteStocks'
 
 const replace = vi.fn()
 let currentSearchParams = new URLSearchParams()
@@ -653,5 +654,127 @@ describe('Panel', () => {
     expect(replace).toHaveBeenCalledWith('/?panel=general&sort=ticker&dir=asc', {
       scroll: false,
     })
+  })
+
+  it('toggles a favorite without opening the stock details modal', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+    )
+
+    renderPanel()
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Agregar GGAL a favoritos',
+      })
+    )
+
+    expect(screen.queryByRole('dialog', { name: 'GGAL' })).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Quitar GGAL de favoritos' })
+    ).not.toBeNull()
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
+        '["GGAL"]'
+      )
+    })
+  })
+
+  it('shows a newly favorited stock after switching to the Favorites panel', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json(
+        panelResponse([
+          { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          { simbolo: 'YPFD', descripcion: 'YPF' },
+        ])
+      )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const view = renderPanel()
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Agregar GGAL a favoritos',
+      })
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Mostrar panel Favoritos' })
+    )
+
+    expect(replace).toHaveBeenLastCalledWith(
+      '/?panel=favorites&sort=ticker&dir=asc',
+      { scroll: false }
+    )
+
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    view.rerender(
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <Panel />
+      </SWRConfig>
+    )
+
+    await screen.findByRole('button', { name: 'Quitar GGAL de favoritos' })
+
+    expect(renderedTickers()).toEqual(['GGAL'])
+    expect(fetchMock).toHaveBeenCalledWith('/api/panel?type=lider', {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    })
+    expect(
+      fetchMock.mock.calls.some(([url]) => url === '/api/panel?type=favorites')
+    ).toBe(false)
+  })
+
+  it('shows an empty state in the favorites panel when there are no favorites', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+    )
+
+    renderPanel()
+
+    expect(
+      await screen.findByText('Todavía no agregaste favoritos.')
+    ).not.toBeNull()
+  })
+
+  it('filters the favorites panel and keeps sorting over the filtered rows', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites&sort=var&dir=desc')
+    window.localStorage.setItem(FAVORITE_STOCKS_STORAGE_KEY, '["BAJA","SUBA"]')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'BAJA', descripcion: 'Baja', variacionPorcentual: -3 },
+            { simbolo: 'FUERA', descripcion: 'Fuera', variacionPorcentual: 10 },
+            { simbolo: 'SUBA', descripcion: 'Suba', variacionPorcentual: 4 },
+          ])
+        )
+      )
+    )
+
+    renderPanel()
+
+    await screen.findByRole('button', { name: 'Quitar SUBA de favoritos' })
+
+    expect(renderedTickers()).toEqual(['SUBA', 'BAJA'])
+    expect(screen.queryByText('FUERA')).toBeNull()
   })
 })

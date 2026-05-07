@@ -32,6 +32,8 @@ const VARIATION_LABEL_BY_TYPE: Record<StockData['varType'], string> = {
 
 export interface StockProps extends StockData {
   onSelect?: (stock: StockData) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (ticker: string) => void;
 }
 
 function getVariationAriaLabel(
@@ -54,7 +56,7 @@ const VAR_CLASS_BY_TYPE: Record<StockData['varType'], string> = {
 };
 
 function Stock(props: StockProps) {
-  const { onSelect, ...stock } = props;
+  const { isFavorite = false, onSelect, onToggleFavorite, ...stock } = props;
 
   const varClass = VAR_CLASS_BY_TYPE[stock.varType];
   const strengthClass =
@@ -70,6 +72,28 @@ function Stock(props: StockProps) {
       data-symbol={stock.ticker}
       onClick={handleSelect}
     >
+      <td className="stock-cell stock-cell-center stock-favorite-cell">
+        <button
+          type="button"
+          className={`stock-favorite-button ${
+            isFavorite ? 'stock-favorite-button-active' : ''
+          }`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavorite?.(stock.ticker);
+          }}
+          aria-label={
+            isFavorite
+              ? `Quitar ${stock.ticker} de favoritos`
+              : `Agregar ${stock.ticker} a favoritos`
+          }
+          aria-pressed={isFavorite}
+          title={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+        >
+          {isFavorite ? '★' : '☆'}
+        </button>
+      </td>
+
       <th
         scope="row"
         className="stock-cell stock-ticker justify-self-start text-left font-mono"

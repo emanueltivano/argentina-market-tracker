@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { isMarketPanelKey, type MarketPanelKey } from '@/lib/market'
+import { isMarketDataPanelKey, type MarketDataPanelKey } from '@/lib/market'
 import {
   normalizePanelData,
   type PanelErrorCode,
@@ -38,9 +38,9 @@ type RefreshCooldownEntry = {
   resetAt: number
 }
 
-const panelCache = new Map<MarketPanelKey, PanelCacheEntry>()
-const inFlightPanelRequests = new Map<MarketPanelKey, Promise<PanelResponse>>()
-const inFlightPanelRefreshRequests = new Map<MarketPanelKey, Promise<PanelResponse>>()
+const panelCache = new Map<MarketDataPanelKey, PanelCacheEntry>()
+const inFlightPanelRequests = new Map<MarketDataPanelKey, Promise<PanelResponse>>()
+const inFlightPanelRefreshRequests = new Map<MarketDataPanelKey, Promise<PanelResponse>>()
 const rateLimitStore = new Map<string, RateLimitEntry>()
 const refreshCooldownStore = new Map<string, RefreshCooldownEntry>()
 
@@ -50,14 +50,14 @@ const JSON_HEADERS = {
 
 function getPanelType(
   req: NextRequest
-): { ok: true; type: MarketPanelKey } | { ok: false } {
+): { ok: true; type: MarketDataPanelKey } | { ok: false } {
   const type = req.nextUrl.searchParams.get('type')
 
   if (type === null) {
     return { ok: true, type: 'lider' }
   }
 
-  return isMarketPanelKey(type) ? { ok: true, type } : { ok: false }
+  return isMarketDataPanelKey(type) ? { ok: true, type } : { ok: false }
 }
 
 function shouldReturnRawData(req: NextRequest): boolean {
@@ -71,7 +71,7 @@ function shouldBypassPanelCache(req: NextRequest): boolean {
   return req.nextUrl.searchParams.get('refresh') === '1'
 }
 
-function getPanelEndpoint(type: MarketPanelKey): string {
+function getPanelEndpoint(type: MarketDataPanelKey): string {
   switch (type) {
     case 'lider':
       return ENV.PANEL_LIDER_ENDPOINT
@@ -96,7 +96,7 @@ function createPanelResponse(
   }
 }
 
-function getCachedPanelResponse(type: MarketPanelKey): PanelResponse | null {
+function getCachedPanelResponse(type: MarketDataPanelKey): PanelResponse | null {
   const cached = panelCache.get(type)
 
   if (!cached || Date.now() >= cached.expiresAt) {
@@ -107,7 +107,7 @@ function getCachedPanelResponse(type: MarketPanelKey): PanelResponse | null {
   return createPanelResponse(cached.data, cached.fetchedAt, 'memory-cache')
 }
 
-function setCachedPanelResponse(type: MarketPanelKey, response: PanelResponse) {
+function setCachedPanelResponse(type: MarketDataPanelKey, response: PanelResponse) {
   if (!response.ok) {
     return
   }
@@ -119,7 +119,7 @@ function setCachedPanelResponse(type: MarketPanelKey, response: PanelResponse) {
   })
 }
 
-async function fetchPanelResponse(type: MarketPanelKey): Promise<PanelResponse> {
+async function fetchPanelResponse(type: MarketDataPanelKey): Promise<PanelResponse> {
   const data = await iolFetch(getPanelEndpoint(type))
   const fetchedAt = new Date().toISOString()
   const response = createPanelResponse(
@@ -133,7 +133,7 @@ async function fetchPanelResponse(type: MarketPanelKey): Promise<PanelResponse> 
 }
 
 function getOrCreatePanelResponse(
-  type: MarketPanelKey,
+  type: MarketDataPanelKey,
   bypassCache: boolean
 ): Promise<PanelResponse> {
   if (bypassCache) {
@@ -250,7 +250,7 @@ function checkRateLimit(req: NextRequest):
   return { ok: true }
 }
 
-function getRefreshCooldownKey(req: NextRequest, type: MarketPanelKey): string {
+function getRefreshCooldownKey(req: NextRequest, type: MarketDataPanelKey): string {
   return `${getRateLimitKey(req)}:${type}`
 }
 
@@ -279,7 +279,7 @@ function pruneRefreshCooldownStore(now: number) {
 
 function checkRefreshCooldown(
   req: NextRequest,
-  type: MarketPanelKey
+  type: MarketDataPanelKey
 ): { ok: true } | { ok: false; retryAfterSec: number } {
   const now = Date.now()
   pruneRefreshCooldownStore(now)

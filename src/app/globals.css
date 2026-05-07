@@ -148,6 +148,7 @@
   .panel-menu-button:focus-visible,
   .panel-refresh-button:focus-visible,
   .stock-details-close:focus-visible,
+  .stock-favorite-button:focus-visible,
   .stock-ticker-button:focus-visible {
     outline: 2px solid var(--main-light-color);
     outline-offset: 2px;
@@ -320,6 +321,7 @@
   .panel-refresh-button,
   .stock-details-close,
   .stock-row,
+  .stock-favorite-button,
   .stock-ticker-button,
   .stock-var,
   .stock-skeleton-bar,
@@ -475,6 +477,45 @@
 
 .stock-sell > span {
   background-color: var(--sell-bg);
+}
+
+.stock-favorite-cell {
+  width: 2.75rem;
+  text-align: center;
+}
+
+.stock-favorite-button {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background-color: transparent;
+  color: var(--muted-text);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.stock-favorite-button:hover {
+  border-color: rgb(245 158 11 / 40%);
+  background-color: rgb(245 158 11 / 10%);
+  color: #b45309;
+}
+
+.stock-favorite-button-active {
+  color: #d97706;
+}
+
+.stock-favorite-button-active:hover {
+  color: #b45309;
 }
 
 .stock-row-skeleton {

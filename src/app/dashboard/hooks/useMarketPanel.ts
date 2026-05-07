@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import { type MarketPanelKey } from '@/lib/market';
+import { type MarketDataPanelKey } from '@/lib/market';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
 import { mapPanelTituloToStockProps } from '../components/panelTitleToStock';
 import {
@@ -23,8 +23,13 @@ function withRefreshParam(url: string): string {
   return `${url}${separator}refresh=1`;
 }
 
-export function useMarketPanel(activePanelKey: MarketPanelKey) {
+export function useMarketPanel(activePanelKey: MarketDataPanelKey) {
   const activePanel = getMarketPanelOption(activePanelKey);
+  const fetchUrl = activePanel.fetchUrl;
+
+  if (!fetchUrl) {
+    throw new Error(`Panel de datos sin fetchUrl: ${activePanelKey}`);
+  }
   const refreshInFlightKeysRef = useRef(new Set<string>());
   const [refreshingKeys, setRefreshingKeys] = useState<string[]>([]);
   const [refreshError, setRefreshError] = useState<{
@@ -49,7 +54,7 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     MarketPanelSuccessResponse,
     Error
   >(
-    activePanel.fetchUrl,
+    fetchUrl,
     fetchMarketPanel,
     {
       revalidateOnFocus: false,
@@ -61,8 +66,6 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
   );
 
   const runRefresh = useCallback(async (bypassCache: boolean) => {
-    const fetchUrl = activePanel.fetchUrl;
-
     if (refreshInFlightKeysRef.current.has(fetchUrl)) return;
 
     setRefreshInFlight(fetchUrl, true);
@@ -96,7 +99,7 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
     } finally {
       setRefreshInFlight(fetchUrl, false);
     }
-  }, [activePanel.fetchUrl, mutate, setRefreshInFlight]);
+  }, [fetchUrl, mutate, setRefreshInFlight]);
 
   const refresh = useCallback(() => runRefresh(true), [runRefresh]);
   const autoRefresh = useCallback(() => runRefresh(false), [runRefresh]);
@@ -118,11 +121,11 @@ export function useMarketPanel(activePanelKey: MarketPanelKey) {
   const hasData = data !== undefined;
   const hasRows = rows.length > 0;
   const activeRefreshError =
-    refreshError?.key === activePanel.fetchUrl ? refreshError.error : null;
+    refreshError?.key === fetchUrl ? refreshError.error : null;
   const displayError = activeRefreshError ?? error;
   const hasError = !!displayError;
   const isActivePanelRefreshing =
-    refreshingKeys.includes(activePanel.fetchUrl) ||
+    refreshingKeys.includes(fetchUrl) ||
     (isValidating && hasData && !hasError);
   const viewStatus: MarketPanelViewStatus = isLoading && !hasData
     ? 'loading'

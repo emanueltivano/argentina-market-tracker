@@ -141,6 +141,22 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledWith('cedears-endpoint')
   })
 
+  it('returns 400 for the UI-only favorites panel type', async () => {
+    const iolFetch = vi.fn()
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=favorites'))
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body).toEqual({
+      ok: false,
+      error: 'INVALID_PANEL_TYPE',
+    })
+    expect(iolFetch).not.toHaveBeenCalled()
+  })
+
+
   it('returns an empty data array for an empty upstream payload', async () => {
     const iolFetch = vi.fn().mockResolvedValue({ data: [] })
     const { GET } = await loadRoute(iolFetch)

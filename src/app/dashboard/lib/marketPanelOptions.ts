@@ -4,7 +4,7 @@ export type MarketPanelOption = {
   key: MarketPanelKey;
   label: string;
   title: string;
-  fetchUrl: string;
+  fetchUrl?: string;
 };
 
 export const MARKET_PANEL_OPTIONS: MarketPanelOption[] = [
@@ -25,6 +25,11 @@ export const MARKET_PANEL_OPTIONS: MarketPanelOption[] = [
     label: 'CEDEARs',
     title: 'CEDEARs',
     fetchUrl: '/api/panel?type=cedears',
+  },
+  {
+    key: 'favorites',
+    label: 'Favoritos',
+    title: 'Favoritos',
   },
 ];
 
