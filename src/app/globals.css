@@ -972,7 +972,7 @@ dialog.stock-details-dialog .stock-history-range-button:focus-visible {
 
 dialog.stock-details-dialog .stock-history-state,
 dialog.stock-details-dialog .stock-history-chart {
-  min-height: 19.25rem;
+  min-height: 18.75rem;
   border: 1px solid rgb(226 232 240 / 95%);
   border-radius: 0.75rem;
   background-color: rgb(255 255 255 / 92%);
@@ -1016,7 +1016,7 @@ dialog.stock-details-dialog .stock-history-chart {
   min-width: 0;
   flex-direction: column;
   justify-content: space-between;
-  padding: 0.625rem 0.875rem 0.875rem;
+  padding: 0.625rem 0.75rem 0.875rem;
   overflow: hidden;
 }
 
@@ -1038,6 +1038,14 @@ dialog.stock-details-dialog .stock-history-chart-empty-state {
 dialog.stock-details-dialog .stock-history-chart-plot {
   position: relative;
   min-height: 260px;
+}
+
+dialog.stock-details-dialog .stock-history-lightweight-chart {
+  min-width: 0;
+  height: 236px;
+  border-radius: 0.625rem;
+  background-color: #ffffff;
+  overflow: hidden;
 }
 
 dialog.stock-details-dialog .stock-history-chart-footer {
