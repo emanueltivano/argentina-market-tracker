@@ -15,7 +15,10 @@ import {
   serializeStockSort,
   STOCK_SORT_STORAGE_KEY,
 } from './stockSortPersistence'
-import { FAVORITE_STOCKS_STORAGE_KEY } from '../hooks/useFavoriteStocks'
+import {
+  FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
+  FAVORITE_STOCKS_STORAGE_KEY,
+} from '../hooks/useFavoriteStocks'
 
 const replace = vi.fn()
 let currentSearchParams = new URLSearchParams()
@@ -800,6 +803,202 @@ describe('Panel', () => {
     expect(
       fetchMock.mock.calls.some(([url]) => url === '/api/panel?type=favorites')
     ).toBe(false)
+  })
+
+  it.each([
+    {
+      panel: 'general',
+      fetchUrl: '/api/panel?type=general',
+      ticker: 'BMA',
+      description: 'Banco Macro',
+    },
+    {
+      panel: 'cedears',
+      fetchUrl: '/api/panel?type=cedears',
+      ticker: 'AAPL',
+      description: 'Apple',
+    },
+  ])(
+    'shows a stock favorited from the $panel panel in Favorites without reloading',
+    async ({ panel, fetchUrl, ticker, description }) => {
+      currentSearchParams = new URLSearchParams(`panel=${panel}`)
+      const fetchMock = vi.fn<typeof fetch>(async (url) => {
+        const data =
+          url === fetchUrl
+            ? [{ simbolo: ticker, descripcion: description }]
+            : [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }]
+
+        return Response.json(panelResponse(data))
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const view = renderPanel()
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: `Agregar ${ticker} a favoritos`,
+        })
+      )
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Mostrar panel Favoritos' })
+      )
+
+      currentSearchParams = new URLSearchParams('panel=favorites')
+      view.rerender(
+        <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+          <Panel />
+        </SWRConfig>
+      )
+
+      await screen.findByRole('button', {
+        name: `Quitar ${ticker} de favoritos`,
+      })
+
+      expect(renderedTickers()).toEqual([ticker])
+      expect(fetchMock).toHaveBeenCalledWith(fetchUrl, {
+        cache: 'no-store',
+        headers: { accept: 'application/json' },
+      })
+      expect(
+        fetchMock.mock.calls.some(([url]) => url === '/api/panel?type=favorites')
+      ).toBe(false)
+    }
+  )
+
+  it('keeps favorites from different panels in the Favorites listing', async () => {
+    currentSearchParams = new URLSearchParams('panel=general')
+    const fetchMock = vi.fn<typeof fetch>(async (url) => {
+      const data =
+        url === '/api/panel?type=cedears'
+          ? [{ simbolo: 'AAPL', descripcion: 'Apple' }]
+          : url === '/api/panel?type=general'
+            ? [{ simbolo: 'BMA', descripcion: 'Banco Macro' }]
+            : [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }]
+
+      return Response.json(panelResponse(data))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const view = renderPanel()
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Agregar BMA a favoritos',
+      })
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Mostrar panel CEDEARs' })
+    )
+
+    currentSearchParams = new URLSearchParams('panel=cedears')
+    view.rerender(
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <Panel />
+      </SWRConfig>
+    )
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Agregar AAPL a favoritos',
+      })
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Mostrar panel Favoritos' })
+    )
+
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    view.rerender(
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <Panel />
+      </SWRConfig>
+    )
+
+    await screen.findByRole('button', { name: 'Quitar AAPL de favoritos' })
+
+    expect(renderedTickers()).toEqual(['AAPL', 'BMA'])
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Quitar AAPL de favoritos' })
+    )
+
+    expect(renderedTickers()).toEqual(['BMA'])
+  })
+
+  it('hydrates favorites from General and CEDEARs after a page reload', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    window.localStorage.setItem(
+      FAVORITE_STOCKS_STORAGE_KEY,
+      JSON.stringify(['GGAL', 'BMA', 'AAPL'])
+    )
+    window.localStorage.setItem(
+      FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
+      JSON.stringify({
+        BMA: {
+          ticker: 'BMA',
+          description: 'Banco Macro',
+          price: 120,
+          var: 1.5,
+          varType: 'positive',
+          buyQty: null,
+          buyPrice: null,
+          sellPrice: null,
+          sellQty: null,
+          open: 100,
+          min: 95,
+          max: 125,
+          close: 118,
+          volume: 1000,
+        },
+        AAPL: {
+          ticker: 'AAPL',
+          description: 'Apple',
+          price: 250,
+          var: -0.5,
+          varType: 'negative',
+          buyQty: null,
+          buyPrice: null,
+          sellPrice: null,
+          sellQty: null,
+          open: 255,
+          min: 248,
+          max: 260,
+          close: 252,
+          volume: 2000,
+        },
+      })
+    )
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+    )
+
+    renderPanel()
+
+    await screen.findByRole('button', { name: 'Quitar AAPL de favoritos' })
+
+    expect(renderedTickers()).toEqual(['AAPL', 'BMA', 'GGAL'])
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Quitar BMA de favoritos' })
+    )
+
+    expect(renderedTickers()).toEqual(['AAPL', 'GGAL'])
+    await waitFor(() => {
+      expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
+        '["AAPL","GGAL"]'
+      )
+    })
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY) ?? '{}'
+      )
+    ).not.toHaveProperty('BMA')
   })
 
   it('shows an empty state in the favorites panel when there are no favorites', async () => {

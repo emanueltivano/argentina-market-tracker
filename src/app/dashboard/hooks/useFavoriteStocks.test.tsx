@@ -3,22 +3,59 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
   FAVORITE_STOCKS_STORAGE_KEY,
   useFavoriteStocks,
 } from './useFavoriteStocks'
 
 function FavoriteStocksHarness() {
-  const { favorites, isFavorite, toggleFavorite } = useFavoriteStocks()
+  const {
+    addFavoriteSnapshot,
+    favoriteSnapshotsByTicker,
+    favorites,
+    isFavorite,
+    removeFavoriteSnapshot,
+    toggleFavorite,
+  } = useFavoriteStocks()
 
   return (
     <div>
       <p data-testid="favorites">{favorites.join(',')}</p>
+      <p data-testid="snapshots">
+        {Object.keys(favoriteSnapshotsByTicker).join(',')}
+      </p>
       <p data-testid="ggal-favorite">{String(isFavorite('ggal'))}</p>
       <button type="button" onClick={() => toggleFavorite('ggal')}>
         Toggle GGAL
       </button>
       <button type="button" onClick={() => toggleFavorite(' alua ')}>
         Toggle ALUA
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          addFavoriteSnapshot({
+            ticker: ' bma ',
+            description: 'Banco Macro',
+            price: 120,
+            var: 1.5,
+            varType: 'positive',
+            buyQty: null,
+            buyPrice: null,
+            sellPrice: null,
+            sellQty: null,
+            open: 100,
+            min: 95,
+            max: 125,
+            close: 118,
+            volume: 1000,
+          })
+        }
+      >
+        Add BMA snapshot
+      </button>
+      <button type="button" onClick={() => removeFavoriteSnapshot('bma')}>
+        Remove BMA snapshot
       </button>
     </div>
   )
@@ -70,6 +107,49 @@ describe('useFavoriteStocks', () => {
     })
     expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
       '["ALUA","GGAL","YPFD"]'
+    )
+  })
+
+  it('persists and hydrates normalized favorite snapshots', async () => {
+    render(<FavoriteStocksHarness />)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Add BMA snapshot' })
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('snapshots').textContent).toBe('BMA')
+    })
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY) ?? '{}'
+      )
+    ).toMatchObject({
+      BMA: {
+        ticker: 'BMA',
+        description: 'Banco Macro',
+        price: 120,
+        volume: 1000,
+      },
+    })
+
+    cleanup()
+
+    render(<FavoriteStocksHarness />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('snapshots').textContent).toBe('BMA')
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Remove BMA snapshot' })
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('snapshots').textContent).toBe('')
+    })
+    expect(window.localStorage.getItem(FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY)).toBe(
+      '{}'
     )
   })
 })

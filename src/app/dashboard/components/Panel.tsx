@@ -24,7 +24,7 @@ import {
   StockTableStaleErrorState,
 } from './StockTable';
 import { useMarketPanel } from '../hooks/useMarketPanel';
-import { useFavoriteStocks } from '../hooks/useFavoriteStocks';
+import { normalizeTicker, useFavoriteStocks } from '../hooks/useFavoriteStocks';
 import { useStockSortState } from '../hooks/useStockSortState';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
 
@@ -33,21 +33,33 @@ type PanelProps = {
 };
 
 export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { sort, handleSortChange } = useStockSortState();
-  const { isFavorite, toggleFavorite } = useFavoriteStocks();
+  const {
+    addFavoriteSnapshot,
+    favorites,
+    favoriteSnapshotsByTicker,
+    isFavorite,
+    removeFavoriteSnapshot,
+    toggleFavorite,
+  } = useFavoriteStocks();
 
   const panelParam = searchParams.get('panel');
 
   const activePanelKey = isMarketPanelKey(panelParam)
     ? panelParam
     : defaultPanel;
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [favoritesSourcePanelKey, setFavoritesSourcePanelKey] =
+    useState<MarketDataPanelKey>(
+      activePanelKey === 'favorites' ? defaultPanel : activePanelKey,
+    );
   const isFavoritesPanel = activePanelKey === 'favorites';
-  const dataPanelKey = isFavoritesPanel ? defaultPanel : activePanelKey;
+  const dataPanelKey = isFavoritesPanel
+    ? favoritesSourcePanelKey
+    : activePanelKey;
   const activePanel = getMarketPanelOption(activePanelKey);
 
   const {
@@ -62,15 +74,34 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
 
   const errorMessage = error?.message ?? 'Error desconocido';
   const filteredRows = useMemo(
-    () =>
-      isFavoritesPanel
-        ? rows.filter((row) => isFavorite(row.ticker))
-        : rows,
-    [isFavorite, isFavoritesPanel, rows],
+    () => {
+      if (!isFavoritesPanel) {
+        return rows;
+      }
+
+      const rowsByTicker = new Map<string, StockData>();
+
+      for (const row of rows) {
+        rowsByTicker.set(normalizeTicker(row.ticker), row);
+      }
+
+      for (const [ticker, row] of Object.entries(favoriteSnapshotsByTicker)) {
+        rowsByTicker.set(ticker, row);
+      }
+
+      return favorites
+        .map((ticker) => rowsByTicker.get(ticker))
+        .filter((row): row is StockData => row !== undefined);
+    },
+    [favoriteSnapshotsByTicker, favorites, isFavoritesPanel, rows],
   );
   const selectedStock = useMemo(
-    () => rows.find((row) => row.ticker === selectedTicker) ?? null,
-    [rows, selectedTicker],
+    () =>
+      rows.find((row) => row.ticker === selectedTicker) ??
+      (isFavoritesPanel && selectedTicker
+        ? favoriteSnapshotsByTicker[normalizeTicker(selectedTicker)] ?? null
+        : null),
+    [favoriteSnapshotsByTicker, isFavoritesPanel, rows, selectedTicker],
   );
   const sortedRows = useMemo(
     () => sortStocks(filteredRows, sort),
@@ -88,10 +119,30 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     setSelectedTicker(null);
   }, []);
 
+  const createToggleFavoriteHandler = useCallback(
+    (stock: StockData) => (ticker: string) => {
+      const normalizedTicker = normalizeTicker(ticker);
+
+      if (!isFavorite(ticker) && normalizedTicker) {
+        addFavoriteSnapshot(stock);
+      } else {
+        removeFavoriteSnapshot(ticker);
+      }
+
+      toggleFavorite(ticker);
+    },
+    [addFavoriteSnapshot, isFavorite, removeFavoriteSnapshot, toggleFavorite],
+  );
+
   function handlePanelChange(key: MarketPanelKey) {
     const nextParams = new URLSearchParams(searchParams.toString());
 
     setSelectedTicker(null);
+    if (key !== 'favorites') {
+      setFavoritesSourcePanelKey(key);
+    } else if (activePanelKey !== 'favorites') {
+      setFavoritesSourcePanelKey(activePanelKey);
+    }
     nextParams.set('panel', key);
     setStockSortSearchParams(nextParams, sort);
 
@@ -169,7 +220,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
                   {...row}
                   isFavorite={isFavorite(row.ticker)}
                   onSelect={handleStockSelect}
-                  onToggleFavorite={toggleFavorite}
+                  onToggleFavorite={createToggleFavoriteHandler(row)}
                 />
               ))
             )}
@@ -180,7 +231,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
               stock={selectedStock}
               panelKey={activePanelKey}
               isFavorite={isFavorite(selectedStock.ticker)}
-              onToggleFavorite={toggleFavorite}
+              onToggleFavorite={createToggleFavoriteHandler(selectedStock)}
               onClose={handleCloseStockDetails}
             />
           )}

@@ -14,6 +14,7 @@ import {
   type StockHistoryRange,
 } from '@/lib/stockHistory';
 import { useStockHistory } from '../hooks/useStockHistory';
+import { getMarketPanelOption } from '../lib/marketPanelOptions';
 
 type StockDetailsModalProps = {
   stock: StockData;
@@ -70,6 +71,7 @@ export default function StockDetailsModal({
   onClose,
   isFavorite = false,
   onToggleFavorite,
+  panelKey,
 }: StockDetailsModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -117,6 +119,7 @@ export default function StockDetailsModal({
     stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
   const historyVariation = getHistoryPeriodVariation(historyPoints);
   const historyVariationClass = getHistoryVariationClass(historyVariation);
+  const panelLabel = panelKey ? getMarketPanelOption(panelKey).label : null;
 
   const primaryDetailRows: StockDetailRow[] = [
     { label: 'Último precio', value: formatMoney(stock.price) },
@@ -125,8 +128,21 @@ export default function StockDetailsModal({
       value: formatSignedPercent(stock.var),
       valueClassName: `stock-var ${varClass} ${strengthClass}`.trim(),
     },
-    { label: 'Apertura', value: formatMoney(stock.open) },
-    { label: 'Último cierre', value: formatMoney(stock.close) },
+    {
+      label: 'Apertura',
+      value: formatMoney(stock.open),
+      className: 'stock-details-market-cell',
+    },
+    {
+      label: 'Último cierre',
+      value: formatMoney(stock.close),
+      className: 'stock-details-market-cell',
+    },
+    {
+      label: 'Volumen',
+      value: formatInteger(stock.volume),
+      className: 'stock-details-market-cell',
+    },
   ];
 
   const secondaryDetailRows: StockDetailRow[] = [
@@ -152,7 +168,6 @@ export default function StockDetailsModal({
     },
     { label: 'Mínimo', value: formatMoney(stock.min) },
     { label: 'Máximo', value: formatMoney(stock.max) },
-    { label: 'Volumen', value: formatInteger(stock.volume) },
   ];
 
   return (
@@ -180,9 +195,16 @@ export default function StockDetailsModal({
             />
 
             <div>
-              <h2 id={titleId} className="stock-details-title">
-                {stock.ticker}
-              </h2>
+              <div className="stock-details-title-row">
+                <h2 id={titleId} className="stock-details-title">
+                  {stock.ticker}
+                </h2>
+                {panelLabel && (
+                  <span className="stock-details-panel-label">
+                    {panelLabel}
+                  </span>
+                )}
+              </div>
               <p className="stock-details-description">{stock.description}</p>
             </div>
           </div>
