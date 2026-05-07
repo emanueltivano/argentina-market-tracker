@@ -6,6 +6,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StockDetailsModal from './StockDetailsModal'
 import { type StockData } from './Stock'
 
+vi.mock('../hooks/useStockHistory', () => ({
+  useStockHistory: () => ({
+    points: [],
+    error: undefined,
+    isLoading: false,
+    isRefreshing: false,
+    viewStatus: 'empty',
+  }),
+}))
+
 const stock: StockData = {
   ticker: 'GGAL',
   description: 'Grupo Financiero Galicia',
@@ -92,5 +102,15 @@ describe('StockDetailsModal', () => {
     fireEvent.click(screen.getByRole('dialog'))
 
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('renders the history empty state in the stock detail', async () => {
+    render(<ModalHarness />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir' }))
+
+    expect(
+      screen.getByText('No hay datos históricos para este rango.')
+    ).not.toBeNull()
   })
 })

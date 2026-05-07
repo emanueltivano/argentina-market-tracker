@@ -6,6 +6,7 @@ import {
   formatNumber,
   formatSignedPercent,
 } from '@/lib/formatters';
+import StockFavoriteButton from './StockFavoriteButton';
 
 export interface StockData {
   ticker: string;
@@ -73,25 +74,11 @@ function Stock(props: StockProps) {
       onClick={handleSelect}
     >
       <td className="stock-cell stock-cell-center stock-favorite-cell">
-        <button
-          type="button"
-          className={`stock-favorite-button ${
-            isFavorite ? 'stock-favorite-button-active' : ''
-          }`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleFavorite?.(stock.ticker);
-          }}
-          aria-label={
-            isFavorite
-              ? `Quitar ${stock.ticker} de favoritos`
-              : `Agregar ${stock.ticker} a favoritos`
-          }
-          aria-pressed={isFavorite}
-          title={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-        >
-          {isFavorite ? '★' : '☆'}
-        </button>
+        <StockFavoriteButton
+          ticker={stock.ticker}
+          isFavorite={isFavorite}
+          onToggleFavorite={onToggleFavorite}
+        />
       </td>
 
       <th

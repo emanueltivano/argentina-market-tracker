@@ -69,8 +69,8 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     [isFavorite, isFavoritesPanel, rows],
   );
   const selectedStock = useMemo(
-    () => filteredRows.find((row) => row.ticker === selectedTicker) ?? null,
-    [filteredRows, selectedTicker],
+    () => rows.find((row) => row.ticker === selectedTicker) ?? null,
+    [rows, selectedTicker],
   );
   const sortedRows = useMemo(
     () => sortStocks(filteredRows, sort),
@@ -178,6 +178,9 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
           {selectedStock && (
             <StockDetailsModal
               stock={selectedStock}
+              panelKey={activePanelKey}
+              isFavorite={isFavorite(selectedStock.ticker)}
+              onToggleFavorite={toggleFavorite}
               onClose={handleCloseStockDetails}
             />
           )}

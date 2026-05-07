@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 import { SWRConfig } from 'swr'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Panel from './Panel'
@@ -17,6 +24,16 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ replace }),
   useSearchParams: () => currentSearchParams,
+}))
+
+vi.mock('../hooks/useStockHistory', () => ({
+  useStockHistory: () => ({
+    points: [],
+    error: undefined,
+    isLoading: false,
+    isRefreshing: false,
+    viewStatus: 'empty',
+  }),
 }))
 
 function panelResponse(data: unknown[]) {
@@ -684,6 +701,53 @@ describe('Panel', () => {
     await waitFor(() => {
       expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
         '["GGAL"]'
+      )
+    })
+  })
+
+  it('toggles a favorite from the stock details modal without closing it', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    window.localStorage.setItem(FAVORITE_STOCKS_STORAGE_KEY, '["GGAL"]')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+    )
+
+    renderPanel()
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'GGAL' })
+
+    await userEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'Quitar GGAL de favoritos',
+      })
+    )
+
+    expect(screen.getByRole('dialog', { name: 'GGAL' })).not.toBeNull()
+    expect(
+      within(screen.getByRole('dialog', { name: 'GGAL' })).getByRole('button', {
+        name: 'Agregar GGAL a favoritos',
+      })
+    ).not.toBeNull()
+    expect(
+      await screen.findByText('Todavía no agregaste favoritos.')
+    ).not.toBeNull()
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
+        '[]'
       )
     })
   })

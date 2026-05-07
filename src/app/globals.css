@@ -605,9 +605,9 @@ dialog.stock-details-dialog .stock-details-modal {
 
 dialog.stock-details-dialog .stock-details-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.875rem;
+  gap: 1rem;
   padding: 1rem 1rem 0.875rem;
   border-bottom: 1px solid rgb(219 234 254 / 95%);
   background:
@@ -632,8 +632,29 @@ dialog.stock-details-dialog .stock-details-description {
   line-height: 1.35;
 }
 
+dialog.stock-details-dialog .stock-details-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+dialog.stock-details-dialog .stock-details-heading .stock-favorite-button {
+  flex: 0 0 auto;
+}
+
+dialog.stock-details-dialog .stock-details-favorite-button {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1.5rem;
+}
+
 dialog.stock-details-dialog .stock-details-close {
   flex: 0 0 auto;
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
   padding: 0.45rem 0.8rem;
   border-color: rgb(28 54 190 / 32%);
   background-color: rgb(255 255 255 / 96%);
@@ -656,6 +677,7 @@ dialog.stock-details-dialog .stock-details-close:focus {
 
 dialog.stock-details-dialog .stock-details-grid {
   display: grid;
+  grid-auto-rows: minmax(4.7rem, auto);
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.625rem;
   margin: 0;
@@ -665,7 +687,10 @@ dialog.stock-details-dialog .stock-details-grid {
 
 dialog.stock-details-dialog .stock-details-grid > div {
   grid-column: span 2;
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
   padding: 0.7rem 0.8rem;
   border: 1px solid rgb(219 234 254 / 85%);
   border-radius: 0.625rem;
@@ -678,12 +703,18 @@ dialog.stock-details-dialog .stock-details-grid > .stock-details-quote-cell {
 }
 
 dialog.stock-details-dialog .stock-details-grid > div > dt {
+  min-height: 1.05rem;
   color: var(--muted-text);
   font-size: 0.7rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  text-wrap: balance;
+}
+
+dialog.stock-details-dialog .stock-details-grid > .stock-details-quote-cell > dt {
+  min-height: 1.65rem;
 }
 
 dialog.stock-details-dialog .stock-details-grid > div > dd {
@@ -709,6 +740,416 @@ dialog.stock-details-dialog
   > div
   > dd.stock-var-negative {
   color: white;
+}
+
+dialog.stock-details-dialog .stock-history-section {
+  margin: 1rem 1rem 0.875rem;
+  padding: 1rem;
+  border: 1px solid rgb(219 234 254 / 85%);
+  border-radius: 0.75rem;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 96%), rgb(248 250 252 / 98%)),
+    var(--surface);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 4%),
+    0 12px 32px rgb(4 43 93 / 6%);
+}
+
+dialog.stock-details-dialog .stock-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+dialog.stock-details-dialog .stock-history-heading {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+dialog.stock-details-dialog .stock-history-title {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+dialog.stock-details-dialog .stock-history-subtitle {
+  margin: 0.2rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+dialog.stock-details-dialog .stock-history-performance {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+dialog.stock-details-dialog .stock-history-performance-positive {
+  color: var(--positive-color);
+}
+
+dialog.stock-details-dialog .stock-history-performance-negative {
+  color: var(--negative-color);
+}
+
+dialog.stock-details-dialog .stock-history-performance-neutral {
+  color: var(--muted-text);
+}
+
+dialog.stock-details-dialog .stock-history-range-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border: 1px solid rgb(203 213 225 / 85%);
+  border-radius: 0.625rem;
+  background-color: #f1f5f9;
+  box-shadow: 0 1px 1px rgb(15 23 42 / 3%) inset;
+}
+
+dialog.stock-details-dialog .stock-history-range-button {
+  min-width: 2.3rem;
+  padding: 0.4rem 0.55rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background-color: transparent;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+dialog.stock-details-dialog .stock-history-range-button:hover {
+  background-color: rgb(255 255 255 / 68%);
+  color: var(--text-color);
+}
+
+dialog.stock-details-dialog .stock-history-range-button-active {
+  background-color: var(--surface);
+  color: var(--main-color);
+  font-weight: 900;
+  box-shadow:
+    0 1px 3px rgb(15 23 42 / 13%),
+    0 0 0 1px rgb(28 54 190 / 18%);
+}
+
+dialog.stock-details-dialog .stock-history-range-button:focus-visible {
+  outline: 2px solid var(--main-light-color);
+  outline-offset: 2px;
+}
+
+dialog.stock-details-dialog .stock-history-state,
+dialog.stock-details-dialog .stock-history-chart {
+  min-height: 19.25rem;
+  border: 1px solid rgb(226 232 240 / 95%);
+  border-radius: 0.75rem;
+  background-color: rgb(255 255 255 / 92%);
+}
+
+dialog.stock-details-dialog .stock-history-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  color: var(--muted-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+dialog.stock-details-dialog .stock-history-state strong {
+  color: var(--text-color);
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+dialog.stock-details-dialog .stock-history-state span {
+  max-width: 20rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+dialog.stock-details-dialog .stock-history-state-error {
+  color: var(--negative-color);
+}
+
+dialog.stock-details-dialog .stock-history-chart-wrap-refreshing {
+  opacity: 0.72;
+}
+
+dialog.stock-details-dialog .stock-history-chart {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem 0.875rem;
+  overflow: hidden;
+}
+
+dialog.stock-details-dialog .stock-history-chart-empty {
+  justify-content: center;
+}
+
+dialog.stock-details-dialog .stock-history-chart-empty-state {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-text);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+dialog.stock-details-dialog .stock-history-chart-plot {
+  position: relative;
+  min-height: 260px;
+}
+
+dialog.stock-details-dialog .stock-history-chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-top: 0.25rem;
+  padding: 0.625rem 0.25rem 0;
+  border-top: 1px solid rgb(226 232 240 / 80%);
+  color: var(--muted-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+dialog.stock-details-dialog .stock-history-chart-footer-item {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+dialog.stock-details-dialog .stock-history-chart-footer-item-end {
+  align-items: flex-end;
+}
+
+dialog.stock-details-dialog .stock-history-chart-footer strong {
+  color: var(--text-color);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+dialog.stock-details-dialog .stock-history-chart-svg {
+  display: block;
+  width: 100%;
+  height: 260px;
+  margin: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+dialog.stock-details-dialog .stock-history-chart-grid {
+  stroke: rgb(226 232 240 / 88%);
+  stroke-width: 1;
+  stroke-dasharray: 3 7;
+}
+
+dialog.stock-details-dialog .stock-history-chart-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+
+dialog.stock-details-dialog .stock-history-chart-point {
+  stroke: white;
+  stroke-width: 1.8;
+}
+
+dialog.stock-details-dialog .stock-history-chart-crosshair {
+  stroke: rgb(100 116 139 / 24%);
+  stroke-dasharray: 2 6;
+  stroke-width: 0.8;
+  pointer-events: none;
+}
+
+dialog.stock-details-dialog .stock-history-chart-hover-point {
+  stroke: white;
+  stroke-width: 2.25;
+  filter:
+    drop-shadow(0 0 0.35rem rgb(255 255 255 / 90%))
+    drop-shadow(0 2px 5px rgb(15 23 42 / 14%));
+  pointer-events: none;
+  transition:
+    r 0.12s ease,
+    filter 0.12s ease;
+}
+
+dialog.stock-details-dialog .stock-history-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  min-width: 6.7rem;
+  max-width: min(11rem, calc(100% - 1rem));
+  flex-direction: column;
+  gap: 0.16rem;
+  padding: 0.44rem 0.56rem;
+  border: 1px solid rgb(226 232 240 / 92%);
+  border-radius: 0.55rem;
+  background-color: rgb(255 255 255 / 98%);
+  box-shadow:
+    0 12px 28px rgb(15 23 42 / 12%),
+    0 2px 6px rgb(15 23 42 / 8%);
+  color: var(--text-color);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 0.42rem));
+  transition:
+    left 0.12s ease,
+    top 0.12s ease,
+    transform 0.12s ease;
+}
+
+dialog.stock-details-dialog .stock-history-chart-tooltip-start {
+  transform: translate(0.32rem, calc(-100% - 0.42rem));
+}
+
+dialog.stock-details-dialog .stock-history-chart-tooltip-end {
+  transform: translate(calc(-100% - 0.32rem), calc(-100% - 0.42rem));
+}
+
+dialog.stock-details-dialog .stock-history-chart-tooltip-bottom {
+  transform: translate(-50%, 0.42rem);
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-tooltip-bottom.stock-history-chart-tooltip-start {
+  transform: translate(0.32rem, 0.42rem);
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-tooltip-bottom.stock-history-chart-tooltip-end {
+  transform: translate(calc(-100% - 0.32rem), 0.42rem);
+}
+
+dialog.stock-details-dialog .stock-history-chart-tooltip-date {
+  color: var(--muted-text);
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+dialog.stock-details-dialog .stock-history-chart-tooltip-price {
+  color: var(--text-color);
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+dialog.stock-details-dialog .stock-history-chart-tooltip-var {
+  color: var(--muted-text);
+  font-size: 0.66rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-positive
+  .stock-history-chart-line,
+dialog.stock-details-dialog
+  .stock-history-chart-positive
+  .stock-history-chart-point {
+  fill: var(--positive-color);
+  stroke: var(--positive-color);
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-negative
+  .stock-history-chart-line,
+dialog.stock-details-dialog
+  .stock-history-chart-negative
+  .stock-history-chart-point {
+  fill: var(--negative-color);
+  stroke: var(--negative-color);
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-neutral
+  .stock-history-chart-line,
+dialog.stock-details-dialog
+  .stock-history-chart-neutral
+  .stock-history-chart-point {
+  fill: var(--main-color);
+  stroke: var(--main-color);
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-positive
+  .stock-history-chart-hover-point {
+  fill: var(--positive-color);
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-negative
+  .stock-history-chart-hover-point {
+  fill: var(--negative-color);
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-neutral
+  .stock-history-chart-hover-point {
+  fill: var(--main-color);
+}
+
+dialog.stock-details-dialog .stock-history-chart-point {
+  stroke: white;
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-positive
+  .stock-history-chart-gradient-start {
+  stop-color: var(--positive-color);
+  stop-opacity: 0.065;
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-negative
+  .stock-history-chart-gradient-start {
+  stop-color: var(--negative-color);
+  stop-opacity: 0.06;
+}
+
+dialog.stock-details-dialog
+  .stock-history-chart-neutral
+  .stock-history-chart-gradient-start {
+  stop-color: var(--main-color);
+  stop-opacity: 0.05;
+}
+
+dialog.stock-details-dialog .stock-history-chart-gradient-end {
+  stop-color: white;
+  stop-opacity: 0;
 }
 
 /* =========================
@@ -755,6 +1196,41 @@ dialog.stock-details-dialog
   dialog.stock-details-dialog .stock-details-grid {
     grid-template-columns: 1fr;
     padding: 0.875rem;
+  }
+
+  dialog.stock-details-dialog .stock-history-section {
+    margin: 0 0.875rem 0.875rem;
+    padding: 0.875rem;
+  }
+
+  dialog.stock-details-dialog .stock-history-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  dialog.stock-details-dialog .stock-history-heading {
+    width: 100%;
+    align-items: center;
+  }
+
+  dialog.stock-details-dialog .stock-history-range-group {
+    justify-content: flex-start;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  dialog.stock-details-dialog .stock-history-chart {
+    min-height: 18rem;
+    padding: 0.5rem 0.75rem 0.7rem;
+  }
+
+  dialog.stock-details-dialog .stock-history-chart-plot {
+    min-height: 238px;
+  }
+
+  dialog.stock-details-dialog .stock-history-chart-svg {
+    height: 238px;
   }
 
   dialog.stock-details-dialog .stock-details-grid > div,
