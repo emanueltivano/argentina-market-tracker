@@ -19,10 +19,10 @@ describe('PanelMenu', () => {
     )
 
     const favoritesButton = screen.getByRole('button', {
-      name: 'Favoritos',
+      name: 'Mostrar panel Favoritos',
     })
     const liderButton = screen.getByRole('button', {
-      name: 'Panel Líder',
+      name: 'Mostrar panel Panel Líder',
     })
 
     expect(within(favoritesButton).getByText('☆').getAttribute('aria-hidden')).toBe(

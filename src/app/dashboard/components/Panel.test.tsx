@@ -648,7 +648,7 @@ describe('Panel', () => {
     renderPanel()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Panel General' })
+      await screen.findByRole('button', { name: 'Mostrar panel Panel General' })
     )
 
     expect(replace).toHaveBeenCalledWith('/?panel=general&sort=ticker&dir=asc', {
@@ -707,7 +707,7 @@ describe('Panel', () => {
       })
     )
     await userEvent.click(
-      screen.getByRole('button', { name: 'Favoritos' })
+      screen.getByRole('button', { name: 'Mostrar panel Favoritos' })
     )
 
     expect(replace).toHaveBeenLastCalledWith(
