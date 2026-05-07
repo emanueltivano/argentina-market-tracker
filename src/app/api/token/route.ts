@@ -1,25 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { canUseLocalDebug } from '@/lib/server/debug'
 import { getCachedToken } from '@/lib/server/tokenCache'
-import { ENV } from '@/lib/server/env'
 import {
   IolTokenFormatError,
   IolTokenUpstreamError,
   refreshTokenForDebug,
 } from '@/lib/server/iol'
-
-function isEnabled() {
-  return ENV.NODE_ENV !== 'production' && process.env.ENABLE_TOKEN_DEBUG === '1'
-}
-
-function isLocalDebugRequest(req: NextRequest): boolean {
-  const host = req.nextUrl.hostname
-
-  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
-}
-
-function canUseDebugRoute(req: NextRequest): boolean {
-  return isEnabled() && isLocalDebugRequest(req)
-}
 
 function notFound() {
   return NextResponse.json(
@@ -42,7 +28,7 @@ function isSafeTokenType(value: unknown): value is string {
 
 // Debug local only: never expose full OAuth tokens from this route.
 export async function GET(req: NextRequest) {
-  if (!canUseDebugRoute(req)) {
+  if (!canUseLocalDebug(req)) {
     return notFound()
   }
 
@@ -62,7 +48,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!canUseDebugRoute(req)) {
+  if (!canUseLocalDebug(req)) {
     return notFound()
   }
 

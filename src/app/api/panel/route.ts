@@ -8,6 +8,7 @@ import {
   type PanelTitulo,
 } from '@/lib/panel'
 import { ENV } from '@/lib/server/env'
+import { canUseLocalDebug } from '@/lib/server/debug'
 import { iolFetch } from '@/lib/server/iol'
 
 export const dynamic = 'force-dynamic'
@@ -59,20 +60,9 @@ function getPanelType(
   return isMarketPanelKey(type) ? { ok: true, type } : { ok: false }
 }
 
-function isDebugEnabled() {
-  return ENV.NODE_ENV !== 'production' && process.env.ENABLE_TOKEN_DEBUG === '1'
-}
-
-function isLocalDebugRequest(req: NextRequest): boolean {
-  const host = req.nextUrl.hostname
-
-  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
-}
-
 function shouldReturnRawData(req: NextRequest): boolean {
   return (
-    isDebugEnabled() &&
-    isLocalDebugRequest(req) &&
+    canUseLocalDebug(req) &&
     req.nextUrl.searchParams.get('raw') === '1'
   )
 }
