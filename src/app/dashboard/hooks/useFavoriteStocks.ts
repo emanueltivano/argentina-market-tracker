@@ -39,18 +39,10 @@ export function useFavoriteStocks() {
   const [didLoad, setDidLoad] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-
-    window.queueMicrotask(() => {
-      if (!isMounted) return;
-
-      setFavorites(readStoredFavorites());
-      setDidLoad(true);
-    });
-
-    return () => {
-      isMounted = false;
-    };
+    // localStorage is only available after client mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFavorites(readStoredFavorites());
+    setDidLoad(true);
   }, []);
 
   useEffect(() => {
