@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { type StockHistoryPoint } from '@/lib/stockHistory'
 import LightweightStockChart from './LightweightStockChart'
 
 const chartMocks = vi.hoisted(() => {
@@ -38,6 +39,10 @@ vi.mock('lightweight-charts', () => ({
 class ResizeObserverMock {
   observe = vi.fn()
   disconnect = vi.fn()
+}
+
+function timestamp(date: string) {
+  return Math.floor(Date.parse(date) / 1000)
 }
 
 describe('LightweightStockChart', () => {
@@ -85,8 +90,103 @@ describe('LightweightStockChart', () => {
       expect.objectContaining({ lineColor: '#008f5a' })
     )
     expect(chartMocks.setData).toHaveBeenCalledWith([
-      { time: '2026-05-06', value: 101 },
-      { time: '2026-05-07', value: 103 },
+      { time: timestamp('2026-05-06'), value: 101 },
+      { time: timestamp('2026-05-07'), value: 103 },
+    ])
+  })
+
+  it('sorts unordered historical data before passing it to the chart', () => {
+    render(
+      <LightweightStockChart
+        symbol="GGAL"
+        points={[
+          { date: '2026-05-08', close: 104 },
+          { date: '2026-05-06', close: 101 },
+          { date: '2026-05-07', close: 103 },
+        ]}
+      />
+    )
+
+    expect(chartMocks.setData).toHaveBeenCalledWith([
+      { time: timestamp('2026-05-06'), value: 101 },
+      { time: timestamp('2026-05-07'), value: 103 },
+      { time: timestamp('2026-05-08'), value: 104 },
+    ])
+  })
+
+  it('deduplicates repeated dates and keeps the last valid value', () => {
+    render(
+      <LightweightStockChart
+        symbol="AAPL"
+        points={[
+          { date: '2026-05-06', close: 101 },
+          { date: '2026-05-07', close: 103 },
+          { date: '2026-05-06', close: 102 },
+        ]}
+      />
+    )
+
+    expect(chartMocks.setData).toHaveBeenCalledWith([
+      { time: timestamp('2026-05-06'), value: 102 },
+      { time: timestamp('2026-05-07'), value: 103 },
+    ])
+  })
+
+  it('filters invalid dates and prices before rendering', () => {
+    render(
+      <LightweightStockChart
+        symbol="MSFT"
+        points={
+          [
+            { date: '', close: 101 },
+            { date: 'invalid-date', close: 102 },
+            { date: '2026-05-06', close: Number.NaN },
+            { date: '2026-05-07', close: 103 },
+          ] as StockHistoryPoint[]
+        }
+      />
+    )
+
+    expect(chartMocks.setData).toHaveBeenCalledWith([
+      { time: timestamp('2026-05-07'), value: 103 },
+    ])
+  })
+
+  it('renders the fallback when normalization removes every point', () => {
+    render(
+      <LightweightStockChart
+        symbol="KO"
+        points={
+          [
+            { date: '', close: Number.NaN },
+            { date: 'not-a-date', close: 120 },
+          ] as StockHistoryPoint[]
+        }
+      />
+    )
+
+    expect(screen.getByText('Sin histórico disponible')).not.toBeNull()
+    expect(chartMocks.createChart).not.toHaveBeenCalled()
+  })
+
+  it('normalizes CEDEAR-like repeated timestamps into strictly ascending data', () => {
+    render(
+      <LightweightStockChart
+        symbol="MELI"
+        points={[
+          { date: '2026-05-08T00:00:00.000Z', close: 1460 },
+          { date: '2026-05-07T00:00:00.000Z', close: 1400 },
+          { date: '2026-05-08', close: 1475 },
+          { date: '2026-05-09', close: 1482 },
+          { date: '2026-05-07', close: 1415 },
+        ]}
+      />
+    )
+
+    expect(chartMocks.setData).toHaveBeenCalledWith([
+      { time: timestamp('2026-05-07'), value: 1415 },
+      { time: timestamp('2026-05-08'), value: 1475 },
+      { time: timestamp('2026-05-09'), value: 1482 },
     ])
   })
 

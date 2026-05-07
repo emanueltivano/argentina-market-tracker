@@ -11,6 +11,7 @@ import {
   type AreaData,
   type LineData,
   type Time,
+  type UTCTimestamp,
 } from 'lightweight-charts'
 import { type StockHistoryPoint } from '@/lib/stockHistory'
 import { formatMoney } from '@/lib/formatters'
@@ -23,11 +24,25 @@ type LightweightStockChartProps = {
 
 const CHART_HEIGHT = 236
 
+type NormalizedChartPoint = {
+  time: UTCTimestamp
+  value: number
+}
+
 function formatPriceLabel(value: number): string {
   return formatMoney(value).replace(',00', '')
 }
 
 function formatDateLabel(value: unknown): string {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const date = new Date(value * 1000)
+    const day = String(date.getUTCDate()).padStart(2, '0')
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+    const year = date.getUTCFullYear()
+
+    return `${day}/${month}/${year}`
+  }
+
   if (typeof value !== 'string') {
     return String(value)
   }
@@ -41,12 +56,47 @@ function formatDateLabel(value: unknown): string {
   return `${day}/${month}/${year}`
 }
 
-function getSeriesColor(first: StockHistoryPoint, last: StockHistoryPoint) {
-  if (last.close > first.close) {
+function parseHistoryTimestamp(value: string): UTCTimestamp | null {
+  if (!value.trim()) {
+    return null
+  }
+
+  const timestamp = Date.parse(value)
+
+  if (!Number.isFinite(timestamp)) {
+    return null
+  }
+
+  return Math.floor(timestamp / 1000) as UTCTimestamp
+}
+
+function normalizeChartData(points: StockHistoryPoint[]): NormalizedChartPoint[] {
+  const pointsByTime = new Map<number, NormalizedChartPoint>()
+
+  points.forEach((point) => {
+    const time = parseHistoryTimestamp(point.date)
+
+    if (time === null || !Number.isFinite(point.close)) {
+      return
+    }
+
+    pointsByTime.set(time, {
+      time,
+      value: point.close,
+    })
+  })
+
+  return Array.from(pointsByTime.values()).sort(
+    (first, second) => first.time - second.time
+  )
+}
+
+function getSeriesColor(first: NormalizedChartPoint, last: NormalizedChartPoint) {
+  if (last.value > first.value) {
     return '#008f5a'
   }
 
-  if (last.close < first.close) {
+  if (last.value < first.value) {
     return '#d93025'
   }
 
@@ -59,16 +109,9 @@ export default function LightweightStockChart({
   type = 'area',
 }: LightweightStockChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const chartData = useMemo(
-    () =>
-      points.map((point) => ({
-        time: point.date,
-        value: point.close,
-      })),
-    [points]
-  )
-  const first = points[0]
-  const last = points.at(-1)
+  const chartData = useMemo(() => normalizeChartData(points), [points])
+  const first = chartData[0]
+  const last = chartData.at(-1)
   const hasPoints = chartData.length > 0
   const seriesColor = first && last ? getSeriesColor(first, last) : '#1c36be'
 
@@ -202,11 +245,11 @@ export default function LightweightStockChart({
       <div className="stock-history-chart-footer">
         <span className="stock-history-chart-footer-item">
           <span>Inicio</span>
-          <strong>{first ? formatPriceLabel(first.close) : '-'}</strong>
+          <strong>{first ? formatPriceLabel(first.value) : '-'}</strong>
         </span>
         <span className="stock-history-chart-footer-item stock-history-chart-footer-item-end">
           <span>Fin</span>
-          <strong>{last ? formatPriceLabel(last.close) : '-'}</strong>
+          <strong>{last ? formatPriceLabel(last.value) : '-'}</strong>
         </span>
       </div>
     </div>
