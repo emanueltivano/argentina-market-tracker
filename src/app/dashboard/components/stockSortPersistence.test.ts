@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_STOCK_SORT,
   type StockSort,
-} from './stockSorting'
+} from '../lib/stockSorting'
 import {
   parseStoredStockSort,
   resolveInitialStockSort,
   serializeStockSort,
   setStockSortSearchParams,
   STOCK_SORT_STORAGE_KEY,
-} from './stockSortPersistence'
+} from '../lib/stockSortPersistence'
 
 const VAR_DESC: StockSort = { key: 'var', direction: 'desc' }
 const PRICE_ASC: StockSort = { key: 'price', direction: 'asc' }

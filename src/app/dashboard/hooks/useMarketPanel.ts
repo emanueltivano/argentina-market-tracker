@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { type MarketDataPanelKey } from '@/lib/market';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
-import { mapPanelTituloToStockProps } from '../components/panelTitleToStock';
+import { mapPanelTituloToStockProps } from '../lib/panelTitleToStock';
 import {
   fetchMarketPanel,
   getMarketPanelFetchError,

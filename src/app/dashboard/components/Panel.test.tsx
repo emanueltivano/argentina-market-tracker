@@ -14,7 +14,7 @@ import Panel from './Panel'
 import {
   serializeStockSort,
   STOCK_SORT_STORAGE_KEY,
-} from './stockSortPersistence'
+} from '../lib/stockSortPersistence'
 import {
   FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
   FAVORITE_STOCKS_STORAGE_KEY,

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { type MarketPanelKey } from '@/lib/market';
-import { type StockData } from './Stock';
+import { type StockData } from '../lib/stockData';
 import StockFavoriteButton from './StockFavoriteButton';
 import LightweightStockChart from './LightweightStockChart';
 import {

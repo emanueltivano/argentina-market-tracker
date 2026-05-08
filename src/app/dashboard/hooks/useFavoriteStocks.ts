@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { type StockData } from '../components/Stock';
+import { type StockData } from '../lib/stockData';
 
 export const FAVORITE_STOCKS_STORAGE_KEY =
   'argentina-market-tracker:favorites';

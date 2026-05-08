@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StockDetailsModal from './StockDetailsModal'
-import { type StockData } from './Stock'
+import { type StockData } from '../lib/stockData'
 
 vi.mock('../hooks/useStockHistory', () => ({
   useStockHistory: () => ({

@@ -4,8 +4,8 @@ import {
   getNextStockSort,
   sortStocks,
   type StockSort,
-} from './stockSorting'
-import { type StockData } from './Stock'
+} from '../lib/stockSorting'
+import { type StockData } from '../lib/stockData'
 
 function stock(overrides: Partial<StockData> & Pick<StockData, 'ticker'>): StockData {
   return {

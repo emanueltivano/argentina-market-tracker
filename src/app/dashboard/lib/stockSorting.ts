@@ -1,4 +1,4 @@
-import { type StockData } from './Stock'
+import { type StockData } from './stockData'
 
 export type StockSortKey = 'ticker' | 'price' | 'var' | 'volume'
 export type StockSortDirection = 'asc' | 'desc'

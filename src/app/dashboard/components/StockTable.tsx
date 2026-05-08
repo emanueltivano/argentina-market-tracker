@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import NavStocks from './NavStocks';
-import { DEFAULT_STOCK_SORT, type StockSort, type StockSortKey } from './stockSorting';
+import { DEFAULT_STOCK_SORT, type StockSort, type StockSortKey } from '../lib/stockSorting';
 import { STOCK_COLUMN_VISIBILITY } from './stockTableLayout';
 
 const STOCK_TABLE_COLUMN_COUNT = 13;

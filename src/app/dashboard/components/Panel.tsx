@@ -7,14 +7,14 @@ import {
   type MarketDataPanelKey,
   type MarketPanelKey,
 } from '@/lib/market';
-import Stock, { type StockData } from './Stock';
+import Stock from './Stock';
 import PanelContent from './PanelContent';
 import PanelFreshness from './PanelFreshness';
 import StockDetailsModal from './StockDetailsModal';
-import { sortStocks } from './stockSorting';
+import { sortStocks } from '../lib/stockSorting';
 import {
   setStockSortSearchParams,
-} from './stockSortPersistence';
+} from '../lib/stockSortPersistence';
 import {
   StockTable,
   StockTableEmptyState,
@@ -27,6 +27,7 @@ import { useMarketPanel } from '../hooks/useMarketPanel';
 import { normalizeTicker, useFavoriteStocks } from '../hooks/useFavoriteStocks';
 import { useStockSortState } from '../hooks/useStockSortState';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
+import { type StockData } from '../lib/stockData';
 
 type PanelProps = {
   defaultPanel?: MarketDataPanelKey;

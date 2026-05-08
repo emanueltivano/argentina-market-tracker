@@ -6,7 +6,7 @@ import {
   getNextStockSort,
   type StockSort,
   type StockSortKey,
-} from '../components/stockSorting'
+} from '../lib/stockSorting'
 import {
   parseStoredStockSort,
   parseStockSortSearchParams,
@@ -14,7 +14,7 @@ import {
   serializeStockSort,
   setStockSortSearchParams,
   STOCK_SORT_STORAGE_KEY,
-} from '../components/stockSortPersistence'
+} from '../lib/stockSortPersistence'
 
 const STOCK_SORT_STORAGE_EVENT = 'stock-sort-storage-change'
 

@@ -7,23 +7,7 @@ import {
   formatSignedPercent,
 } from '@/lib/formatters';
 import StockFavoriteButton from './StockFavoriteButton';
-
-export interface StockData {
-  ticker: string;
-  description: string;
-  price: number | null;
-  var: number | null;
-  varType: 'positive' | 'negative' | 'neutral';
-  buyQty: number | null;
-  buyPrice: number | null;
-  sellPrice: number | null;
-  sellQty: number | null;
-  open: number | null;
-  min: number | null;
-  max: number | null;
-  close: number | null;
-  volume: number | null;
-}
+import { type StockData } from '../lib/stockData';
 
 const VARIATION_LABEL_BY_TYPE: Record<StockData['varType'], string> = {
   positive: 'positiva',

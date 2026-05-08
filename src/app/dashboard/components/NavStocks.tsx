@@ -4,7 +4,7 @@ import {
   type StockSort,
   type StockSortDirection,
   type StockSortKey,
-} from './stockSorting';
+} from '../lib/stockSorting';
 
 const COLUMNS = [
   { label: '★', title: 'Favorito', className: 'stock-favorite-cell' },

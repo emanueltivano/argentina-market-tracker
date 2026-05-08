@@ -1,5 +1,5 @@
 import { type PanelTitulo } from '@/lib/panel'
-import { type StockData } from './Stock'
+import { type StockData } from './stockData'
 
 function numberOrNull(value: number | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
