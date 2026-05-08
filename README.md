@@ -13,6 +13,16 @@ carga, error, vacío, datos stale y favoritos persistidos localmente. Está pens
 proyecto de portfolio: prioriza claridad, seguridad básica, buen tipado, tests y una
 arquitectura fácil de explicar en entrevista.
 
+## Technical highlights
+
+- Backend-for-frontend con Next API routes para proteger credenciales y evitar llamadas directas desde el navegador.
+- Credenciales, token OAuth y refresh viven solo server-side en un cliente protegido con `server-only`.
+- Cache, deduplicación y rate limit in-memory por instancia, con tradeoffs serverless documentados.
+- Normalización y validación de payloads externos antes de que la UI renderice datos.
+- Modal de detalle con histórico por símbolo usando `lightweight-charts`.
+- Favoritos persistidos con fallback stale desde snapshots locales cuando falla el panel fuente.
+- Tests unitarios, integración de API/hook y E2E con Playwright.
+
 ## Screenshots
 
 ### Desktop
@@ -27,23 +37,6 @@ arquitectura fácil de explicar en entrevista.
 
 ![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
 
-## Decisiones técnicas destacadas
-
-- API route interna para proteger credenciales y evitar llamadas directas desde el navegador.
-- Cliente server-side aislado con `server-only`.
-- Cache corto y deduplicación de requests en vuelo para reducir llamadas repetidas a la API externa.
-- Respuestas de `/api/panel` con `fetchedAt`, `servedAt` y `cacheStatus` para mostrar frescura de datos.
-- `/api/stocks/[symbol]/history` para consultar históricos normalizados por símbolo, rango y mercado permitido.
-- Histórico en modal con `lightweight-charts`, sin exponer credenciales al navegador.
-- Favoritos persistidos en `localStorage` con snapshots stale para seguir mostrando datos guardados si falla el panel fuente.
-- Loading inicial con skeletons visuales para toolbar y tabla, manteniendo texto accesible oculto.
-- Rate limit simple en memoria para proteger endpoints públicos sin requerir infraestructura paga.
-- Cache bounded con pruning y allowlist de market en la ruta de históricos.
-- Headers HTTP conservadores para seguridad, HSTS en producción y política explícita de cache.
-- Normalización de datos antes de renderizar en la UI.
-- TypeScript estricto, lint y tests unitarios para lógica crítica.
-- Formatters compartidos para mantener consistente la salida visual de precios, enteros y porcentajes.
-
 ## Arquitectura y seguridad
 
 La API externa requiere credenciales y token OAuth. Por eso el navegador nunca llama directo al proveedor: el frontend consulta `/api/panel` y esa API route actúa como backend-for-frontend. Esta capa permite mantener `API_USERNAME`, `API_PASSWORD` y el token de acceso solo del lado server, normalizar respuestas externas antes de enviarlas al cliente y devolver errores controlados.
@@ -56,7 +49,7 @@ normalizar payloads y entregar contratos estables al frontend. `/api/panel`
 sirve paneles de mercado; `/api/stocks/[symbol]/history` sirve históricos
 normalizados para el modal de detalle.
 
-## Production readiness
+## Calidad y operación
 
 - CI con GitHub Actions ejecutando lint, type-check, tests y build en Node 20.
 - Tests unitarios, de integración livianos y E2E con Playwright mockeando `/api/panel`.
@@ -230,6 +223,15 @@ npm run build
 
 El job instala solo Chromium (`npx playwright install --with-deps chromium`) para mantener el pipeline razonable en tiempo y peso. Los E2E interceptan `/api/panel`, por lo que no llaman a la API externa ni dependen de credenciales reales.
 
+## Portfolio notes
+
+Configuración sugerida para GitHub:
+
+- Descripción: `Market dashboard for Argentine equities with secure BFF, historical charts, caching, rate limiting and tests.`
+- Topics: `nextjs`, `typescript`, `react`, `tailwindcss`, `playwright`, `vitest`, `portfolio`, `bff`, `financial-dashboard`
+- Website: URL del deploy público.
+- Release/tag sugerido para cierre de portfolio: `v1.0.0`.
+
 ## Variables de entorno
 
 Crear `.env.local` a partir de `.env.local.example`.
@@ -278,6 +280,14 @@ http://localhost:3000
 2. Configurar las variables de entorno requeridas.
 3. Mantener `ENABLE_TOKEN_DEBUG=0` o sin definir en producción.
 4. Ejecutar el build con `npm run build`.
+
+### Deploy checklist
+
+- Validar variables de entorno en Vercel: `API_URL`, `API_USERNAME`, `API_PASSWORD` y endpoints de panel.
+- Mantener `ENABLE_TOKEN_DEBUG` sin definir o en `0`.
+- Correr `npm run validate`.
+- Correr `npm run test:e2e`.
+- Probar manualmente panel inicial, cambio de panel, refresh, modal histórico, favoritos y mobile.
 
 ### Production tradeoffs
 
