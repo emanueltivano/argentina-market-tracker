@@ -14,8 +14,8 @@ function setRequiredEnv(nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test') {
   }
 }
 
-function request(path: string) {
-  return new NextRequest(`http://localhost${path}`)
+function request(path: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
+  return new NextRequest(`http://localhost${path}`, init)
 }
 
 function context(symbol: string) {
@@ -240,6 +240,131 @@ describe('/api/stocks/[symbol]/history route', () => {
       (await GET(request('/api/stocks/*/history'), context('*'))).status
     ).toBe(400)
     expect(iolFetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects markets outside the history allowlist', async () => {
+    const iolFetch = vi.fn()
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?market=NYSE'),
+      context('GGAL')
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: 'INVALID_MARKET',
+    })
+    expect(iolFetch).not.toHaveBeenCalled()
+  })
+
+  it('rate limits repeated history requests from the same client', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    for (let index = 0; index < 120; index += 1) {
+      const response = await GET(
+        request('/api/stocks/GGAL/history?range=1W', {
+          headers: { 'x-forwarded-for': '203.0.113.10' },
+        }),
+        context('GGAL')
+      )
+
+      expect(response.status).toBe(200)
+    }
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1W', {
+        headers: { 'x-forwarded-for': '203.0.113.10' },
+      }),
+      context('GGAL')
+    )
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBe('60')
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: 'RATE_LIMITED',
+    })
+  })
+
+  it('allows history requests again after the rate limit window expires', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    for (let index = 0; index < 120; index += 1) {
+      await GET(
+        request('/api/stocks/GGAL/history?range=1W', {
+          headers: { 'x-forwarded-for': '203.0.113.20' },
+        }),
+        context('GGAL')
+      )
+    }
+
+    const limitedResponse = await GET(
+      request('/api/stocks/GGAL/history?range=1W', {
+        headers: { 'x-forwarded-for': '203.0.113.20' },
+      }),
+      context('GGAL')
+    )
+
+    expect(limitedResponse.status).toBe(429)
+
+    vi.setSystemTime(new Date('2026-05-07T15:01:01.000Z'))
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1W', {
+        headers: { 'x-forwarded-for': '203.0.113.20' },
+      }),
+      context('GGAL')
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it('prunes the history cache to the maximum key count', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+    ])
+    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch)
+
+    for (let index = 0; index < 501; index += 1) {
+      const symbol = `SYM${index}`
+
+      await GET(
+        request(`/api/stocks/${symbol}/history?range=1W`, {
+          headers: { 'x-forwarded-for': `203.0.113.${index}` },
+        }),
+        context(symbol)
+      )
+    }
+
+    expect(getHistoryCacheSizeForTests()).toBe(500)
+  })
+
+  it('prunes expired history cache entries', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+    ])
+    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch)
+
+    await GET(
+      request('/api/stocks/GGAL/history?range=1W', {
+        headers: { 'x-forwarded-for': '203.0.113.30' },
+      }),
+      context('GGAL')
+    )
+
+    expect(getHistoryCacheSizeForTests()).toBe(1)
+
+    vi.setSystemTime(new Date('2026-05-07T15:05:01.000Z'))
+
+    expect(getHistoryCacheSizeForTests()).toBe(0)
   })
 
   it('uses memory cache for repeated requests', async () => {

@@ -247,6 +247,48 @@ html.dark {
     animation: spin 0.8s linear infinite;
   }
 
+  .panel-title-skeleton {
+    width: min(16rem, 70vw);
+  }
+
+  .panel-title-skeleton .stock-skeleton-bar {
+    max-width: none;
+    height: 2rem;
+  }
+
+  .panel-menu-skeleton,
+  .panel-refresh-skeleton {
+    pointer-events: none;
+  }
+
+  .panel-skeleton-pill,
+  .panel-skeleton-button,
+  .panel-skeleton-icon {
+    cursor: default;
+  }
+
+  .panel-skeleton-pill .stock-skeleton-bar {
+    width: 5.5rem;
+    max-width: 18vw;
+  }
+
+  .panel-skeleton-icon .stock-skeleton-bar {
+    width: 1.25rem;
+    max-width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+  }
+
+  .panel-refresh-time-skeleton {
+    width: 10.5rem;
+    max-width: 40vw;
+  }
+
+  .panel-skeleton-button .stock-skeleton-bar {
+    width: 4.75rem;
+    max-width: 4.75rem;
+  }
+
   .panel-menu-button:focus-visible,
   .panel-refresh-button:focus-visible,
   .theme-toggle-button:focus-visible,
@@ -320,6 +362,10 @@ html.dark {
     box-shadow:
       inset 3px 0 0 var(--main-color),
       0 4px 12px rgb(15 23 42 / 4%);
+  }
+
+  .stock-row-stale {
+    box-shadow: inset 3px 0 0 var(--warning-color);
   }
 
   .stock-cell {
@@ -1142,11 +1188,6 @@ dialog.stock-details-dialog .stock-history-chart-empty-state {
   text-align: center;
 }
 
-dialog.stock-details-dialog .stock-history-chart-plot {
-  position: relative;
-  min-height: 260px;
-}
-
 dialog.stock-details-dialog .stock-history-lightweight-chart {
   min-width: 0;
   height: 236px;
@@ -1183,198 +1224,6 @@ dialog.stock-details-dialog .stock-history-chart-footer strong {
   color: var(--text-color);
   font-size: 0.84rem;
   font-weight: 900;
-}
-
-dialog.stock-details-dialog .stock-history-chart-svg {
-  display: block;
-  width: 100%;
-  height: 260px;
-  margin: 0;
-  overflow: hidden;
-  touch-action: none;
-}
-
-dialog.stock-details-dialog .stock-history-chart-grid {
-  stroke: var(--border-color);
-  stroke-width: 1;
-  stroke-dasharray: 3 7;
-}
-
-dialog.stock-details-dialog .stock-history-chart-line {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.25;
-}
-
-dialog.stock-details-dialog .stock-history-chart-point {
-  stroke: white;
-  stroke-width: 1.8;
-}
-
-dialog.stock-details-dialog .stock-history-chart-crosshair {
-  stroke: var(--chart-crosshair-h);
-  stroke-dasharray: 2 6;
-  stroke-width: 0.8;
-  pointer-events: none;
-}
-
-dialog.stock-details-dialog .stock-history-chart-hover-point {
-  stroke: white;
-  stroke-width: 2.25;
-  filter: drop-shadow(0 0 0.35rem rgb(255 255 255 / 90%))
-    drop-shadow(0 2px 5px rgb(15 23 42 / 14%));
-  pointer-events: none;
-  transition:
-    r 0.12s ease,
-    filter 0.12s ease;
-}
-
-dialog.stock-details-dialog .stock-history-chart-tooltip {
-  position: absolute;
-  z-index: 2;
-  display: inline-flex;
-  min-width: 6.7rem;
-  max-width: min(11rem, calc(100% - 1rem));
-  flex-direction: column;
-  gap: 0.16rem;
-  padding: 0.44rem 0.56rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.55rem;
-  background-color: var(--surface-raised);
-  box-shadow:
-    0 12px 28px rgb(15 23 42 / 12%),
-    0 2px 6px rgb(15 23 42 / 8%);
-  color: var(--text-color);
-  font-size: 0.72rem;
-  line-height: 1.2;
-  pointer-events: none;
-  transform: translate(-50%, calc(-100% - 0.42rem));
-  transition:
-    left 0.12s ease,
-    top 0.12s ease,
-    transform 0.12s ease;
-}
-
-dialog.stock-details-dialog .stock-history-chart-tooltip-start {
-  transform: translate(0.32rem, calc(-100% - 0.42rem));
-}
-
-dialog.stock-details-dialog .stock-history-chart-tooltip-end {
-  transform: translate(calc(-100% - 0.32rem), calc(-100% - 0.42rem));
-}
-
-dialog.stock-details-dialog .stock-history-chart-tooltip-bottom {
-  transform: translate(-50%, 0.42rem);
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-tooltip-bottom.stock-history-chart-tooltip-start {
-  transform: translate(0.32rem, 0.42rem);
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-tooltip-bottom.stock-history-chart-tooltip-end {
-  transform: translate(calc(-100% - 0.32rem), 0.42rem);
-}
-
-dialog.stock-details-dialog .stock-history-chart-tooltip-date {
-  color: var(--muted-text);
-  font-size: 0.66rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-dialog.stock-details-dialog .stock-history-chart-tooltip-price {
-  color: var(--text-color);
-  font-size: 0.82rem;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-dialog.stock-details-dialog .stock-history-chart-tooltip-var {
-  color: var(--muted-text);
-  font-size: 0.66rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-positive
-  .stock-history-chart-line,
-dialog.stock-details-dialog
-  .stock-history-chart-positive
-  .stock-history-chart-point {
-  fill: var(--positive-color);
-  stroke: var(--positive-color);
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-negative
-  .stock-history-chart-line,
-dialog.stock-details-dialog
-  .stock-history-chart-negative
-  .stock-history-chart-point {
-  fill: var(--negative-color);
-  stroke: var(--negative-color);
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-neutral
-  .stock-history-chart-line,
-dialog.stock-details-dialog
-  .stock-history-chart-neutral
-  .stock-history-chart-point {
-  fill: var(--main-color);
-  stroke: var(--main-color);
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-positive
-  .stock-history-chart-hover-point {
-  fill: var(--positive-color);
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-negative
-  .stock-history-chart-hover-point {
-  fill: var(--negative-color);
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-neutral
-  .stock-history-chart-hover-point {
-  fill: var(--main-color);
-}
-
-dialog.stock-details-dialog .stock-history-chart-point {
-  stroke: white;
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-positive
-  .stock-history-chart-gradient-start {
-  stop-color: var(--positive-color);
-  stop-opacity: 0.065;
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-negative
-  .stock-history-chart-gradient-start {
-  stop-color: var(--negative-color);
-  stop-opacity: 0.06;
-}
-
-dialog.stock-details-dialog
-  .stock-history-chart-neutral
-  .stock-history-chart-gradient-start {
-  stop-color: var(--main-color);
-  stop-opacity: 0.05;
-}
-
-dialog.stock-details-dialog .stock-history-chart-gradient-end {
-  stop-color: var(--chart-bg);
-  stop-opacity: 0;
 }
 
 html.dark .panel-menu-button:hover .panel-menu-button-icon,
@@ -1449,17 +1298,6 @@ html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-n
 
 html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
   background-color: rgb(51 65 85 / 70%);
-}
-
-html.dark dialog.stock-details-dialog .stock-history-chart-point,
-html.dark dialog.stock-details-dialog .stock-history-chart-hover-point {
-  stroke: var(--chart-bg);
-}
-
-html.dark dialog.stock-details-dialog .stock-history-chart-tooltip {
-  box-shadow:
-    0 12px 28px rgb(0 0 0 / 32%),
-    0 2px 6px rgb(0 0 0 / 22%);
 }
 
 /* =========================
@@ -1538,14 +1376,6 @@ html.dark dialog.stock-details-dialog .stock-history-chart-tooltip {
   dialog.stock-details-dialog .stock-history-chart {
     min-height: 18rem;
     padding: 0.5rem 0.75rem 0.7rem;
-  }
-
-  dialog.stock-details-dialog .stock-history-chart-plot {
-    min-height: 238px;
-  }
-
-  dialog.stock-details-dialog .stock-history-chart-svg {
-    height: 238px;
   }
 
   dialog.stock-details-dialog .stock-details-grid > div,

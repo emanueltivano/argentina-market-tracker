@@ -10,6 +10,7 @@ import {
 import Stock from './Stock';
 import PanelContent from './PanelContent';
 import PanelFreshness from './PanelFreshness';
+import { PanelFreshnessSkeleton } from './PanelLoadingSkeleton';
 import StockDetailsModal from './StockDetailsModal';
 import { sortStocks } from '../lib/stockSorting';
 import {
@@ -21,6 +22,7 @@ import {
   StockTableErrorState,
   StockTableFavoritesEmptyState,
   StockTableLoadingState,
+  StockTableStaleFavoritesState,
   StockTableStaleErrorState,
 } from './StockTable';
 import { useMarketPanel } from '../hooks/useMarketPanel';
@@ -74,25 +76,36 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   } = useMarketPanel(dataPanelKey);
 
   const errorMessage = error?.message ?? 'Error desconocido';
-  const filteredRows = useMemo(
+  const { filteredRows, staleFavoriteTickers } = useMemo(
     () => {
       if (!isFavoritesPanel) {
-        return rows;
+        return {
+          filteredRows: rows,
+          staleFavoriteTickers: new Set<string>(),
+        };
       }
 
       const rowsByTicker = new Map<string, StockData>();
-
-      for (const row of rows) {
-        rowsByTicker.set(normalizeTicker(row.ticker), row);
-      }
+      const staleTickers = new Set<string>();
 
       for (const [ticker, row] of Object.entries(favoriteSnapshotsByTicker)) {
         rowsByTicker.set(ticker, row);
+        staleTickers.add(ticker);
       }
 
-      return favorites
-        .map((ticker) => rowsByTicker.get(ticker))
-        .filter((row): row is StockData => row !== undefined);
+      for (const row of rows) {
+        const ticker = normalizeTicker(row.ticker);
+
+        rowsByTicker.set(ticker, row);
+        staleTickers.delete(ticker);
+      }
+
+      return {
+        filteredRows: favorites
+          .map((ticker) => rowsByTicker.get(ticker))
+          .filter((row): row is StockData => row !== undefined),
+        staleFavoriteTickers: staleTickers,
+      };
     },
     [favoriteSnapshotsByTicker, favorites, isFavoritesPanel, rows],
   );
@@ -108,6 +121,11 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     () => sortStocks(filteredRows, sort),
     [filteredRows, sort],
   );
+  const hasStaleFavoriteRows =
+    isFavoritesPanel &&
+    sortedRows.some((row) => staleFavoriteTickers.has(normalizeTicker(row.ticker)));
+  const effectiveViewStatus =
+    isFavoritesPanel && sortedRows.length > 0 ? 'success' : viewStatus;
 
   const handleStockSelect = useCallback(
     (stock: StockData) => {
@@ -158,14 +176,18 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
       activePanelKey={activePanelKey}
       onChange={handlePanelChange}
       actions={
-        <PanelFreshness
-          fetchedAt={fetchedAt}
-          isRefreshing={isRefreshing}
-          onRefresh={refresh}
-        />
+        effectiveViewStatus === 'loading' ? (
+          <PanelFreshnessSkeleton />
+        ) : (
+          <PanelFreshness
+            fetchedAt={fetchedAt}
+            isRefreshing={isRefreshing}
+            onRefresh={refresh}
+          />
+        )
       }
     >
-      {viewStatus === 'loading' && (
+      {effectiveViewStatus === 'loading' && (
         <StockTable
           isBusy
           sort={sort}
@@ -175,7 +197,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         </StockTable>
       )}
 
-      {viewStatus === 'error' && (
+      {effectiveViewStatus === 'error' && (
         <StockTable
           isBusy={false}
           sort={sort}
@@ -185,7 +207,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         </StockTable>
       )}
 
-      {viewStatus === 'empty' && (
+      {effectiveViewStatus === 'empty' && (
         <>
           {hasStaleError && <StockTableStaleErrorState />}
 
@@ -203,9 +225,10 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
         </>
       )}
 
-      {viewStatus === 'success' && (
+      {effectiveViewStatus === 'success' && (
         <>
           {hasStaleError && <StockTableStaleErrorState />}
+          {hasStaleFavoriteRows && <StockTableStaleFavoritesState />}
 
           <StockTable
             isBusy={isRefreshing}
@@ -220,6 +243,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
                   key={row.ticker}
                   {...row}
                   isFavorite={isFavorite(row.ticker)}
+                  isStale={staleFavoriteTickers.has(normalizeTicker(row.ticker))}
                   onSelect={handleStockSelect}
                   onToggleFavorite={createToggleFavoriteHandler(row)}
                 />

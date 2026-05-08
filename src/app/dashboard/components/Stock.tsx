@@ -18,6 +18,7 @@ const VARIATION_LABEL_BY_TYPE: Record<StockData['varType'], string> = {
 export interface StockProps extends StockData {
   onSelect?: (stock: StockData) => void;
   isFavorite?: boolean;
+  isStale?: boolean;
   onToggleFavorite?: (ticker: string) => void;
 }
 
@@ -41,7 +42,13 @@ const VAR_CLASS_BY_TYPE: Record<StockData['varType'], string> = {
 };
 
 function Stock(props: StockProps) {
-  const { isFavorite = false, onSelect, onToggleFavorite, ...stock } = props;
+  const {
+    isFavorite = false,
+    isStale = false,
+    onSelect,
+    onToggleFavorite,
+    ...stock
+  } = props;
 
   const varClass = VAR_CLASS_BY_TYPE[stock.varType];
   const strengthClass =
@@ -53,9 +60,12 @@ function Stock(props: StockProps) {
 
   return (
     <tr
-      className={`${GRID} stock-row stock-row-interactive`}
+      className={`${GRID} stock-row stock-row-interactive ${
+        isStale ? 'stock-row-stale' : ''
+      }`}
       data-symbol={stock.ticker}
       onClick={handleSelect}
+      title={isStale ? 'Dato guardado localmente' : undefined}
     >
       <td className="stock-cell stock-cell-center stock-favorite-cell">
         <StockFavoriteButton

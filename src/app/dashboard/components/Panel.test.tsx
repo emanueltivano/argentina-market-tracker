@@ -94,6 +94,7 @@ describe('Panel', () => {
 
     expect(screen.getByText('Cargando datos...')).not.toBeNull()
     expect(screen.getAllByTestId('stock-table-skeleton-row')).toHaveLength(6)
+    expect(screen.queryByText(/Última actualización/)).toBeNull()
   })
 
   it('renders an error state when the API fails without stale data', async () => {
@@ -999,6 +1000,59 @@ describe('Panel', () => {
         window.localStorage.getItem(FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY) ?? '{}'
       )
     ).not.toHaveProperty('BMA')
+  })
+
+  it('renders stale favorite snapshots when the source panel fails', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    window.localStorage.setItem(FAVORITE_STOCKS_STORAGE_KEY, '["AAPL"]')
+    window.localStorage.setItem(
+      FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
+      JSON.stringify({
+        AAPL: {
+          ticker: 'AAPL',
+          description: 'Apple',
+          price: 250,
+          var: -0.5,
+          varType: 'negative',
+          buyQty: null,
+          buyPrice: null,
+          sellPrice: null,
+          sellQty: null,
+          open: 255,
+          min: 248,
+          max: 260,
+          close: 252,
+          volume: 2000,
+        },
+      })
+    )
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          {
+            ok: false,
+            error: 'PANEL_ERROR',
+          },
+          { status: 502 }
+        )
+      )
+    )
+
+    renderPanel()
+
+    expect(
+      await screen.findByRole('button', { name: 'Quitar AAPL de favoritos' })
+    ).not.toBeNull()
+    expect(
+      screen.getByText(
+        'Mostrando favoritos guardados localmente. Algunos datos pueden estar desactualizados.'
+      )
+    ).not.toBeNull()
+    expect(document.querySelector('tr[data-symbol="AAPL"]')?.className).toContain(
+      'stock-row-stale'
+    )
+    expect(screen.queryByText(/Error cargando datos:/)).toBeNull()
   })
 
   it('shows an empty state in the favorites panel when there are no favorites', async () => {

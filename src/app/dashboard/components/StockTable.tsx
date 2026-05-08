@@ -117,3 +117,11 @@ export function StockTableStaleErrorState() {
     </p>
   );
 }
+
+export function StockTableStaleFavoritesState() {
+  return (
+    <p className='stock-table-stale-error' role='status' aria-live='polite'>
+      Mostrando favoritos guardados localmente. Algunos datos pueden estar desactualizados.
+    </p>
+  );
+}

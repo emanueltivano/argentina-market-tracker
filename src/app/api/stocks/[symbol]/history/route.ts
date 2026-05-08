@@ -16,9 +16,14 @@ export const revalidate = 0
 export const runtime = 'nodejs'
 
 const HISTORY_CACHE_TTL_MS = 5 * 60_000
+const HISTORY_CACHE_MAX_KEYS = 500
 const HISTORY_CACHE_CONTROL = 'no-store'
 const DEFAULT_MARKET = 'bCBA'
 const DEFAULT_RANGE: StockHistoryRange = '1M'
+const HISTORY_RATE_LIMIT_WINDOW_MS = 60_000
+const HISTORY_RATE_LIMIT_MAX_REQUESTS = 120
+const HISTORY_RATE_LIMIT_MAX_KEYS = 1_000
+const ALLOWED_HISTORY_MARKETS = ['bCBA'] as const
 
 type HistoryVariant = 'ajustada' | 'sinAjustar'
 
@@ -27,12 +32,18 @@ type HistoryCacheEntry = {
   expiresAt: number
 }
 
+type RateLimitEntry = {
+  count: number
+  resetAt: number
+}
+
 type RouteContext = {
   params: Promise<{ symbol: string }>
 }
 
 const historyCache = new Map<string, HistoryCacheEntry>()
 const inFlightHistoryRequests = new Map<string, Promise<StockHistoryResponse>>()
+const historyRateLimitStore = new Map<string, RateLimitEntry>()
 
 const RANGE_DAYS: Record<StockHistoryRange, number> = {
   '1W': 7,
@@ -57,7 +68,9 @@ function isValidSymbol(value: string): boolean {
 }
 
 function isValidMarket(value: string): boolean {
-  return /^[A-Za-z0-9._-]{1,20}$/.test(value)
+  return ALLOWED_HISTORY_MARKETS.includes(
+    value as (typeof ALLOWED_HISTORY_MARKETS)[number]
+  )
 }
 
 function toDateInput(date: Date): string {
@@ -121,7 +134,32 @@ function getCacheKey(
   return `${market}:${symbol}:${range}`
 }
 
+function pruneHistoryCache(now = Date.now()) {
+  for (const [key, entry] of historyCache) {
+    if (now >= entry.expiresAt) {
+      historyCache.delete(key)
+    }
+  }
+
+  if (historyCache.size <= HISTORY_CACHE_MAX_KEYS) {
+    return
+  }
+
+  const entriesByOldestExpiry = [...historyCache.entries()].sort(
+    ([, first], [, second]) => first.expiresAt - second.expiresAt
+  )
+
+  for (const [key] of entriesByOldestExpiry.slice(
+    0,
+    historyCache.size - HISTORY_CACHE_MAX_KEYS
+  )) {
+    historyCache.delete(key)
+  }
+}
+
 function getCachedHistoryResponse(cacheKey: string): StockHistoryResponse | null {
+  pruneHistoryCache()
+
   const cached = historyCache.get(cacheKey)
 
   if (!cached || Date.now() >= cached.expiresAt) {
@@ -148,6 +186,66 @@ function setCachedHistoryResponse(
     response,
     expiresAt: Date.now() + HISTORY_CACHE_TTL_MS,
   })
+  pruneHistoryCache()
+}
+
+function getClientKey(req: NextRequest): string {
+  const forwardedFor = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const realIp = req.headers.get('x-real-ip')?.trim()
+
+  return forwardedFor || realIp || 'local'
+}
+
+function pruneRateLimitStore(now: number) {
+  for (const [key, entry] of historyRateLimitStore) {
+    if (now >= entry.resetAt) {
+      historyRateLimitStore.delete(key)
+    }
+  }
+
+  if (historyRateLimitStore.size <= HISTORY_RATE_LIMIT_MAX_KEYS) {
+    return
+  }
+
+  const entriesByOldestReset = [...historyRateLimitStore.entries()].sort(
+    ([, first], [, second]) => first.resetAt - second.resetAt
+  )
+
+  for (const [key] of entriesByOldestReset.slice(
+    0,
+    historyRateLimitStore.size - HISTORY_RATE_LIMIT_MAX_KEYS
+  )) {
+    historyRateLimitStore.delete(key)
+  }
+}
+
+function checkHistoryRateLimit(
+  req: NextRequest
+): { ok: true } | { ok: false; retryAfterSec: number } {
+  const now = Date.now()
+  pruneRateLimitStore(now)
+
+  const key = getClientKey(req)
+  const current = historyRateLimitStore.get(key)
+
+  if (!current || now >= current.resetAt) {
+    historyRateLimitStore.set(key, {
+      count: 1,
+      resetAt: now + HISTORY_RATE_LIMIT_WINDOW_MS,
+    })
+
+    return { ok: true }
+  }
+
+  if (current.count >= HISTORY_RATE_LIMIT_MAX_REQUESTS) {
+    return {
+      ok: false,
+      retryAfterSec: Math.ceil((current.resetAt - now) / 1000),
+    }
+  }
+
+  current.count += 1
+  return { ok: true }
 }
 
 async function fetchAndNormalizeHistoryVariant(
@@ -292,9 +390,9 @@ function historyErrorResponse(
   return jsonResponse(body, init)
 }
 
-export function clearHistoryCacheForTests() {
-  historyCache.clear()
-  inFlightHistoryRequests.clear()
+export function getHistoryCacheSizeForTests() {
+  pruneHistoryCache()
+  return historyCache.size
 }
 
 export async function GET(req: NextRequest, context: RouteContext) {
@@ -325,6 +423,17 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
   if (!isStockHistoryRange(range)) {
     return historyErrorResponse('INVALID_RANGE', { status: 400 })
+  }
+
+  const rateLimit = checkHistoryRateLimit(req)
+
+  if (!rateLimit.ok) {
+    return historyErrorResponse('RATE_LIMITED', {
+      status: 429,
+      headers: {
+        'Retry-After': String(rateLimit.retryAfterSec),
+      },
+    })
   }
 
   try {
