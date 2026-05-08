@@ -4,6 +4,7 @@ import { type MarketPanelKey } from '@/lib/market';
 
 import PanelMenu from './PanelMenu';
 import Title from './PageTitle';
+import ThemeToggle from './ThemeToggle';
 import { MARKET_PANEL_OPTIONS } from '../lib/marketPanelOptions';
 
 type PanelContentProps = {
@@ -32,7 +33,10 @@ export default function PanelContent({
           options={MARKET_PANEL_OPTIONS}
         />
 
-        {actions}
+        <div className="panel-actions">
+          <ThemeToggle />
+          {actions}
+        </div>
       </div>
 
       <div className="stock-table-container">{children}</div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AreaSeries,
   ColorType,
@@ -23,10 +23,39 @@ type LightweightStockChartProps = {
 }
 
 const CHART_HEIGHT = 236
+const THEME_CHANGE_EVENT = 'argentina-market-tracker:theme-change'
 
 type NormalizedChartPoint = {
   time: UTCTimestamp
   value: number
+}
+
+type ChartTheme = {
+  background: string
+  text: string
+  gridVert: string
+  gridHorz: string
+  border: string
+  crosshairVert: string
+  crosshairHorz: string
+  labelBackground: string
+  positive: string
+  negative: string
+  neutral: string
+}
+
+const DEFAULT_CHART_THEME: ChartTheme = {
+  background: '#ffffff',
+  text: '#334155',
+  gridVert: 'rgba(148, 163, 184, 0.18)',
+  gridHorz: 'rgba(148, 163, 184, 0.22)',
+  border: 'rgba(100, 116, 139, 0.22)',
+  crosshairVert: 'rgba(15, 23, 42, 0.36)',
+  crosshairHorz: 'rgba(15, 23, 42, 0.28)',
+  labelBackground: '#334155',
+  positive: '#008f5a',
+  negative: '#d93025',
+  neutral: '#1c36be',
 }
 
 function formatPriceLabel(value: number): string {
@@ -93,14 +122,52 @@ function normalizeChartData(points: StockHistoryPoint[]): NormalizedChartPoint[]
 
 function getSeriesColor(first: NormalizedChartPoint, last: NormalizedChartPoint) {
   if (last.value > first.value) {
-    return '#008f5a'
+    return 'positive'
   }
 
   if (last.value < first.value) {
-    return '#d93025'
+    return 'negative'
   }
 
-  return '#1c36be'
+  return 'neutral'
+}
+
+function readCssVariable(name: string, fallback: string): string {
+  if (typeof window === 'undefined') {
+    return fallback
+  }
+
+  const value = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim()
+
+  return value || fallback
+}
+
+function getChartTheme(): ChartTheme {
+  return {
+    background: readCssVariable('--chart-bg', DEFAULT_CHART_THEME.background),
+    text: readCssVariable('--chart-text', DEFAULT_CHART_THEME.text),
+    gridVert: readCssVariable('--chart-grid-v', DEFAULT_CHART_THEME.gridVert),
+    gridHorz: readCssVariable('--chart-grid-h', DEFAULT_CHART_THEME.gridHorz),
+    border: readCssVariable('--chart-border', DEFAULT_CHART_THEME.border),
+    crosshairVert: readCssVariable(
+      '--chart-crosshair-v',
+      DEFAULT_CHART_THEME.crosshairVert
+    ),
+    crosshairHorz: readCssVariable(
+      '--chart-crosshair-h',
+      DEFAULT_CHART_THEME.crosshairHorz
+    ),
+    labelBackground: readCssVariable(
+      '--chart-label-bg',
+      DEFAULT_CHART_THEME.labelBackground
+    ),
+    positive: readCssVariable('--chart-positive', DEFAULT_CHART_THEME.positive),
+    negative: readCssVariable('--chart-negative', DEFAULT_CHART_THEME.negative),
+    neutral: readCssVariable('--chart-neutral', DEFAULT_CHART_THEME.neutral),
+  }
 }
 
 export default function LightweightStockChart({
@@ -113,7 +180,20 @@ export default function LightweightStockChart({
   const first = chartData[0]
   const last = chartData.at(-1)
   const hasPoints = chartData.length > 0
-  const seriesColor = first && last ? getSeriesColor(first, last) : '#1c36be'
+  const trend = first && last ? getSeriesColor(first, last) : 'neutral'
+  const [themeRevision, setThemeRevision] = useState(0)
+
+  useEffect(() => {
+    function handleThemeChange() {
+      setThemeRevision((revision) => revision + 1)
+    }
+
+    window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange)
+
+    return () => {
+      window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange)
+    }
+  }, [])
 
   useEffect(() => {
     const container = containerRef.current
@@ -122,29 +202,31 @@ export default function LightweightStockChart({
       return
     }
 
+    const chartTheme = getChartTheme()
+    const seriesColor = chartTheme[trend]
     const chart = createChart(container, {
       width: container.clientWidth,
       height: CHART_HEIGHT,
       autoSize: false,
       layout: {
-        background: { type: ColorType.Solid, color: '#ffffff' },
-        textColor: '#334155',
+        background: { type: ColorType.Solid, color: chartTheme.background },
+        textColor: chartTheme.text,
         fontFamily:
           'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       },
       grid: {
-        vertLines: { color: 'rgba(148, 163, 184, 0.18)' },
-        horzLines: { color: 'rgba(148, 163, 184, 0.22)' },
+        vertLines: { color: chartTheme.gridVert },
+        horzLines: { color: chartTheme.gridHorz },
       },
       rightPriceScale: {
-        borderColor: 'rgba(100, 116, 139, 0.22)',
+        borderColor: chartTheme.border,
         scaleMargins: {
           top: 0.12,
           bottom: 0.18,
         },
       },
       timeScale: {
-        borderColor: 'rgba(100, 116, 139, 0.22)',
+        borderColor: chartTheme.border,
         timeVisible: false,
         secondsVisible: false,
         fixLeftEdge: true,
@@ -154,16 +236,16 @@ export default function LightweightStockChart({
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: {
-          color: 'rgba(15, 23, 42, 0.36)',
+          color: chartTheme.crosshairVert,
           style: LineStyle.Solid,
           width: 1,
-          labelBackgroundColor: '#334155',
+          labelBackgroundColor: chartTheme.labelBackground,
         },
         horzLine: {
-          color: 'rgba(15, 23, 42, 0.28)',
+          color: chartTheme.crosshairHorz,
           style: LineStyle.Solid,
           width: 1,
-          labelBackgroundColor: '#334155',
+          labelBackgroundColor: chartTheme.labelBackground,
         },
       },
       localization: {
@@ -218,7 +300,7 @@ export default function LightweightStockChart({
       resizeObserver.disconnect()
       chart.remove()
     }
-  }, [chartData, seriesColor, type])
+  }, [chartData, themeRevision, trend, type])
 
   if (!hasPoints) {
     return (

@@ -7,6 +7,8 @@
 :root {
   --bg: 248 250 252;
   --fg: 17 24 39;
+  --body-bg-start: #f8fafc;
+  --body-bg-end: #eef2ff;
 
   --main-color: #1c36be;
   --main-light-color: #2d53ff;
@@ -19,14 +21,91 @@
   --negative-light-color: #ea3943;
 
   --surface: #ffffff;
+  --surface-raised: #ffffff;
   --surface-hover: rgba(28, 54, 190, 0.06);
   --surface-selected: #eef2ff;
+  --surface-muted: #f8fafc;
+  --surface-subtle: #fafafa;
 
   --buy-bg: #e6f9f4;
   --sell-bg: #fde7eb;
 
   --border-color: #e5e7eb;
+  --border-strong: #dbeafe;
   --muted-text: #6b7280;
+  --warning-text: #b45309;
+  --table-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+  --nav-bg: linear-gradient(to bottom, #eef2ff, #e0e7ff);
+  --modal-border: rgb(219 234 254 / 90%);
+  --modal-header-bg:
+    linear-gradient(135deg, rgb(238 242 255 / 95%), rgb(255 255 255 / 98%)),
+    var(--surface);
+  --modal-shadow:
+    0 28px 72px rgb(4 43 93 / 28%),
+    0 0 0 1px rgb(255 255 255 / 70%) inset;
+  --chart-bg: #ffffff;
+  --chart-text: #334155;
+  --chart-grid-v: rgba(148, 163, 184, 0.18);
+  --chart-grid-h: rgba(148, 163, 184, 0.22);
+  --chart-border: rgba(100, 116, 139, 0.22);
+  --chart-crosshair-v: rgba(15, 23, 42, 0.36);
+  --chart-crosshair-h: rgba(15, 23, 42, 0.28);
+  --chart-label-bg: #334155;
+  --chart-positive: #008f5a;
+  --chart-negative: #d93025;
+  --chart-neutral: #1c36be;
+}
+
+html.dark {
+  --bg: 11 18 32;
+  --fg: 226 232 240;
+  --body-bg-start: #07111f;
+  --body-bg-end: #0f172a;
+
+  --main-color: #8ea2ff;
+  --main-light-color: #b6c3ff;
+  --text-color: #e2e8f0;
+
+  --positive-color: #34d399;
+  --positive-light-color: #10b981;
+
+  --negative-color: #fb7185;
+  --negative-light-color: #f43f5e;
+
+  --surface: #111827;
+  --surface-raised: #172033;
+  --surface-hover: rgb(142 162 255 / 14%);
+  --surface-selected: rgb(142 162 255 / 18%);
+  --surface-muted: #0f172a;
+  --surface-subtle: #0b1220;
+
+  --buy-bg: rgb(6 95 70 / 34%);
+  --sell-bg: rgb(159 18 57 / 32%);
+
+  --border-color: rgb(71 85 105 / 70%);
+  --border-strong: rgb(100 116 139 / 78%);
+  --muted-text: #94a3b8;
+  --warning-text: #fbbf24;
+  --table-shadow: 0 18px 46px rgb(0 0 0 / 30%);
+  --nav-bg: linear-gradient(to bottom, #172033, #111827);
+  --modal-border: rgb(100 116 139 / 70%);
+  --modal-header-bg:
+    linear-gradient(135deg, rgb(30 41 59 / 96%), rgb(17 24 39 / 98%)),
+    var(--surface);
+  --modal-shadow:
+    0 28px 72px rgb(0 0 0 / 48%),
+    0 0 0 1px rgb(255 255 255 / 6%) inset;
+  --chart-bg: #111827;
+  --chart-text: #cbd5e1;
+  --chart-grid-v: rgba(148, 163, 184, 0.16);
+  --chart-grid-h: rgba(148, 163, 184, 0.2);
+  --chart-border: rgba(148, 163, 184, 0.24);
+  --chart-crosshair-v: rgba(226, 232, 240, 0.34);
+  --chart-crosshair-h: rgba(226, 232, 240, 0.26);
+  --chart-label-bg: #475569;
+  --chart-positive: #34d399;
+  --chart-negative: #fb7185;
+  --chart-neutral: #8ea2ff;
 }
 
 /* =========================
@@ -36,7 +115,7 @@
 @layer base {
   body {
     min-height: 100vh;
-    background: linear-gradient(to bottom, #f8fafc, #eef2ff);
+    background: linear-gradient(to bottom, var(--body-bg-start), var(--body-bg-end));
     color: rgb(var(--fg));
   }
 }
@@ -56,7 +135,7 @@
   background-color: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
-  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+  box-shadow: var(--table-shadow);
 }
 
 /* =========================
@@ -76,6 +155,7 @@
 
   .panel-menu-button,
   .panel-refresh-button,
+  .theme-toggle-button,
   .stock-details-close {
     @apply rounded-md border px-3 py-1.5 text-[13px] font-semibold shadow-sm;
     border-color: var(--main-color);
@@ -96,6 +176,13 @@
     backdrop-filter: blur(6px);
   }
 
+  .theme-toggle-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
   .panel-menu-button-icon {
     display: inline-flex;
     margin-right: 0.3rem;
@@ -110,6 +197,7 @@
   }
 
   .panel-menu-button:hover,
+  .theme-toggle-button:hover,
   .stock-details-close:hover {
     background-color: var(--main-color);
     color: white;
@@ -161,6 +249,7 @@
 
   .panel-menu-button:focus-visible,
   .panel-refresh-button:focus-visible,
+  .theme-toggle-button:focus-visible,
   .stock-details-close:focus-visible,
   .stock-favorite-button:focus-visible,
   .stock-ticker-button:focus-visible {
@@ -170,9 +259,9 @@
 
   .nav-stocks {
     @apply sticky top-0 z-10 w-full border-b px-2 text-center text-xs font-bold sm:text-sm;
-    border-color: #dbeafe;
+    border-color: var(--border-strong);
     color: var(--text-color);
-    background: linear-gradient(to bottom, #eef2ff, #e0e7ff);
+    background: var(--nav-bg);
     font-weight: 700;
     letter-spacing: 0.02em;
   }
@@ -215,7 +304,7 @@
   }
 
   .stock-row:nth-child(even) {
-    background-color: #fafafa;
+    background-color: var(--surface-subtle);
   }
 
   .stock-row-interactive {
@@ -235,7 +324,7 @@
 
   .stock-cell {
     @apply min-w-0 whitespace-nowrap px-2 py-2.5 text-sm font-normal sm:px-3;
-    color: #374151;
+    color: var(--text-color);
   }
 
   .stock-cell-center {
@@ -316,7 +405,7 @@
 
 .stock-table-stale-error {
   margin: 0 0 0.5rem;
-  color: #b45309;
+  color: var(--warning-text);
   font-size: 0.875rem;
 }
 
@@ -359,6 +448,7 @@
 
   .panel-menu-button,
   .panel-refresh-button,
+  .theme-toggle-button,
   .stock-details-close,
   .stock-row,
   .stock-favorite-button,
@@ -392,6 +482,13 @@
   margin-bottom: 0;
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .panel-refresh {
   display: flex;
   align-items: center;
@@ -412,6 +509,11 @@
   }
 
   .panel-refresh {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .panel-actions {
     width: 100%;
     justify-content: space-between;
   }
@@ -608,13 +710,11 @@ dialog.stock-details-dialog {
   max-height: calc(100dvh - 3rem);
   overflow: hidden;
   padding: 0;
-  border: 1px solid rgb(219 234 254 / 90%);
+  border: 1px solid var(--modal-border);
   border-radius: 1rem;
   background-color: var(--surface);
   color: var(--text-color);
-  box-shadow:
-    0 28px 72px rgb(4 43 93 / 28%),
-    0 0 0 1px rgb(255 255 255 / 70%) inset;
+  box-shadow: var(--modal-shadow);
   margin: auto;
   transition:
     opacity 0.18s ease,
@@ -663,10 +763,8 @@ dialog.stock-details-dialog .stock-details-header {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.125rem 0.875rem;
-  border-bottom: 1px solid rgb(219 234 254 / 95%);
-  background:
-    linear-gradient(135deg, rgb(238 242 255 / 95%), rgb(255 255 255 / 98%)),
-    var(--surface);
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--modal-header-bg);
 }
 
 dialog.stock-details-dialog .stock-details-title {
@@ -739,7 +837,7 @@ dialog.stock-details-dialog .stock-details-close {
   justify-content: center;
   padding: 0.45rem 0.8rem;
   border-color: rgb(28 54 190 / 32%);
-  background-color: rgb(255 255 255 / 96%);
+  background-color: var(--surface-raised);
   box-shadow:
     0 8px 18px rgb(4 43 93 / 10%),
     0 1px 0 rgb(255 255 255 / 85%) inset;
@@ -764,7 +862,7 @@ dialog.stock-details-dialog .stock-details-grid {
   gap: 0.75rem;
   margin: 0;
   padding: 1.125rem;
-  background-color: #f8fafc;
+  background-color: var(--surface-muted);
 }
 
 dialog.stock-details-dialog .stock-details-grid > div {
@@ -774,9 +872,9 @@ dialog.stock-details-dialog .stock-details-grid > div {
   flex-direction: column;
   justify-content: space-between;
   padding: 0.8rem 0.9rem;
-  border: 1px solid rgb(219 234 254 / 85%);
+  border: 1px solid var(--border-strong);
   border-radius: 0.625rem;
-  background-color: var(--surface);
+  background-color: var(--surface-raised);
   box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
 }
 
@@ -856,11 +954,9 @@ dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative {
 dialog.stock-details-dialog .stock-history-section {
   margin: 1.125rem 1.125rem 0.625rem;
   padding: 1rem;
-  border: 1px solid rgb(219 234 254 / 85%);
+  border: 1px solid var(--border-strong);
   border-radius: 0.75rem;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 96%), rgb(248 250 252 / 98%)),
-    var(--surface);
+  background: var(--surface-raised);
   box-shadow:
     0 1px 2px rgb(15 23 42 / 4%),
     0 12px 32px rgb(4 43 93 / 6%);
@@ -930,7 +1026,7 @@ dialog.stock-details-dialog .stock-history-range-group {
   padding: 0.1875rem;
   border: 1px solid rgb(203 213 225 / 85%);
   border-radius: 0.625rem;
-  background-color: #f1f5f9;
+  background-color: var(--surface-muted);
   box-shadow: 0 1px 1px rgb(15 23 42 / 3%) inset;
 }
 
@@ -940,7 +1036,7 @@ dialog.stock-details-dialog .stock-history-range-button {
   border: 0;
   border-radius: 0.45rem;
   background-color: transparent;
-  color: #475569;
+  color: var(--muted-text);
   font-size: 0.75rem;
   font-weight: 800;
   line-height: 1;
@@ -973,9 +1069,9 @@ dialog.stock-details-dialog .stock-history-range-button:focus-visible {
 dialog.stock-details-dialog .stock-history-state,
 dialog.stock-details-dialog .stock-history-chart {
   min-height: 18.75rem;
-  border: 1px solid rgb(226 232 240 / 95%);
+  border: 1px solid var(--border-color);
   border-radius: 0.75rem;
-  background-color: rgb(255 255 255 / 92%);
+  background-color: var(--surface-raised);
 }
 
 dialog.stock-details-dialog .stock-history-state {
@@ -1044,7 +1140,7 @@ dialog.stock-details-dialog .stock-history-lightweight-chart {
   min-width: 0;
   height: 236px;
   border-radius: 0.625rem;
-  background-color: #ffffff;
+  background-color: var(--chart-bg);
   overflow: hidden;
 }
 
@@ -1055,7 +1151,7 @@ dialog.stock-details-dialog .stock-history-chart-footer {
   gap: 1.25rem;
   margin-top: 0.25rem;
   padding: 0.625rem 0.25rem 0;
-  border-top: 1px solid rgb(226 232 240 / 80%);
+  border-top: 1px solid var(--border-color);
   color: var(--muted-text);
   font-size: 0.72rem;
   font-weight: 700;
@@ -1088,7 +1184,7 @@ dialog.stock-details-dialog .stock-history-chart-svg {
 }
 
 dialog.stock-details-dialog .stock-history-chart-grid {
-  stroke: rgb(226 232 240 / 88%);
+  stroke: var(--border-color);
   stroke-width: 1;
   stroke-dasharray: 3 7;
 }
@@ -1106,7 +1202,7 @@ dialog.stock-details-dialog .stock-history-chart-point {
 }
 
 dialog.stock-details-dialog .stock-history-chart-crosshair {
-  stroke: rgb(100 116 139 / 24%);
+  stroke: var(--chart-crosshair-h);
   stroke-dasharray: 2 6;
   stroke-width: 0.8;
   pointer-events: none;
@@ -1132,9 +1228,9 @@ dialog.stock-details-dialog .stock-history-chart-tooltip {
   flex-direction: column;
   gap: 0.16rem;
   padding: 0.44rem 0.56rem;
-  border: 1px solid rgb(226 232 240 / 92%);
+  border: 1px solid var(--border-color);
   border-radius: 0.55rem;
-  background-color: rgb(255 255 255 / 98%);
+  background-color: var(--surface-raised);
   box-shadow:
     0 12px 28px rgb(15 23 42 / 12%),
     0 2px 6px rgb(15 23 42 / 8%);
@@ -1266,8 +1362,93 @@ dialog.stock-details-dialog
 }
 
 dialog.stock-details-dialog .stock-history-chart-gradient-end {
-  stop-color: white;
+  stop-color: var(--chart-bg);
   stop-opacity: 0;
+}
+
+html.dark .panel-menu-button:hover .panel-menu-button-icon,
+html.dark .panel-menu-button-active .panel-menu-button-icon,
+html.dark .panel-menu-button:hover,
+html.dark .theme-toggle-button:hover,
+html.dark .stock-details-close:hover,
+html.dark .panel-menu-button-active,
+html.dark .panel-menu-button-active:hover,
+html.dark .panel-refresh-button {
+  color: #07111f;
+}
+
+html.dark .panel-refresh-button.loading::after {
+  border-color: #07111f;
+  border-top-color: transparent;
+}
+
+html.dark .stock-var-positive,
+html.dark .stock-var-negative {
+  color: #07111f;
+  text-shadow: none;
+}
+
+html.dark .stock-favorite-button:hover {
+  border-color: rgb(251 191 36 / 44%);
+  background-color: rgb(251 191 36 / 13%);
+  color: #fbbf24;
+}
+
+html.dark .stock-favorite-button-active,
+html.dark .stock-favorite-button-active:hover {
+  color: #fbbf24;
+}
+
+html.dark .stock-skeleton-bar {
+  background: linear-gradient(
+    90deg,
+    rgb(30 41 59 / 85%),
+    rgb(51 65 85 / 95%),
+    rgb(30 41 59 / 85%)
+  );
+  background-size: 200% 100%;
+}
+
+html.dark dialog.stock-details-dialog::backdrop {
+  background-color: rgb(2 6 23 / 68%);
+}
+
+html.dark dialog.stock-details-dialog .stock-details-panel-label {
+  border-color: rgb(142 162 255 / 28%);
+  background-color: rgb(142 162 255 / 16%);
+}
+
+html.dark dialog.stock-details-dialog .stock-details-close {
+  box-shadow:
+    0 8px 18px rgb(0 0 0 / 24%),
+    0 1px 0 rgb(255 255 255 / 8%) inset;
+}
+
+html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive {
+  border-color: rgb(52 211 153 / 32%);
+  background-color: rgb(6 95 70 / 30%);
+  color: #86efac;
+}
+
+html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative {
+  border-color: rgb(251 113 133 / 34%);
+  background-color: rgb(159 18 57 / 28%);
+  color: #fda4af;
+}
+
+html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
+  background-color: rgb(51 65 85 / 70%);
+}
+
+html.dark dialog.stock-details-dialog .stock-history-chart-point,
+html.dark dialog.stock-details-dialog .stock-history-chart-hover-point {
+  stroke: var(--chart-bg);
+}
+
+html.dark dialog.stock-details-dialog .stock-history-chart-tooltip {
+  box-shadow:
+    0 12px 28px rgb(0 0 0 / 32%),
+    0 2px 6px rgb(0 0 0 / 22%);
 }
 
 /* =========================
