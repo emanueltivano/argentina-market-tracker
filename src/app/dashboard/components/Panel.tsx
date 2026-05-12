@@ -213,6 +213,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
 
           <StockTable
             isBusy={false}
+            hideHeaderOnMobile={isFavoritesPanel}
             sort={sort}
             onSortChange={handleSortChange}
           >
@@ -232,6 +233,7 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
 
           <StockTable
             isBusy={isRefreshing}
+            hideHeaderOnMobile={isFavoritesPanel && sortedRows.length === 0}
             sort={sort}
             onSortChange={handleSortChange}
           >

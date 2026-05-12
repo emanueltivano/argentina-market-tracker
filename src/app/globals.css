@@ -153,9 +153,18 @@ html.dark {
     @apply mb-4 flex flex-wrap gap-2;
   }
 
+  .panel-menu-root {
+    position: relative;
+  }
+
+  .panel-menu-mobile {
+    display: none;
+  }
+
   .panel-menu-button,
   .panel-refresh-button,
   .theme-toggle-button,
+  .panel-menu-toggle,
   .stock-details-close {
     @apply rounded-md border px-3 py-1.5 text-[13px] font-semibold shadow-sm;
     border-color: var(--main-color);
@@ -183,6 +192,47 @@ html.dark {
     white-space: nowrap;
   }
 
+  .panel-menu-toggle {
+    display: inline-flex;
+    min-height: 2.35rem;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel-menu-toggle-icon {
+    display: inline-flex;
+    width: 1rem;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .panel-menu-toggle-icon span {
+    display: block;
+    height: 2px;
+    border-radius: 9999px;
+    background-color: currentColor;
+  }
+
+  .panel-menu-mobile-panel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    display: grid;
+    width: min(17rem, calc(100vw - 2rem));
+    gap: 0.4rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 0.75rem;
+    background-color: var(--surface-raised);
+    box-shadow: var(--table-shadow);
+  }
+
+  .panel-menu-mobile-panel .panel-menu-button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .panel-menu-button-icon {
     display: inline-flex;
     margin-right: 0.3rem;
@@ -198,6 +248,7 @@ html.dark {
 
   .panel-menu-button:hover,
   .theme-toggle-button:hover,
+  .panel-menu-toggle:hover,
   .stock-details-close:hover {
     background-color: var(--main-color);
     color: white;
@@ -292,6 +343,7 @@ html.dark {
   .panel-menu-button:focus-visible,
   .panel-refresh-button:focus-visible,
   .theme-toggle-button:focus-visible,
+  .panel-menu-toggle:focus-visible,
   .stock-details-close:focus-visible,
   .stock-favorite-button:focus-visible,
   .stock-ticker-button:focus-visible {
@@ -495,6 +547,7 @@ html.dark {
   .panel-menu-button,
   .panel-refresh-button,
   .theme-toggle-button,
+  .panel-menu-toggle,
   .stock-details-close,
   .stock-row,
   .stock-favorite-button,
@@ -552,6 +605,23 @@ html.dark {
   .panel-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .panel-menu-root {
+    width: 100%;
+  }
+
+  .panel-menu-desktop {
+    display: none;
+  }
+
+  .panel-menu-mobile {
+    display: block;
+  }
+
+  .panel-menu-toggle {
+    width: 100%;
+    justify-content: center;
   }
 
   .panel-refresh {
@@ -1230,6 +1300,7 @@ html.dark .panel-menu-button:hover .panel-menu-button-icon,
 html.dark .panel-menu-button-active .panel-menu-button-icon,
 html.dark .panel-menu-button:hover,
 html.dark .theme-toggle-button:hover,
+html.dark .panel-menu-toggle:hover,
 html.dark .stock-details-close:hover,
 html.dark .panel-menu-button-active,
 html.dark .panel-menu-button-active:hover,

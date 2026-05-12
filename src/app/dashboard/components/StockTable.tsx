@@ -23,6 +23,7 @@ const STOCK_TABLE_SKELETON_CELLS = [
 type StockTableProps = {
   children: ReactNode;
   isBusy: boolean;
+  hideHeaderOnMobile?: boolean;
   sort?: StockSort;
   onSortChange?: (key: StockSortKey) => void;
 };
@@ -30,13 +31,18 @@ type StockTableProps = {
 export function StockTable({
   children,
   isBusy,
+  hideHeaderOnMobile = false,
   sort = DEFAULT_STOCK_SORT,
   onSortChange = () => undefined,
 }: StockTableProps) {
   return (
     <table className='stock-table' aria-busy={isBusy}>
       <caption className='sr-only'>Panel de acciones</caption>
-      <NavStocks sort={sort} onSortChange={onSortChange} />
+      <NavStocks
+        className={hideHeaderOnMobile ? 'max-[520px]:hidden' : ''}
+        sort={sort}
+        onSortChange={onSortChange}
+      />
       <tbody className='divide-y divide-gray-200'>{children}</tbody>
     </table>
   );

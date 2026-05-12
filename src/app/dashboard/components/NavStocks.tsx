@@ -46,6 +46,7 @@ const COLUMNS = [
 const GRID = STOCK_GRID_LAYOUT;
 
 type NavStocksProps = {
+  className?: string;
   sort: StockSort;
   onSortChange: (key: StockSortKey) => void;
 };
@@ -60,9 +61,13 @@ const SORT_LABEL_BY_DIRECTION: Record<StockSortDirection, string> = {
   desc: 'descendente',
 };
 
-export default function NavStocks({ sort, onSortChange }: NavStocksProps) {
+export default function NavStocks({
+  className = '',
+  sort,
+  onSortChange,
+}: NavStocksProps) {
   return (
-    <thead>
+    <thead className={className}>
       <tr className={`${GRID} nav-stocks`}>
         {COLUMNS.map((column) => {
           const sortKey = column.sortKey;
