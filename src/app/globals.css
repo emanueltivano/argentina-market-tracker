@@ -33,6 +33,7 @@
   --border-color: #e5e7eb;
   --border-strong: #dbeafe;
   --muted-text: #6b7280;
+  --warning-color: #b45309;
   --warning-text: #b45309;
   --table-shadow: 0 10px 30px rgb(15 23 42 / 6%);
   --nav-bg: linear-gradient(to bottom, #eef2ff, #e0e7ff);
@@ -85,6 +86,7 @@ html.dark {
   --border-color: rgb(71 85 105 / 70%);
   --border-strong: rgb(100 116 139 / 78%);
   --muted-text: #94a3b8;
+  --warning-color: #fbbf24;
   --warning-text: #fbbf24;
   --table-shadow: 0 18px 46px rgb(0 0 0 / 30%);
   --nav-bg: linear-gradient(to bottom, #172033, #111827);
@@ -163,6 +165,7 @@ html.dark {
 
   .panel-menu-button,
   .panel-refresh-button,
+  .panel-about-link,
   .theme-toggle-button,
   .panel-menu-toggle,
   .stock-details-close {
@@ -189,6 +192,13 @@ html.dark {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .panel-about-link {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
     white-space: nowrap;
   }
 
@@ -247,6 +257,7 @@ html.dark {
   }
 
   .panel-menu-button:hover,
+  .panel-about-link:hover,
   .theme-toggle-button:hover,
   .panel-menu-toggle:hover,
   .stock-details-close:hover {
@@ -342,6 +353,7 @@ html.dark {
 
   .panel-menu-button:focus-visible,
   .panel-refresh-button:focus-visible,
+  .panel-about-link:focus-visible,
   .theme-toggle-button:focus-visible,
   .panel-menu-toggle:focus-visible,
   .stock-details-close:focus-visible,
@@ -605,6 +617,8 @@ html.dark {
   .panel-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
+    margin-bottom: 0.875rem;
   }
 
   .panel-menu-root {
@@ -643,6 +657,11 @@ html.dark {
     row-gap: 0.75rem;
     width: 100%;
     justify-content: space-between;
+  }
+
+  .panel-about-link,
+  .theme-toggle-button {
+    min-height: 2.35rem;
   }
 }
 
@@ -1377,11 +1396,12 @@ html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
 
 @media (max-width: 768px) {
   .dashboard-container {
-    padding: 1rem;
+    padding: 0.875rem;
   }
 
   .page-title {
-    @apply text-2xl;
+    @apply text-xl;
+    margin-bottom: 0.75rem;
   }
 
   .stock-table-container {
@@ -1390,7 +1410,7 @@ html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
 
   .stock-cell,
   .nav-stocks-cell {
-    @apply px-2 text-xs;
+    @apply px-1.5 text-xs;
   }
 
   .stock-price {
@@ -1398,7 +1418,7 @@ html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
   }
 
   .stock-var {
-    min-width: 3.25rem;
+    min-width: 3.15rem;
   }
 
   .stock-buy > span,
@@ -1474,8 +1494,174 @@ html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
 }
 
 @media (max-width: 520px) {
+  .panel-actions {
+    gap: 0.5rem;
+  }
+
+  .panel-refresh {
+    gap: 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .panel-refresh-button,
+  .panel-about-link,
+  .theme-toggle-button,
+  .panel-menu-toggle {
+    padding-inline: 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .stock-table-container {
+    border-radius: 0.625rem;
+  }
+
+  .stock-ticker {
+    font-size: 16px !important;
+  }
+
+  .stock-price {
+    font-size: 13px;
+  }
+
   dialog.stock-details-dialog .stock-details-grid,
   dialog.stock-details-dialog .stock-details-grid-primary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   About page
+========================= */
+
+.about-page {
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+}
+
+.about-shell {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+}
+
+.about-hero {
+  padding: 1rem 0 1.5rem;
+}
+
+.about-back-link {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  color: var(--main-color);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.about-back-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.about-back-link:focus-visible {
+  outline: 2px solid var(--main-light-color);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+.about-eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.about-hero h1 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1;
+  font-weight: 900;
+}
+
+.about-hero p:last-child {
+  max-width: 48rem;
+  margin: 1rem 0 0;
+  color: var(--muted-text);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+.about-section {
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.about-section h2 {
+  margin: 0 0 0.875rem;
+  color: var(--text-color);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.about-section p,
+.about-list,
+.about-steps {
+  max-width: 54rem;
+  color: var(--muted-text);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.875rem;
+}
+
+.about-card {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background-color: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.about-card h3 {
+  margin: 0 0 0.5rem;
+  color: var(--text-color);
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+.about-card p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.about-list,
+.about-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.about-list li,
+.about-steps li {
+  margin: 0.45rem 0;
+}
+
+@media (max-width: 900px) {
+  .about-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .about-page {
+    padding-top: 1rem;
+  }
+
+  .about-grid {
     grid-template-columns: 1fr;
   }
 }

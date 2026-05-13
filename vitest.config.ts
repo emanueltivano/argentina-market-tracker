@@ -11,5 +11,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     exclude: [...configDefaults.exclude, 'e2e/**'],
+    maxWorkers: 2,
+    minWorkers: 1,
   },
 })

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Argentina Market Tracker dashboard preview">
+  <rect width="1200" height="630" fill="#f8fafc"/>
+  <rect x="64" y="64" width="1072" height="502" rx="28" fill="#ffffff" stroke="#dbeafe" stroke-width="2"/>
+  <text x="104" y="136" fill="#042b5d" font-family="Inter, Arial, sans-serif" font-size="52" font-weight="800">Argentina Market Tracker</text>
+  <text x="106" y="184" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="24">Secure Next.js BFF for Argentine equities, historical charts and validated market data.</text>
+  <rect x="104" y="236" width="992" height="252" rx="18" fill="#f8fafc" stroke="#e5e7eb"/>
+  <rect x="104" y="236" width="992" height="58" rx="18" fill="#eef2ff"/>
+  <text x="146" y="273" fill="#042b5d" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Ticker</text>
+  <text x="364" y="273" fill="#042b5d" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Price</text>
+  <text x="596" y="273" fill="#042b5d" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Var %</text>
+  <text x="820" y="273" fill="#042b5d" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Volume</text>
+  <g font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800" fill="#042b5d">
+    <text x="146" y="350">ALUA</text>
+    <text x="146" y="414">GGAL</text>
+    <text x="146" y="478">YPFD</text>
+  </g>
+  <g font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700" fill="#042b5d">
+    <text x="364" y="350">$ 1.125,50</text>
+    <text x="364" y="414">$ 4.210,75</text>
+    <text x="364" y="478">$ 38.650,00</text>
+  </g>
+  <rect x="596" y="322" width="112" height="38" rx="19" fill="#16c784"/>
+  <rect x="596" y="386" width="112" height="38" rx="19" fill="#ea3943"/>
+  <rect x="596" y="450" width="112" height="38" rx="19" fill="#16c784"/>
+  <g font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff">
+    <text x="622" y="347">+2.14%</text>
+    <text x="624" y="411">-0.82%</text>
+    <text x="622" y="475">+0.45%</text>
+  </g>
+  <path d="M816 452c44-64 82-92 126-74 52 21 70-91 130-118" fill="none" stroke="#008f5a" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="1072" cy="260" r="8" fill="#008f5a"/>
+</svg>

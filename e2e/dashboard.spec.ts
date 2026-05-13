@@ -109,6 +109,22 @@ async function mockPanelApi(
   })
 }
 
+async function selectMarketPanel(page: Page, label: string) {
+  const panelButton = page.getByRole('button', {
+    name: `Mostrar panel ${label}`,
+  })
+
+  if (await panelButton.isVisible().catch(() => false)) {
+    await panelButton.click()
+    return
+  }
+
+  await page
+    .getByRole('button', { name: 'Abrir navegación de paneles' })
+    .click()
+  await panelButton.click()
+}
+
 test.describe('dashboard', () => {
   test('loads the initial panel with mocked market data and freshness metadata', async ({
     page,
@@ -132,13 +148,13 @@ test.describe('dashboard', () => {
     await mockPanelApi(page, { requests })
     await page.goto('/')
 
-    await page.getByRole('button', { name: 'Mostrar panel Panel General' }).click()
+    await selectMarketPanel(page, 'Panel General')
     await expect(page.getByRole('heading', { name: 'Panel General' })).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
     ).toBeVisible()
 
-    await page.getByRole('button', { name: 'Mostrar panel CEDEARs' }).click()
+    await selectMarketPanel(page, 'CEDEARs')
     await expect(page.getByRole('heading', { name: 'CEDEARs' })).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Abrir detalle de AAPL, Apple' })

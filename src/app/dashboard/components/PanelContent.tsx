@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import Link from 'next/link';
 
 import { type MarketPanelKey } from '@/lib/market';
 
@@ -34,6 +35,9 @@ export default function PanelContent({
         />
 
         <div className="panel-actions">
+          <Link className="panel-about-link" href="/about">
+            About
+          </Link>
           <ThemeToggle />
           {actions}
         </div>

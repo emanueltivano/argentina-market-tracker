@@ -5,23 +5,66 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Tests](https://img.shields.io/badge/tests-Vitest-green)
 
-Dashboard de mercado argentino construido con Next.js, React, TypeScript y Tailwind CSS.
+Fullstack market dashboard for Argentine equities built with Next.js, React,
+TypeScript and Tailwind CSS.
 
-El proyecto consume una API externa protegida por token, normaliza paneles de mercado
-argentino, expone históricos por símbolo y los muestra en una interfaz con estados de
-carga, error, vacío, datos stale y favoritos persistidos localmente. Está pensado como
-proyecto de portfolio: prioriza claridad, seguridad básica, buen tipado, tests y una
-arquitectura fácil de explicar en entrevista.
+The app consumes a protected external API, keeps credentials server-side through
+a Next.js backend-for-frontend, validates and normalizes market payloads, and
+renders a responsive dashboard with historical charts, persisted favorites,
+loading/error/empty/stale states and automated tests.
 
-## Technical highlights
+It is designed as a professional portfolio project: small enough to review in an
+interview, but complete enough to show product thinking, frontend craft,
+server-side boundaries, data contracts and deployment awareness.
 
-- Backend-for-frontend con Next API routes para proteger credenciales y evitar llamadas directas desde el navegador.
-- Credenciales, token OAuth y refresh viven solo server-side en un cliente protegido con `server-only`.
-- Cache, deduplicación y rate limit in-memory por instancia, con tradeoffs serverless documentados.
-- Normalización y validación de payloads externos antes de que la UI renderice datos.
-- Modal de detalle con histórico por símbolo usando `lightweight-charts`.
-- Favoritos persistidos con fallback stale desde snapshots locales cuando falla el panel fuente.
-- Tests unitarios, integración de API/hook y E2E con Playwright.
+## Quick Start
+
+```bash
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+The project requires external API credentials for live data. The Playwright E2E
+suite mocks `/api/panel`, so tests do not depend on real credentials.
+
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- TypeScript 6
+- Tailwind CSS 4
+- SWR
+- `lightweight-charts`
+- Vitest
+- Playwright
+
+## Key Features
+
+- Secure backend-for-frontend with Next API routes.
+- Server-only OAuth token handling and credential protection.
+- Validated market panel and historical price contracts.
+- Responsive dashboard for leader, general, CEDEAR and favorite panels.
+- Manual refresh, short in-memory cache, request deduplication and rate limit.
+- Historical detail modal with range selector and chart rendering.
+- Local favorites with stale fallback snapshots.
+- Loading, empty, error, stale and refreshing UI states.
+- CI with lint, type-check, unit/integration tests, E2E and production build.
+
+## What This Project Demonstrates
+
+- **Frontend architecture:** composable dashboard components, hooks for data
+  fetching and persistence, responsive table behavior and accessible controls.
+- **Fullstack boundaries:** API routes hide external credentials, normalize
+  upstream data and expose stable contracts to the client.
+- **Data resilience:** runtime guards prevent invalid external payloads from
+  leaking into the UI.
+- **Operational thinking:** cache, cooldown, timeout, retry and rate limiting are
+  implemented with documented serverless tradeoffs.
+- **Quality:** unit tests, API tests, hook/component tests and Playwright E2E are
+  part of the normal validation path.
 
 ## Screenshots
 
@@ -36,6 +79,59 @@ arquitectura fácil de explicar en entrevista.
 ### Mobile
 
 ![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
+
+## Architecture Summary
+
+```txt
+Browser
+  Dashboard + SWR
+        |
+        | GET /api/panel?type=lider|general|cedears
+        | GET /api/stocks/[symbol]/history?range=...
+        v
+Next API Routes
+  Validate request, apply local cache/rate limit, normalize payloads
+        |
+        v
+Server-only IOL client
+  OAuth token cache, timeout, retry, credential redaction
+        |
+        v
+External market API
+```
+
+The browser only receives validated app-level data. External credentials,
+token refresh and upstream error details stay in the server layer.
+
+## Quality Checks
+
+```bash
+npm run lint
+npm run type-check
+npm run test
+npm run build
+npm run test:e2e:run
+```
+
+`npm run validate` runs lint, type-check, unit/integration tests and build.
+
+## Known Limitations / Next Improvements
+
+- No public demo URL is documented yet. Configure Vercel environment variables
+  before publishing the repository as a live portfolio link.
+- In-memory cache and rate limiting are per process/serverless instance. Use
+  Redis, Vercel KV, Upstash or WAF rules for real production traffic.
+- Historical data is fetched on demand and not persisted in a database.
+- No analytics or production error reporting is wired yet.
+- A strict CSP is intentionally not enabled until Next.js generated assets and
+  runtime scripts are audited.
+
+## Descripcion En Espanol
+
+Dashboard de mercado argentino construido con Next.js, React, TypeScript y
+Tailwind CSS. Consume una API externa protegida por token, normaliza paneles de
+mercado, expone historicos por simbolo y los muestra en una interfaz con
+estados de carga, error, vacio, datos stale y favoritos persistidos localmente.
 
 ## Arquitectura y seguridad
 
@@ -84,17 +180,6 @@ Las herramientas de debug están deshabilitadas por defecto. `/api/token` y `/ap
 - la request llega por `localhost`, `127.0.0.1` o `::1`
 
 Estas rutas nunca devuelven el token completo. `raw=1` puede exponer estructura de la API externa, por eso queda limitado a desarrollo local.
-
-## Stack
-
-- Next.js 16
-- React 19
-- TypeScript 6
-- Tailwind CSS 4
-- SWR
-- ESLint
-- Vitest
-- Playwright
 
 ## Arquitectura
 
@@ -199,7 +284,8 @@ src/
 | `npm run lint` | Ejecuta ESLint |
 | `npm run type-check` | Valida TypeScript sin emitir archivos |
 | `npm run test` | Corre tests unitarios con Vitest |
-| `npm run test:e2e` | Corre E2E con Playwright y mocks de `/api/panel` |
+| `npm run test:e2e` | Genera build y corre E2E con Playwright y mocks de `/api/panel` |
+| `npm run test:e2e:run` | Corre E2E contra un build ya generado |
 | `npm run test:e2e:ui` | Abre el runner interactivo de Playwright |
 | `npm run build` | Genera build de producción |
 | `npm run validate` | Ejecuta lint, type-check, tests unitarios y build |
@@ -217,8 +303,8 @@ npm ci
 npm run lint
 npm run type-check
 npm run test
-npm run test:e2e
 npm run build
+npm run test:e2e:run
 ```
 
 El job instala solo Chromium (`npx playwright install --with-deps chromium`) para mantener el pipeline razonable en tiempo y peso. Los E2E interceptan `/api/panel`, por lo que no llaman a la API externa ni dependen de credenciales reales.
@@ -239,6 +325,7 @@ Crear `.env.local` a partir de `.env.local.example`.
 | Variable | Requerida | Descripción |
 | --- | --- | --- |
 | `API_URL` | Sí | URL base de la API externa, sin slash final |
+| `NEXT_PUBLIC_SITE_URL` | No | URL pública del sitio para metadata social; default local |
 | `TOKEN_ENDPOINT` | No | Endpoint de token; default `token` |
 | `API_USERNAME` | Sí | Usuario de API externa |
 | `API_PASSWORD` | Sí | Password de API externa |
@@ -251,6 +338,7 @@ Ejemplo:
 
 ```env
 API_URL="https://api.example.com"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 TOKEN_ENDPOINT="token"
 API_USERNAME="your_api_username"
 API_PASSWORD="your_api_password"
@@ -274,20 +362,28 @@ Abrir:
 http://localhost:3000
 ```
 
+Para datos reales, completar `.env.local` con credenciales del proveedor. El
+repositorio no incluye secretos ni un modo demo público con datos mockeados para
+producción; los tests usan mocks donde corresponde.
+
 ## Deploy en Vercel
 
 1. Importar el repositorio en Vercel.
-2. Configurar las variables de entorno requeridas.
+2. Configurar las variables de entorno requeridas en Project Settings.
 3. Mantener `ENABLE_TOKEN_DEBUG=0` o sin definir en producción.
 4. Ejecutar el build con `npm run build`.
+5. Agregar la URL pública al campo Website de GitHub cuando el deploy esté validado.
 
 ### Deploy checklist
 
 - Validar variables de entorno en Vercel: `API_URL`, `API_USERNAME`, `API_PASSWORD` y endpoints de panel.
+- Definir `NEXT_PUBLIC_SITE_URL` con la URL final de Vercel cuando exista dominio público.
 - Mantener `ENABLE_TOKEN_DEBUG` sin definir o en `0`.
+- Confirmar que ninguna variable sensible queda expuesta con prefijo `NEXT_PUBLIC_`; solo `NEXT_PUBLIC_SITE_URL` debe ser pública.
 - Correr `npm run validate`.
 - Correr `npm run test:e2e`.
 - Probar manualmente panel inicial, cambio de panel, refresh, modal histórico, favoritos y mobile.
+- Compartir solo una demo con credenciales reales configuradas del lado server o con un modo demo explícito implementado.
 
 ### Production tradeoffs
 
@@ -356,7 +452,7 @@ Abrir el runner interactivo:
 npm run test:e2e:ui
 ```
 
-Playwright levanta `npm run dev:e2e` automáticamente y mockea `/api/panel`, así que los tests no usan IOL ni requieren credenciales.
+Playwright levanta `next start` sobre un build de producción y mockea `/api/panel`, así que los tests no usan IOL ni requieren credenciales.
 
 ## Troubleshooting
 
