@@ -2,10 +2,23 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import './globals.css'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+function getPublicSiteUrl() {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined) ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+  )
+}
+
+const siteUrl =
+  getPublicSiteUrl() ||
+  (process.env.NODE_ENV !== 'production' ? 'http://localhost:3000' : undefined)
+const socialImageUrl = siteUrl ? new URL('/og-image.svg', siteUrl).toString() : undefined
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
   title: {
     default: 'Argentina Market Tracker',
     template: '%s | Argentina Market Tracker',
@@ -32,21 +45,25 @@ export const metadata: Metadata = {
       'Dashboard para mercado argentino construido con Next.js, TypeScript, SWR y Playwright.',
     type: 'website',
     locale: 'es_AR',
-    images: [
-      {
-        url: '/og-image.svg',
-        width: 1200,
-        height: 630,
-        alt: 'Argentina Market Tracker dashboard preview',
-      },
-    ],
+    ...(socialImageUrl
+      ? {
+          images: [
+            {
+              url: socialImageUrl,
+              width: 1200,
+              height: 630,
+              alt: 'Argentina Market Tracker dashboard preview',
+            },
+          ],
+        }
+      : {}),
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Argentina Market Tracker',
     description:
       'Dashboard de mercado argentino con rutas API seguras, contratos validados, histórico y tests.',
-    images: ['/og-image.svg'],
+    ...(socialImageUrl ? { images: [socialImageUrl] } : {}),
   },
   robots: {
     index: true,

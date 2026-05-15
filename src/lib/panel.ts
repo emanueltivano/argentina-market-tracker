@@ -42,6 +42,16 @@ export interface PanelErrorResponse {
 
 export type PanelResponse = PanelSuccessResponse | PanelErrorResponse
 
+export interface PanelNormalizationIssue {
+  reason: string
+}
+
+export interface PanelNormalizationResult {
+  data: PanelTitulo[]
+  droppedItemsCount: number
+  droppedItemsSummary: PanelNormalizationIssue[]
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -112,10 +122,6 @@ export const PUNTA_FIELDS = [
   'cantidadVenta',
 ] as const satisfies readonly PuntaField[]
 
-function isNotNull<T>(value: T | null): value is T {
-  return value !== null
-}
-
 export function isPanelTitulo(value: unknown): value is PanelTitulo {
   if (!hasPanelTituloIdentity(value)) {
     return false
@@ -175,9 +181,35 @@ function normalizePuntas(value: unknown): PanelTitulo['puntas'] {
   return Object.keys(puntas).length > 0 ? puntas : undefined
 }
 
-function normalizePanelTitulo(value: unknown): PanelTitulo | null {
-  if (!isPanelTitulo(value)) {
-    return null
+type NormalizePanelTituloResult =
+  | { ok: true; data: PanelTitulo }
+  | { ok: false; reason: string }
+
+function parsePanelTitulo(value: unknown): NormalizePanelTituloResult {
+  if (!isRecord(value)) {
+    return { ok: false, reason: 'INVALID_ITEM_SHAPE' }
+  }
+
+  if (!isNonEmptyString(value.simbolo) || !isNonEmptyString(value.descripcion)) {
+    return { ok: false, reason: 'INVALID_IDENTITY' }
+  }
+
+  for (const field of NUMERIC_PANEL_FIELDS) {
+    if (!isOptionalFiniteNumber(value[field])) {
+      return { ok: false, reason: `INVALID_NUMERIC_FIELD:${field}` }
+    }
+  }
+
+  if (value.puntas !== undefined) {
+    if (!isRecord(value.puntas)) {
+      return { ok: false, reason: 'INVALID_PUNTAS_SHAPE' }
+    }
+
+    for (const field of PUNTA_FIELDS) {
+      if (!isOptionalFiniteNumber(value.puntas[field])) {
+        return { ok: false, reason: `INVALID_PUNTA_FIELD:${field}` }
+      }
+    }
   }
 
   const item: PanelTitulo = {
@@ -199,26 +231,57 @@ function normalizePanelTitulo(value: unknown): PanelTitulo | null {
   setFiniteNumber(item, 'ultimoCierre', value.ultimoCierre)
   setFiniteNumber(item, 'volumen', value.volumen)
 
-  return item
+  return {
+    ok: true,
+    data: item,
+  }
 }
 
-export function normalizePanelData(data: unknown): PanelTitulo[] {
+function summarizeDroppedItems(reasons: string[]): PanelNormalizationIssue[] {
+  const counts = new Map<string, number>()
+
+  for (const reason of reasons) {
+    counts.set(reason, (counts.get(reason) ?? 0) + 1)
+  }
+
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .map(([reason, count]) => ({
+      reason: `${reason}:${count}`,
+    }))
+}
+
+export function normalizePanelDataResult(data: unknown): PanelNormalizationResult {
   const payload = extractArrayPayload(data)
 
   if (!payload) {
     throw new Error('Invalid upstream payload structure')
   }
 
-  const normalizedItems = payload.map((item) => normalizePanelTitulo(item))
-  const invalidItemsCount = normalizedItems.filter((item) => item === null).length
+  const validItems: PanelTitulo[] = []
+  const droppedReasons: string[] = []
 
-  if (payload.length > 0 && invalidItemsCount === payload.length) {
+  for (const item of payload) {
+    const parsedItem = parsePanelTitulo(item)
+
+    if (parsedItem.ok) {
+      validItems.push(parsedItem.data)
+    } else {
+      droppedReasons.push(parsedItem.reason)
+    }
+  }
+
+  if (payload.length > 0 && validItems.length === 0) {
     throw new Error('Upstream payload contains no valid items')
   }
 
-  if (invalidItemsCount > 0) {
-    throw new Error('Upstream payload contains partially invalid items')
+  return {
+    data: validItems,
+    droppedItemsCount: droppedReasons.length,
+    droppedItemsSummary: summarizeDroppedItems(droppedReasons),
   }
+}
 
-  return normalizedItems.filter(isNotNull)
+export function normalizePanelData(data: unknown): PanelTitulo[] {
+  return normalizePanelDataResult(data).data
 }

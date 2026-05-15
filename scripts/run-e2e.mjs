@@ -4,6 +4,36 @@ const SERVER_URL = 'http://127.0.0.1:3100'
 const SERVER_PORT = '3100'
 const SERVER_START_TIMEOUT_MS = 120_000
 const SERVER_STOP_TIMEOUT_MS = 10_000
+const SSR_PANEL_FIXTURE = JSON.stringify({
+  lider: [
+    {
+      simbolo: 'GGAL',
+      descripcion: 'Grupo Financiero Galicia',
+      ultimoPrecio: 4200.5,
+      variacionPorcentual: 1.25,
+      volumen: 120000,
+    },
+  ],
+})
+
+function parseArgs(argv) {
+  const nextArgs = []
+  let mode = 'default'
+
+  for (const arg of argv) {
+    if (arg.startsWith('--mode=')) {
+      mode = arg.slice('--mode='.length)
+      continue
+    }
+
+    nextArgs.push(arg)
+  }
+
+  return {
+    mode,
+    playwrightArgs: nextArgs,
+  }
+}
 
 function spawnCommand(command, args, options = {}) {
   return spawn(command, args, {
@@ -74,13 +104,20 @@ async function terminateServer(serverProcess) {
 async function main() {
   const nextBin = './node_modules/next/dist/bin/next'
   const playwrightCli = './node_modules/@playwright/test/cli.js'
+  const { mode, playwrightArgs } = parseArgs(process.argv.slice(2))
+  const isSsrMode = mode === 'ssr'
   const serverProcess = spawnCommand(
     process.execPath,
     [nextBin, 'start', '-p', SERVER_PORT],
     {
       env: {
         ...process.env,
-        DISABLE_SERVER_DASHBOARD_PREFETCH: '1',
+        DISABLE_SERVER_DASHBOARD_PREFETCH:
+          process.env.DISABLE_SERVER_DASHBOARD_PREFETCH ??
+          (isSsrMode ? '0' : '1'),
+        PANEL_RESPONSE_FIXTURE_JSON:
+          process.env.PANEL_RESPONSE_FIXTURE_JSON ??
+          (isSsrMode ? SSR_PANEL_FIXTURE : undefined),
       },
     }
   )
@@ -102,11 +139,12 @@ async function main() {
     exitCode = await new Promise((resolve, reject) => {
       const playwrightProcess = spawnCommand(
         process.execPath,
-        [playwrightCli, 'test'],
+        [playwrightCli, 'test', ...playwrightArgs],
         {
           env: {
             ...process.env,
             PLAYWRIGHT_TEST_BASE_URL: SERVER_URL,
+            PLAYWRIGHT_E2E_MODE: mode,
           },
         }
       )

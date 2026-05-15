@@ -1,4 +1,4 @@
-import { normalizeTicker } from '../hooks/useFavoriteStocks'
+import { normalizeTicker } from './ticker'
 import { type MarketPanelViewStatus } from '../hooks/useMarketPanel'
 import { type StockData } from './stockData'
 

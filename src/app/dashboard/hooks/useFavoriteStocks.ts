@@ -2,14 +2,49 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type StockData } from '../lib/stockData';
+import { normalizeTicker } from '../lib/ticker';
 
 export const FAVORITE_STOCKS_STORAGE_KEY =
   'argentina-market-tracker:favorites';
 export const FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY =
   'argentina-market-tracker:favorite-stock-snapshots';
 
-export function normalizeTicker(ticker: string): string {
-  return ticker.trim().toUpperCase();
+type SafeStorage = Pick<Storage, 'getItem' | 'setItem'>;
+
+function getStorage(): SafeStorage | null {
+  try {
+    if (typeof window === 'undefined' || !('localStorage' in window)) {
+      return null;
+    }
+
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function safeGetStorageItem(key: string): string | null {
+  const storage = getStorage();
+
+  if (!storage) return null;
+
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetStorageItem(key: string, value: string) {
+  const storage = getStorage();
+
+  if (!storage) return;
+
+  try {
+    storage.setItem(key, value);
+  } catch {
+    // Favorites should keep working even when storage is blocked or full.
+  }
 }
 
 function numberOrNull(value: unknown): number | null {
@@ -63,7 +98,7 @@ function normalizeFavorites(value: unknown): string[] {
 }
 
 function readStoredFavorites(): string[] {
-  const storedValue = window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY);
+  const storedValue = safeGetStorageItem(FAVORITE_STOCKS_STORAGE_KEY);
 
   if (!storedValue) return [];
 
@@ -91,9 +126,7 @@ function normalizeFavoriteSnapshots(value: unknown): Record<string, StockData> {
 }
 
 function readStoredFavoriteSnapshots(): Record<string, StockData> {
-  const storedValue = window.localStorage.getItem(
-    FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
-  );
+  const storedValue = safeGetStorageItem(FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY);
 
   if (!storedValue) return {};
 
@@ -122,11 +155,11 @@ export function useFavoriteStocks() {
   useEffect(() => {
     if (!didLoad) return;
 
-    window.localStorage.setItem(
+    safeSetStorageItem(
       FAVORITE_STOCKS_STORAGE_KEY,
       JSON.stringify(favorites),
     );
-    window.localStorage.setItem(
+    safeSetStorageItem(
       FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
       JSON.stringify(favoriteSnapshotsByTicker),
     );

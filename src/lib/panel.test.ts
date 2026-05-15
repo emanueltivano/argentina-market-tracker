@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizePanelData } from './panel'
+import { normalizePanelData, normalizePanelDataResult } from './panel'
 
 describe('normalizePanelData', () => {
   it('accepts a direct array payload', () => {
@@ -59,13 +59,44 @@ describe('normalizePanelData', () => {
     expect(normalizePanelData({ data: [] })).toEqual([])
   })
 
-  it('throws when a non-empty payload mixes valid and invalid items', () => {
-    expect(() =>
+  it('keeps valid rows when a non-empty payload mixes valid and invalid items', () => {
+    expect(
       normalizePanelData([
         { simbolo: '', descripcion: 'Missing ticker' },
         { simbolo: 'COME', descripcion: 'Sociedad Comercial del Plata' },
       ])
-    ).toThrow('Upstream payload contains partially invalid items')
+    ).toEqual([
+      {
+        simbolo: 'COME',
+        descripcion: 'Sociedad Comercial del Plata',
+      },
+    ])
+  })
+
+  it('returns partial normalization metadata for mixed valid and invalid items', () => {
+    expect(
+      normalizePanelDataResult([
+        { simbolo: '', descripcion: 'Missing ticker' },
+        { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+        {
+          simbolo: 'PAMP',
+          descripcion: 'Pampa Energia',
+          ultimoPrecio: '123.45',
+        },
+      ])
+    ).toEqual({
+      data: [
+        {
+          simbolo: 'GGAL',
+          descripcion: 'Grupo Financiero Galicia',
+        },
+      ],
+      droppedItemsCount: 2,
+      droppedItemsSummary: [
+        { reason: 'INVALID_IDENTITY:1' },
+        { reason: 'INVALID_NUMERIC_FIELD:ultimoPrecio:1' },
+      ],
+    })
   })
 
   it('throws when a row has missing required fields', () => {
@@ -151,8 +182,8 @@ describe('normalizePanelData', () => {
     ])
   })
 
-  it('throws when a payload mixes valid rows with invalid nested puntas types', () => {
-    expect(() =>
+  it('drops invalid nested puntas rows while keeping valid rows', () => {
+    expect(
       normalizePanelData([
         {
           simbolo: 'BMA',
@@ -164,6 +195,11 @@ describe('normalizePanelData', () => {
           descripcion: 'Grupo Financiero Galicia',
         },
       ])
-    ).toThrow('Upstream payload contains partially invalid items')
+    ).toEqual([
+      {
+        simbolo: 'GGAL',
+        descripcion: 'Grupo Financiero Galicia',
+      },
+    ])
   })
 })

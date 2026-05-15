@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
   FAVORITE_STOCKS_STORAGE_KEY,
@@ -69,6 +69,7 @@ describe('useFavoriteStocks', () => {
   afterEach(() => {
     cleanup()
     window.localStorage.clear()
+    vi.restoreAllMocks()
   })
 
   it('toggles favorites and persists them in localStorage', async () => {
@@ -108,6 +109,33 @@ describe('useFavoriteStocks', () => {
     expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
       '["ALUA","GGAL","YPFD"]'
     )
+  })
+
+  it('falls back to empty favorites when stored JSON is invalid', async () => {
+    window.localStorage.setItem(FAVORITE_STOCKS_STORAGE_KEY, '{broken-json')
+
+    render(<FavoriteStocksHarness />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('favorites').textContent).toBe('')
+    })
+    expect(screen.getByTestId('ggal-favorite').textContent).toBe('false')
+  })
+
+  it('falls back to empty favorites when localStorage.getItem throws', async () => {
+    const getItemMock = vi
+      .spyOn(Storage.prototype, 'getItem')
+      .mockImplementation(() => {
+        throw new Error('storage blocked')
+      })
+
+    render(<FavoriteStocksHarness />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('favorites').textContent).toBe('')
+    })
+    expect(screen.getByTestId('snapshots').textContent).toBe('')
+    expect(getItemMock).toHaveBeenCalled()
   })
 
   it('persists and hydrates normalized favorite snapshots', async () => {
@@ -151,5 +179,47 @@ describe('useFavoriteStocks', () => {
     expect(window.localStorage.getItem(FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY)).toBe(
       '{}'
     )
+  })
+
+  it('keeps toggle behavior working when localStorage.setItem throws', async () => {
+    const setItemMock = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('quota exceeded')
+      })
+
+    render(<FavoriteStocksHarness />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Toggle GGAL' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('favorites').textContent).toBe('GGAL')
+    })
+    expect(screen.getByTestId('ggal-favorite').textContent).toBe('true')
+    expect(setItemMock).toHaveBeenCalled()
+  })
+
+  it('keeps snapshot updates stable when storage writes fail', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable')
+    })
+
+    render(<FavoriteStocksHarness />)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Add BMA snapshot' })
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('snapshots').textContent).toBe('BMA')
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Remove BMA snapshot' })
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('snapshots').textContent).toBe('')
+    })
   })
 })

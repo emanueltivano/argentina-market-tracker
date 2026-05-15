@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:e2e": "next build && node ./scripts/run-e2e.mjs",
     "test:e2e:run": "node ./scripts/run-e2e.mjs",
+    "test:e2e:ssr": "next build && node ./scripts/run-e2e.mjs --mode=ssr --grep @ssr-boot",
     "test:e2e:ui": "playwright test --ui",
     "type-check": "tsc --noEmit",
     "validate": "npm run lint && npm run type-check && npm run test && npm run build",

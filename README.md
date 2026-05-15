@@ -167,7 +167,7 @@ Use `.env.local.example` as the reference file.
 | Variable | Required | Description |
 | --- | --- | --- |
 | `API_URL` | Yes | External market API base URL, without trailing slash |
-| `NEXT_PUBLIC_SITE_URL` | No | Public site URL for metadata/Open Graph |
+| `NEXT_PUBLIC_SITE_URL` | Recommended for public deploys | Public site URL for metadata/Open Graph |
 | `TOKEN_ENDPOINT` | No | Token endpoint path, defaults to `token` |
 | `API_USERNAME` | Yes | External API username |
 | `API_PASSWORD` | Yes | External API password |
@@ -181,6 +181,10 @@ Notes:
 - keep real credentials only in `.env.local` and deployment environment
   variables
 - only `NEXT_PUBLIC_SITE_URL` should be public
+- set `NEXT_PUBLIC_SITE_URL` explicitly for any public deployment so social
+  metadata resolves to the real public origin
+- in production, the app no longer falls back silently to `http://localhost:3000`
+  for `metadataBase`
 - debug routes remain restricted to local development even when
   `ENABLE_TOKEN_DEBUG=1`
 
@@ -290,6 +294,16 @@ src/
 - There is no analytics, tracing or third-party error reporting vendor.
 - The project is designed for portfolio review and technical discussion, not for
   real-money trading.
+
+## Public Deploy Notes
+
+- Use real upstream credentials only in controlled server-side environments, or
+  add an explicit demo mode before publishing a public URL.
+- `NEXT_PUBLIC_SITE_URL` should be set to the final public origin for correct
+  social metadata. If it is omitted, production metadata will avoid a fake
+  localhost origin instead of guessing one.
+- Cache, cooldown and rate limiting are per instance in serverless
+  environments; they are useful safeguards, not a global protection layer.
 
 ## Suggested Portfolio Positioning
 

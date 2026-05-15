@@ -3,6 +3,7 @@ import 'server-only'
 import type { MarketDataPanelKey } from '@/lib/market'
 import {
   normalizePanelData,
+  normalizePanelDataResult,
   type PanelSuccessResponse,
   type PanelTitulo,
 } from '@/lib/panel'
@@ -26,6 +27,38 @@ const inFlightPanelRefreshRequests = new Map<
   MarketDataPanelKey,
   Promise<PanelSuccessResponse>
 >()
+
+function getFixturePanelResponse(
+  type: MarketDataPanelKey
+): PanelSuccessResponse | null {
+  const fixture = process.env.PANEL_RESPONSE_FIXTURE_JSON
+
+  if (!fixture) {
+    return null
+  }
+
+  let parsedFixture: unknown
+
+  try {
+    parsedFixture = JSON.parse(fixture)
+  } catch {
+    throw new Error('Invalid PANEL_RESPONSE_FIXTURE_JSON')
+  }
+
+  if (
+    !parsedFixture ||
+    typeof parsedFixture !== 'object' ||
+    Array.isArray(parsedFixture)
+  ) {
+    throw new Error('Invalid PANEL_RESPONSE_FIXTURE_JSON')
+  }
+
+  const typedFixture = parsedFixture as Partial<Record<MarketDataPanelKey, unknown>>
+  const data = normalizePanelData(typedFixture[type] ?? [])
+  const fetchedAt = new Date().toISOString()
+
+  return createPanelResponse(data, fetchedAt, 'fresh')
+}
 
 function createPanelResponse(
   data: PanelCacheEntry['data'],
@@ -70,8 +103,20 @@ async function fetchPanelResponse(
 ): Promise<PanelSuccessResponse> {
   const data = await iolFetch(getPanelEndpoint(type))
   const fetchedAt = new Date().toISOString()
+  const normalized = normalizePanelDataResult(data)
+
+  if (normalized.droppedItemsCount > 0) {
+    console.warn('[panel.normalize.partial]', {
+      panelType: type,
+      droppedItemsCount: normalized.droppedItemsCount,
+      droppedItemsSummary: normalized.droppedItemsSummary.map(
+        (issue) => issue.reason
+      ),
+    })
+  }
+
   const response = createPanelResponse(
-    normalizePanelData(data),
+    normalized.data,
     fetchedAt,
     'fresh'
   )
@@ -103,6 +148,12 @@ export function getOrCreatePanelResponse(
   type: MarketDataPanelKey,
   bypassCache: boolean
 ): Promise<PanelSuccessResponse> {
+  const fixtureResponse = getFixturePanelResponse(type)
+
+  if (fixtureResponse) {
+    return Promise.resolve(fixtureResponse)
+  }
+
   if (bypassCache) {
     return getOrCreateRefreshPanelResponse(type)
   }

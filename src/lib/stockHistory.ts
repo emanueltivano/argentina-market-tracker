@@ -22,7 +22,7 @@ export interface StockHistorySuccessResponse {
   servedAt: string
   cacheStatus: 'fresh' | 'memory-cache'
   range: StockHistoryRange
-  market: string
+  market: StockHistoryMarket
   symbol: string
 }
 

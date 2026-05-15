@@ -1,5 +1,6 @@
 import {
   isStockHistoryErrorCode,
+  isStockHistoryMarket,
   isStockHistoryPoint,
   isStockHistoryRange,
   type StockHistoryErrorCode,
@@ -39,7 +40,7 @@ function assertStockHistorySuccessResponse(
     typeof value.servedAt !== 'string' ||
     (value.cacheStatus !== 'fresh' && value.cacheStatus !== 'memory-cache') ||
     !isStockHistoryRange(typeof value.range === 'string' ? value.range : null) ||
-    typeof value.market !== 'string' ||
+    !isStockHistoryMarket(typeof value.market === 'string' ? value.market : null) ||
     typeof value.symbol !== 'string'
   ) {
     throw new Error('Respuesta inválida del servidor: metadata histórica inválida.')

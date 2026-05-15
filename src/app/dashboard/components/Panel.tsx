@@ -26,12 +26,13 @@ import {
   StockTableStaleErrorState,
 } from './StockTable';
 import { useMarketPanel } from '../hooks/useMarketPanel';
-import { normalizeTicker, useFavoriteStocks } from '../hooks/useFavoriteStocks';
+import { useFavoriteStocks } from '../hooks/useFavoriteStocks';
 import { useStockSortState } from '../hooks/useStockSortState';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
 import { type StockData } from '../lib/stockData';
 import { resolvePanelRows, resolveSelectedStock } from '../lib/panelState';
 import { type MarketPanelSuccessResponse } from '../hooks/marketPanelClient';
+import { normalizeTicker } from '../lib/ticker';
 
 type PanelProps = {
   defaultPanel?: MarketDataPanelKey;

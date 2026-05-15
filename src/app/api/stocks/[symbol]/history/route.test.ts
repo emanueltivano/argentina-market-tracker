@@ -262,6 +262,23 @@ describe('/api/stocks/[symbol]/history route', () => {
     expect(iolFetch).not.toHaveBeenCalled()
   })
 
+  it('returns INVALID_SYMBOL for malformed encoded symbols', async () => {
+    const iolFetch = vi.fn()
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(
+      request('/api/stocks/%25E0%25A4%25A/history'),
+      context('%E0%A4%A')
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: 'INVALID_SYMBOL',
+    })
+    expect(iolFetch).not.toHaveBeenCalled()
+  })
+
   it('rejects markets outside the history allowlist', async () => {
     const iolFetch = vi.fn()
     const { GET } = await loadRoute(iolFetch)

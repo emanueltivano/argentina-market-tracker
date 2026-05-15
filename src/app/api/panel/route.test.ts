@@ -182,22 +182,29 @@ describe('/api/panel route', () => {
     })
   })
 
-  it('returns PANEL_ERROR when the upstream payload is partially invalid', async () => {
+  it('returns partial valid panel data when the upstream payload is partially invalid', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
       { simbolo: '', descripcion: 'Missing ticker' },
     ])
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const { GET } = await loadRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=lider'))
     const body = await response.json()
 
-    expect(response.status).toBe(502)
-    expect(body).toEqual({
-      ok: false,
-      error: 'PANEL_ERROR',
-      details: 'Upstream payload contains partially invalid items',
-    })
+    expect(response.status).toBe(200)
+    expectPanelSuccess(body, [
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+    ])
+    expect(consoleWarn).toHaveBeenCalledWith(
+      '[panel.normalize.partial]',
+      expect.objectContaining({
+        panelType: 'lider',
+        droppedItemsCount: 1,
+        droppedItemsSummary: ['INVALID_IDENTITY:1'],
+      })
+    )
   })
 
   it('uses cache for a second request to the same panel', async () => {
