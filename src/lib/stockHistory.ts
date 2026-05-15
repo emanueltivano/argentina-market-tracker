@@ -62,6 +62,10 @@ const FIELD_ALIASES = {
 
 const ARRAY_PAYLOAD_FIELDS = ['data', 'cotizaciones', 'serie'] as const
 
+function isNotNull<T>(value: T | null): value is T {
+  return value !== null
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -269,17 +273,18 @@ export function normalizeStockHistoryData(data: unknown): StockHistoryPoint[] {
     throw new Error('Invalid upstream history payload structure')
   }
 
-  const validItems = payload.flatMap((item) => {
-    const normalizedItem = normalizeHistoryPoint(item)
+  const normalizedItems = payload.map((item) => normalizeHistoryPoint(item))
+  const invalidItemsCount = normalizedItems.filter((item) => item === null).length
 
-    return normalizedItem ? [normalizedItem] : []
-  })
-
-  if (payload.length > 0 && validItems.length === 0) {
+  if (payload.length > 0 && invalidItemsCount === payload.length) {
     throw new Error('Upstream history payload contains no valid items')
   }
 
-  return validItems.sort((first, second) =>
+  if (invalidItemsCount > 0) {
+    throw new Error('Upstream history payload contains partially invalid items')
+  }
+
+  return normalizedItems.filter(isNotNull).sort((first, second) =>
     first.date.localeCompare(second.date)
   )
 }

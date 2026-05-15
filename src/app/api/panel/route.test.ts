@@ -112,7 +112,6 @@ describe('/api/panel route', () => {
           simbolo: 'YPFD',
           descripcion: 'YPF',
           ultimoPrecio: 100,
-          variacionPorcentual: 'invalid',
         },
       ],
     })
@@ -180,6 +179,24 @@ describe('/api/panel route', () => {
       ok: false,
       error: 'PANEL_ERROR',
       details: 'Invalid upstream payload structure',
+    })
+  })
+
+  it('returns PANEL_ERROR when the upstream payload is partially invalid', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+      { simbolo: '', descripcion: 'Missing ticker' },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=lider'))
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body).toEqual({
+      ok: false,
+      error: 'PANEL_ERROR',
+      details: 'Upstream payload contains partially invalid items',
     })
   })
 

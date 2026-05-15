@@ -105,17 +105,31 @@ describe('stock history normalization', () => {
     ])
   })
 
-  it('drops invalid rows but fails when no valid item remains', () => {
-    expect(
+  it('throws when a payload mixes valid and invalid history rows', () => {
+    expect(() =>
       normalizeStockHistoryData([
         { fecha: 'invalid', ultimoPrecio: 100 },
         { fecha: '2026-05-07', ultimoPrecio: 101 },
       ])
-    ).toEqual([{ date: '2026-05-07', close: 101 }])
+    ).toThrow('Upstream history payload contains partially invalid items')
+  })
 
+  it('throws when no valid history item remains', () => {
     expect(() => normalizeStockHistoryData([{ fecha: 'invalid' }])).toThrow(
       'Upstream history payload contains no valid items'
     )
+  })
+
+  it('throws when a row is missing required fields', () => {
+    expect(() =>
+      normalizeStockHistoryData([{ ultimoPrecio: 101 }])
+    ).toThrow('Upstream history payload contains no valid items')
+  })
+
+  it('throws when a payload has incorrect required field types', () => {
+    expect(() =>
+      normalizeStockHistoryData([{ fecha: '2026-05-07', ultimoPrecio: {} }])
+    ).toThrow('Upstream history payload contains no valid items')
   })
 
   it('keeps ranges explicit', () => {

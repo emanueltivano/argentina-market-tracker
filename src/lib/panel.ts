@@ -112,6 +112,10 @@ export const PUNTA_FIELDS = [
   'cantidadVenta',
 ] as const satisfies readonly PuntaField[]
 
+function isNotNull<T>(value: T | null): value is T {
+  return value !== null
+}
+
 export function isPanelTitulo(value: unknown): value is PanelTitulo {
   if (!hasPanelTituloIdentity(value)) {
     return false
@@ -172,7 +176,7 @@ function normalizePuntas(value: unknown): PanelTitulo['puntas'] {
 }
 
 function normalizePanelTitulo(value: unknown): PanelTitulo | null {
-  if (!hasPanelTituloIdentity(value)) {
+  if (!isPanelTitulo(value)) {
     return null
   }
 
@@ -205,15 +209,16 @@ export function normalizePanelData(data: unknown): PanelTitulo[] {
     throw new Error('Invalid upstream payload structure')
   }
 
-  const validItems = payload.flatMap((item) => {
-    const normalizedItem = normalizePanelTitulo(item)
+  const normalizedItems = payload.map((item) => normalizePanelTitulo(item))
+  const invalidItemsCount = normalizedItems.filter((item) => item === null).length
 
-    return normalizedItem ? [normalizedItem] : []
-  })
-
-  if (payload.length > 0 && validItems.length === 0) {
+  if (payload.length > 0 && invalidItemsCount === payload.length) {
     throw new Error('Upstream payload contains no valid items')
   }
 
-  return validItems
+  if (invalidItemsCount > 0) {
+    throw new Error('Upstream payload contains partially invalid items')
+  }
+
+  return normalizedItems.filter(isNotNull)
 }

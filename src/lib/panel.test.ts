@@ -59,19 +59,21 @@ describe('normalizePanelData', () => {
     expect(normalizePanelData({ data: [] })).toEqual([])
   })
 
-  it('discards invalid items', () => {
-    expect(
+  it('throws when a non-empty payload mixes valid and invalid items', () => {
+    expect(() =>
       normalizePanelData([
         { simbolo: '', descripcion: 'Missing ticker' },
-        { simbolo: 'ALUA', descripcion: '' },
         { simbolo: 'COME', descripcion: 'Sociedad Comercial del Plata' },
       ])
-    ).toEqual([
-      {
-        simbolo: 'COME',
-        descripcion: 'Sociedad Comercial del Plata',
-      },
-    ])
+    ).toThrow('Upstream payload contains partially invalid items')
+  })
+
+  it('throws when a row has missing required fields', () => {
+    expect(() =>
+      normalizePanelData([
+        { simbolo: 'ALUA' },
+      ])
+    ).toThrow('Upstream payload contains no valid items')
   })
 
   it('throws when the upstream structure is invalid', () => {
@@ -89,17 +91,14 @@ describe('normalizePanelData', () => {
     ).toThrow('Upstream payload contains no valid items')
   })
 
-  it('normalizes only finite numeric fields', () => {
+  it('keeps optional numeric fields missing without failing the row', () => {
     expect(
       normalizePanelData([
         {
           simbolo: 'PAMP',
           descripcion: 'Pampa Energia',
           ultimoPrecio: 123.45,
-          variacionPorcentual: Number.NaN,
-          apertura: Number.POSITIVE_INFINITY,
           maximo: 130,
-          minimo: '120',
           ultimoCierre: 122,
           volumen: 1000,
         },
@@ -116,7 +115,19 @@ describe('normalizePanelData', () => {
     ])
   })
 
-  it('normalizes puntas only when it has valid numbers', () => {
+  it('throws when a valid row contains invalid numeric field types', () => {
+    expect(() =>
+      normalizePanelData([
+        {
+          simbolo: 'PAMP',
+          descripcion: 'Pampa Energia',
+          ultimoPrecio: '123.45',
+        },
+      ])
+    ).toThrow('Upstream payload contains no valid items')
+  })
+
+  it('normalizes puntas when their numeric fields are valid', () => {
     expect(
       normalizePanelData([
         {
@@ -124,16 +135,7 @@ describe('normalizePanelData', () => {
           descripcion: 'Banco Macro',
           puntas: {
             cantidadCompra: 10,
-            precioCompra: 'invalid',
             precioVenta: 250,
-            cantidadVenta: Number.NaN,
-          },
-        },
-        {
-          simbolo: 'TRAN',
-          descripcion: 'Transener',
-          puntas: {
-            cantidadCompra: 'invalid',
           },
         },
       ])
@@ -146,10 +148,22 @@ describe('normalizePanelData', () => {
           precioVenta: 250,
         },
       },
-      {
-        simbolo: 'TRAN',
-        descripcion: 'Transener',
-      },
     ])
+  })
+
+  it('throws when a payload mixes valid rows with invalid nested puntas types', () => {
+    expect(() =>
+      normalizePanelData([
+        {
+          simbolo: 'BMA',
+          descripcion: 'Banco Macro',
+          puntas: 'invalid',
+        },
+        {
+          simbolo: 'GGAL',
+          descripcion: 'Grupo Financiero Galicia',
+        },
+      ])
+    ).toThrow('Upstream payload contains partially invalid items')
   })
 })

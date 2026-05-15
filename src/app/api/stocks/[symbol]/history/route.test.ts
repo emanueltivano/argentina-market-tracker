@@ -220,6 +220,26 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
   })
 
+  it('returns HISTORY_ERROR when the upstream payload is partially invalid', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+      { fecha: 'invalid', ultimoPrecio: 99 },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
+      context('GGAL')
+    )
+
+    expect(response.status).toBe(502)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: 'HISTORY_ERROR',
+      details: 'Upstream history payload contains partially invalid items',
+    })
+  })
+
   it('returns 400 for invalid inputs', async () => {
     const iolFetch = vi.fn()
     const { GET } = await loadRoute(iolFetch)
