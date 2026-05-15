@@ -1,6 +1,10 @@
 export const STOCK_HISTORY_RANGES = ['1W', '1M', '3M', '6M', '1Y'] as const
 
 export type StockHistoryRange = (typeof STOCK_HISTORY_RANGES)[number]
+export const DEFAULT_STOCK_HISTORY_RANGE: StockHistoryRange = '1M'
+export const STOCK_HISTORY_MARKETS = ['bCBA'] as const
+export type StockHistoryMarket = (typeof STOCK_HISTORY_MARKETS)[number]
+export const DEFAULT_STOCK_HISTORY_MARKET: StockHistoryMarket = 'bCBA'
 
 export interface StockHistoryPoint {
   date: string
@@ -42,6 +46,28 @@ export interface StockHistoryErrorResponse {
 export type StockHistoryResponse =
   | StockHistorySuccessResponse
   | StockHistoryErrorResponse
+
+export function isStockHistoryMarket(
+  value: string | null
+): value is StockHistoryMarket {
+  return (
+    typeof value === 'string' &&
+    STOCK_HISTORY_MARKETS.includes(value as StockHistoryMarket)
+  )
+}
+
+export function buildStockHistoryApiPath(
+  symbol: string,
+  range: StockHistoryRange,
+  market: StockHistoryMarket
+): string {
+  const params = new URLSearchParams({
+    range,
+    market,
+  })
+
+  return `/api/stocks/${encodeURIComponent(symbol)}/history?${params.toString()}`
+}
 
 const FIELD_ALIASES = {
   date: ['fecha', 'date', 'fechaHora', 'fechaCotizacion'],

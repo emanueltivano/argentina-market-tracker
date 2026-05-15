@@ -1,4 +1,4 @@
-import { type MarketPanelKey } from '@/lib/market';
+import { buildMarketPanelApiPath, type MarketPanelKey } from '@/lib/market';
 
 export type MarketPanelOption = {
   key: MarketPanelKey;
@@ -12,19 +12,19 @@ export const MARKET_PANEL_OPTIONS: MarketPanelOption[] = [
     key: 'lider',
     label: 'Panel Líder',
     title: 'Panel Líder',
-    fetchUrl: '/api/panel?type=lider',
+    fetchUrl: buildMarketPanelApiPath('lider'),
   },
   {
     key: 'general',
     label: 'Panel General',
     title: 'Panel General',
-    fetchUrl: '/api/panel?type=general',
+    fetchUrl: buildMarketPanelApiPath('general'),
   },
   {
     key: 'cedears',
     label: 'CEDEARs',
     title: 'CEDEARs',
-    fetchUrl: '/api/panel?type=cedears',
+    fetchUrl: buildMarketPanelApiPath('cedears'),
   },
   {
     key: 'favorites',

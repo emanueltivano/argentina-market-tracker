@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { canUseLocalDebug } from '@/lib/server/debug'
 import { getCachedToken } from '@/lib/server/tokenCache'
+import { logServerError } from '@/lib/server/observability'
 import {
   IolTokenFormatError,
   IolTokenUpstreamError,
@@ -65,6 +66,12 @@ export async function POST(req: NextRequest) {
     })
   } catch (err: unknown) {
     if (err instanceof IolTokenUpstreamError) {
+      logServerError('api.token.POST', err, {
+        route: '/api/token',
+        errorCode: 'TOKEN_UPSTREAM',
+        status: err.status,
+      })
+
       return NextResponse.json(
         {
           ok: false,
@@ -76,6 +83,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (err instanceof IolTokenFormatError) {
+      logServerError('api.token.POST', err, {
+        route: '/api/token',
+        errorCode: 'TOKEN_FORMAT',
+      })
+
       return NextResponse.json(
         {
           ok: false,
@@ -87,6 +99,11 @@ export async function POST(req: NextRequest) {
     }
 
     const message = err instanceof Error ? err.message : String(err ?? 'unknown')
+
+    logServerError('api.token.POST', err, {
+      route: '/api/token',
+      errorCode: 'TOKEN_ERROR',
+    })
 
     return NextResponse.json(
       {

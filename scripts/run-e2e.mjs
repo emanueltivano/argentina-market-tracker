@@ -80,6 +80,7 @@ async function main() {
     {
       env: {
         ...process.env,
+        DISABLE_SERVER_DASHBOARD_PREFETCH: '1',
       },
     }
   )

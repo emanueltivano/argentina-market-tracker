@@ -19,6 +19,8 @@ import {
   FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
   FAVORITE_STOCKS_STORAGE_KEY,
 } from '../hooks/useFavoriteStocks'
+import { type MarketDataPanelKey } from '@/lib/market'
+import { type PanelSuccessResponse, type PanelTitulo } from '@/lib/panel'
 
 const replace = vi.fn()
 let currentSearchParams = new URLSearchParams()
@@ -39,20 +41,24 @@ vi.mock('../hooks/useStockHistory', () => ({
   }),
 }))
 
-function panelResponse(data: unknown[]) {
+function panelResponse(data: PanelTitulo[]) {
   return {
     ok: true,
     data,
     fetchedAt: '2026-05-04T16:00:00.000Z',
     servedAt: '2026-05-04T16:00:00.000Z',
     cacheStatus: 'fresh',
-  }
+  } satisfies PanelSuccessResponse
 }
 
-function renderPanel() {
+function renderPanel(props?: {
+  initialData?: PanelSuccessResponse
+  initialErrorMessage?: string
+  initialPanelKey?: MarketDataPanelKey
+}) {
   return render(
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-      <Panel />
+      <Panel {...props} />
     </SWRConfig>
   )
 }
@@ -95,6 +101,83 @@ describe('Panel', () => {
     expect(screen.getByText('Cargando datos...')).not.toBeNull()
     expect(screen.getAllByTestId('stock-table-skeleton-row')).toHaveLength(6)
     expect(screen.queryByText(/Última actualización/)).toBeNull()
+  })
+
+  it('renders server-provided initial data without a client fetch on mount', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel({
+      initialData: panelResponse([
+        { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+      ]),
+      initialPanelKey: 'lider',
+    })
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('uses client refresh normally after hydrating with server data', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(panelResponse([{ simbolo: 'YPFD', descripcion: 'YPF' }]))
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel({
+      initialData: panelResponse([
+        { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+      ]),
+      initialPanelKey: 'lider',
+    })
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+
+    expect(
+      await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
+    ).not.toBeNull()
+    expect(fetchMock).toHaveBeenCalledWith('/api/panel?type=lider&refresh=1', {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    })
+  })
+
+  it('renders an initial server error and can recover with a client fetch', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json(
+        panelResponse([
+          { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+        ])
+      )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel({
+      initialErrorMessage: 'No se pudo cargar el panel de mercado.',
+      initialPanelKey: 'lider',
+    })
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Error cargando datos: No se pudo cargar el panel de mercado.'
+    )
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
   })
 
   it('renders an error state when the API fails without stale data', async () => {

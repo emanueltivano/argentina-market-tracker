@@ -11,8 +11,10 @@ export const metadata: Metadata = {
     template: '%s | Argentina Market Tracker',
   },
   description:
-    'Fullstack market dashboard for Argentine equities with a secure Next.js BFF, validated external data, historical charts, caching, rate limiting and tests.',
+    'Dashboard full-stack para acciones argentinas con Next.js, rutas API seguras, contratos validados, historiales, cache y tests automatizados.',
   keywords: [
+    'mercado argentino',
+    'acciones argentinas',
     'Argentina market dashboard',
     'Next.js portfolio',
     'React',
@@ -27,9 +29,9 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Argentina Market Tracker',
     description:
-      'Secure fullstack dashboard for Argentine equities built with Next.js, TypeScript, SWR and Playwright.',
+      'Dashboard para mercado argentino construido con Next.js, TypeScript, SWR y Playwright.',
     type: 'website',
-    locale: 'en_US',
+    locale: 'es_AR',
     images: [
       {
         url: '/og-image.svg',
@@ -43,7 +45,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Argentina Market Tracker',
     description:
-      'Next.js market dashboard with secure API routes, validated data contracts, historical charts and tests.',
+      'Dashboard de mercado argentino con rutas API seguras, contratos validados, histórico y tests.',
     images: ['/og-image.svg'],
   },
   robots: {

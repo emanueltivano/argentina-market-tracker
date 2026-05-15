@@ -427,6 +427,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
   it('does not expose upstream error details in production', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('upstream failed'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const { GET } = await loadRoute(iolFetch, 'production')
 
     const response = await GET(
@@ -439,6 +440,18 @@ describe('/api/stocks/[symbol]/history route', () => {
       ok: false,
       error: 'HISTORY_ERROR',
     })
+    expect(consoleError).toHaveBeenCalledWith(
+      '[api.stocks.history.GET]',
+      expect.objectContaining({
+        route: '/api/stocks/[symbol]/history',
+        symbol: 'GGAL',
+        market: 'bCBA',
+        range: '1M',
+        error: expect.objectContaining({
+          message: 'upstream failed',
+        }),
+      })
+    )
   })
 
   it('returns 405 and Allow GET for POST requests', async () => {

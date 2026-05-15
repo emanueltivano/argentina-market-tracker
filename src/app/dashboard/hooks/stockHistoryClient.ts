@@ -67,6 +67,10 @@ function historyErrorMessage(error: StockHistoryErrorCode): string {
   }
 }
 
+function historyRequestTarget(response: Response): string {
+  return response.url ? ` (${response.url})` : ''
+}
+
 export async function getStockHistoryFetchError(
   response: Response,
   parsedJson?: unknown
@@ -78,14 +82,14 @@ export async function getStockHistoryFetchError(
       json = await response.json()
     } catch {
       return new Error(
-        `Error del servidor (${response.status}) al cargar el histórico.`
+        `Error del servidor (${response.status}) al cargar el histórico${historyRequestTarget(response)}.`
       )
     }
   }
 
   if (!isStockHistoryErrorResponse(json)) {
     return new Error(
-      `Error del servidor (${response.status}) al cargar el histórico.`
+      `Error del servidor (${response.status}) al cargar el histórico${historyRequestTarget(response)}.`
     )
   }
 
@@ -111,7 +115,7 @@ export const fetchStockHistory = async (
   try {
     json = await response.json()
   } catch {
-    throw new Error('Respuesta inválida del servidor')
+    throw new Error(`Respuesta inválida del servidor al cargar el histórico: ${url}`)
   }
 
   if (!response.ok) {

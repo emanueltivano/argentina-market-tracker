@@ -233,4 +233,15 @@ describe('fetchMarketPanel', () => {
       'Actualización reciente. Esperá unos segundos e intentá nuevamente.',
     );
   });
+
+  it('includes the request URL when the panel response body is not valid JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('not-json', { status: 200 })),
+    );
+
+    await expect(fetchMarketPanel('/api/panel?type=lider')).rejects.toThrow(
+      'Respuesta inválida del servidor al cargar el panel: /api/panel?type=lider',
+    );
+  });
 });

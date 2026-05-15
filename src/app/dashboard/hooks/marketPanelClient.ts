@@ -45,6 +45,10 @@ function panelErrorMessage(error: PanelErrorCode): string {
   }
 }
 
+function panelRequestTarget(response: Response): string {
+  return response.url ? ` (${response.url})` : '';
+}
+
 export async function getMarketPanelFetchError(
   response: Response,
 ): Promise<Error> {
@@ -54,13 +58,13 @@ export async function getMarketPanelFetchError(
     json = await response.json();
   } catch {
     return new Error(
-      `Error del servidor (${response.status}) al cargar el panel.`,
+      `Error del servidor (${response.status}) al cargar el panel${panelRequestTarget(response)}.`,
     );
   }
 
   if (!isMarketPanelErrorResponse(json)) {
     return new Error(
-      `Error del servidor (${response.status}) al cargar el panel.`,
+      `Error del servidor (${response.status}) al cargar el panel${panelRequestTarget(response)}.`,
     );
   }
 
@@ -90,7 +94,7 @@ export const fetchMarketPanel = async (
   try {
     json = await response.json();
   } catch {
-    throw new Error('Respuesta inválida del servidor');
+    throw new Error(`Respuesta inválida del servidor al cargar el panel: ${url}`);
   }
 
   assertMarketPanelSuccessResponse(json);

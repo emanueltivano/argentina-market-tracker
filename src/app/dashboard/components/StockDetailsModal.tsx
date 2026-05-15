@@ -9,6 +9,7 @@ import {
   formatSignedPercent,
 } from '@/lib/formatters';
 import {
+  DEFAULT_STOCK_HISTORY_RANGE,
   STOCK_HISTORY_RANGES,
   type StockHistoryPoint,
   type StockHistoryRange,
@@ -77,7 +78,9 @@ export default function StockDetailsModal({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
-  const [historyRange, setHistoryRange] = useState<StockHistoryRange>('1M');
+  const [historyRange, setHistoryRange] = useState<StockHistoryRange>(
+    DEFAULT_STOCK_HISTORY_RANGE
+  );
   const {
     points: historyPoints,
     error: historyError,
@@ -250,6 +253,8 @@ export default function StockDetailsModal({
                       : 'stock-history-range-button'
                   }
                   onClick={() => setHistoryRange(range)}
+                  aria-pressed={range === historyRange}
+                  title={HISTORY_RANGE_LABEL[range]}
                 >
                   {range}
                 </button>

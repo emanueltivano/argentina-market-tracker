@@ -1,10 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { ENV } from '@/lib/server/env'
 import { iolFetch } from '@/lib/server/iol'
+import { logServerError } from '@/lib/server/observability'
 import {
+  DEFAULT_STOCK_HISTORY_MARKET,
+  DEFAULT_STOCK_HISTORY_RANGE,
+  isStockHistoryMarket,
   isStockHistoryRange,
   normalizeStockHistoryData,
   type StockHistoryErrorCode,
+  type StockHistoryMarket,
   type StockHistoryErrorResponse,
   type StockHistoryRange,
   type StockHistoryResponse,
@@ -18,12 +23,9 @@ export const runtime = 'nodejs'
 const HISTORY_CACHE_TTL_MS = 5 * 60_000
 const HISTORY_CACHE_MAX_KEYS = 500
 const HISTORY_CACHE_CONTROL = 'no-store'
-const DEFAULT_MARKET = 'bCBA'
-const DEFAULT_RANGE: StockHistoryRange = '1M'
 const HISTORY_RATE_LIMIT_WINDOW_MS = 60_000
 const HISTORY_RATE_LIMIT_MAX_REQUESTS = 120
 const HISTORY_RATE_LIMIT_MAX_KEYS = 1_000
-const ALLOWED_HISTORY_MARKETS = ['bCBA'] as const
 
 type HistoryVariant = 'ajustada' | 'sinAjustar'
 
@@ -67,10 +69,8 @@ function isValidSymbol(value: string): boolean {
   return /^[A-Z0-9._-]{1,20}$/.test(value)
 }
 
-function isValidMarket(value: string): boolean {
-  return ALLOWED_HISTORY_MARKETS.includes(
-    value as (typeof ALLOWED_HISTORY_MARKETS)[number]
-  )
+function isValidMarket(value: string): value is StockHistoryMarket {
+  return isStockHistoryMarket(value)
 }
 
 function toDateInput(date: Date): string {
@@ -399,8 +399,10 @@ export async function GET(req: NextRequest, context: RouteContext) {
   const params = await context.params
   const symbol = decodeURIComponent(params.symbol).trim().toUpperCase()
   const rangeParam = req.nextUrl.searchParams.get('range')
-  const market = (req.nextUrl.searchParams.get('market') ?? DEFAULT_MARKET).trim()
-  const range = rangeParam ?? DEFAULT_RANGE
+  const market = (
+    req.nextUrl.searchParams.get('market') ?? DEFAULT_STOCK_HISTORY_MARKET
+  ).trim()
+  const range = rangeParam ?? DEFAULT_STOCK_HISTORY_RANGE
 
   devLog('params', {
     rawParams: params,
@@ -441,6 +443,13 @@ export async function GET(req: NextRequest, context: RouteContext) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err ?? 'unknown')
     const isProd = ENV.NODE_ENV === 'production'
+
+    logServerError('api.stocks.history.GET', err, {
+      route: '/api/stocks/[symbol]/history',
+      symbol,
+      market,
+      range,
+    })
 
     return historyErrorResponse(
       'HISTORY_ERROR',

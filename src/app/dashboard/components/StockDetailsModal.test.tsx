@@ -110,6 +110,12 @@ describe('StockDetailsModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Abrir' }))
 
     expect(
+      screen.getByRole('button', { name: '1M' }).getAttribute('aria-pressed')
+    ).toBe('true')
+    expect(
+      screen.getByRole('button', { name: '1W' }).getAttribute('aria-pressed')
+    ).toBe('false')
+    expect(
       screen.getByText('No hay datos históricos para este rango.')
     ).not.toBeNull()
   })

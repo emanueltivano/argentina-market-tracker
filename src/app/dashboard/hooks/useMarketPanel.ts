@@ -13,6 +13,12 @@ export { fetchMarketPanel, getMarketPanelFetchError };
 
 export type MarketPanelViewStatus = 'loading' | 'error' | 'empty' | 'success';
 
+type UseMarketPanelOptions = {
+  initialData?: MarketPanelSuccessResponse;
+  initialErrorMessage?: string;
+  initialPanelKey?: MarketDataPanelKey;
+};
+
 function unknownToError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err ?? 'unknown'));
 }
@@ -23,7 +29,10 @@ function withRefreshParam(url: string): string {
   return `${url}${separator}refresh=1`;
 }
 
-export function useMarketPanel(activePanelKey: MarketDataPanelKey) {
+export function useMarketPanel(
+  activePanelKey: MarketDataPanelKey,
+  options: UseMarketPanelOptions = {},
+) {
   const activePanel = getMarketPanelOption(activePanelKey);
   const fetchUrl = activePanel.fetchUrl;
 
@@ -36,6 +45,12 @@ export function useMarketPanel(activePanelKey: MarketDataPanelKey) {
     key: string;
     error: Error;
   } | null>(null);
+  const initialData =
+    options.initialPanelKey === activePanelKey ? options.initialData : undefined;
+  const initialErrorMessage =
+    options.initialPanelKey === activePanelKey
+      ? options.initialErrorMessage
+      : undefined;
 
   const setRefreshInFlight = useCallback((key: string, isInFlight: boolean) => {
     const nextKeys = new Set(refreshInFlightKeysRef.current);
@@ -57,7 +72,9 @@ export function useMarketPanel(activePanelKey: MarketDataPanelKey) {
     fetchUrl,
     fetchMarketPanel,
     {
+      fallbackData: initialData,
       revalidateOnFocus: false,
+      revalidateOnMount: initialData === undefined,
       // SWR keeps current-key data while revalidating. Keeping this false avoids
       // rendering the previous panel's rows after the user switches panels.
       keepPreviousData: false,
@@ -122,15 +139,19 @@ export function useMarketPanel(activePanelKey: MarketDataPanelKey) {
   const hasRows = rows.length > 0;
   const activeRefreshError =
     refreshError?.key === fetchUrl ? refreshError.error : null;
-  const displayError = activeRefreshError ?? error;
+  const initialError =
+    !hasData && !error && initialErrorMessage
+      ? new Error(initialErrorMessage)
+      : null;
+  const displayError = activeRefreshError ?? error ?? initialError;
   const hasError = !!displayError;
   const isActivePanelRefreshing =
     refreshingKeys.includes(fetchUrl) ||
     (isValidating && hasData && !hasError);
-  const viewStatus: MarketPanelViewStatus = isLoading && !hasData
-    ? 'loading'
-    : hasError && !hasData
-      ? 'error'
+  const viewStatus: MarketPanelViewStatus = hasError && !hasData
+    ? 'error'
+    : isLoading && !hasData
+      ? 'loading'
       : !hasRows
         ? 'empty'
         : 'success';

@@ -507,6 +507,7 @@ describe('/api/panel route', () => {
 
   it('returns PANEL_ERROR with status 502 for upstream errors', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('upstream failed'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const { GET } = await loadRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=lider'))
@@ -518,6 +519,18 @@ describe('/api/panel route', () => {
       error: 'PANEL_ERROR',
       details: 'upstream failed',
     })
+    expect(consoleError).toHaveBeenCalledWith(
+      '[api.panel.GET]',
+      expect.objectContaining({
+        route: '/api/panel',
+        panelType: 'lider',
+        bypassCache: false,
+        shouldReturnRaw: false,
+        error: expect.objectContaining({
+          message: 'upstream failed',
+        }),
+      })
+    )
   })
 
   it('sets no-store cache headers for panel responses', async () => {

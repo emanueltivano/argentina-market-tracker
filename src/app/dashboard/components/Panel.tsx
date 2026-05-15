@@ -30,12 +30,22 @@ import { normalizeTicker, useFavoriteStocks } from '../hooks/useFavoriteStocks';
 import { useStockSortState } from '../hooks/useStockSortState';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
 import { type StockData } from '../lib/stockData';
+import { resolvePanelRows, resolveSelectedStock } from '../lib/panelState';
+import { type MarketPanelSuccessResponse } from '../hooks/marketPanelClient';
 
 type PanelProps = {
   defaultPanel?: MarketDataPanelKey;
+  initialData?: MarketPanelSuccessResponse;
+  initialErrorMessage?: string;
+  initialPanelKey?: MarketDataPanelKey;
 };
 
-export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
+export default function Panel({
+  defaultPanel = 'lider',
+  initialData,
+  initialErrorMessage,
+  initialPanelKey,
+}: PanelProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -73,48 +83,32 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
     isRefreshing,
     hasStaleError,
     viewStatus,
-  } = useMarketPanel(dataPanelKey);
+  } = useMarketPanel(dataPanelKey, {
+    initialData,
+    initialErrorMessage,
+    initialPanelKey,
+  });
 
   const errorMessage = error?.message ?? 'Error desconocido';
-  const { filteredRows, staleFavoriteTickers } = useMemo(
-    () => {
-      if (!isFavoritesPanel) {
-        return {
-          filteredRows: rows,
-          staleFavoriteTickers: new Set<string>(),
-        };
-      }
-
-      const rowsByTicker = new Map<string, StockData>();
-      const staleTickers = new Set<string>();
-
-      for (const [ticker, row] of Object.entries(favoriteSnapshotsByTicker)) {
-        rowsByTicker.set(ticker, row);
-        staleTickers.add(ticker);
-      }
-
-      for (const row of rows) {
-        const ticker = normalizeTicker(row.ticker);
-
-        rowsByTicker.set(ticker, row);
-        staleTickers.delete(ticker);
-      }
-
-      return {
-        filteredRows: favorites
-          .map((ticker) => rowsByTicker.get(ticker))
-          .filter((row): row is StockData => row !== undefined),
-        staleFavoriteTickers: staleTickers,
-      };
-    },
-    [favoriteSnapshotsByTicker, favorites, isFavoritesPanel, rows],
+  const { filteredRows, staleFavoriteTickers, effectiveViewStatus } = useMemo(
+    () =>
+      resolvePanelRows({
+        rows,
+        favorites,
+        favoriteSnapshotsByTicker,
+        isFavoritesPanel,
+        viewStatus,
+      }),
+    [favoriteSnapshotsByTicker, favorites, isFavoritesPanel, rows, viewStatus],
   );
   const selectedStock = useMemo(
     () =>
-      rows.find((row) => row.ticker === selectedTicker) ??
-      (isFavoritesPanel && selectedTicker
-        ? favoriteSnapshotsByTicker[normalizeTicker(selectedTicker)] ?? null
-        : null),
+      resolveSelectedStock({
+        rows,
+        selectedTicker,
+        isFavoritesPanel,
+        favoriteSnapshotsByTicker,
+      }),
     [favoriteSnapshotsByTicker, isFavoritesPanel, rows, selectedTicker],
   );
   const sortedRows = useMemo(
@@ -124,9 +118,6 @@ export default function Panel({ defaultPanel = 'lider' }: PanelProps) {
   const hasStaleFavoriteRows =
     isFavoritesPanel &&
     sortedRows.some((row) => staleFavoriteTickers.has(normalizeTicker(row.ticker)));
-  const effectiveViewStatus =
-    isFavoritesPanel && sortedRows.length > 0 ? 'success' : viewStatus;
-
   const handleStockSelect = useCallback(
     (stock: StockData) => {
       setSelectedTicker(stock.ticker);

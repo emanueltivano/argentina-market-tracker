@@ -87,6 +87,7 @@ function Stock(props: StockProps) {
             event.stopPropagation();
             handleSelect();
           }}
+          aria-haspopup="dialog"
           aria-label={`Abrir detalle de ${stock.ticker}, ${stock.description}`}
         >
           {stock.ticker}

@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { ENV } from '@/lib/server/env'
 import { iolFetch } from '@/lib/server/iol'
+import { logServerError } from '@/lib/server/observability'
 import { getPanelEndpoint } from '@/lib/server/panelEndpoint'
 import {
   clearPanelResponseCacheForTests,
@@ -81,6 +82,13 @@ export async function GET(req: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err ?? 'unknown')
     const isProd = ENV.NODE_ENV === 'production'
+
+    logServerError('api.panel.GET', err, {
+      route: '/api/panel',
+      panelType: type,
+      bypassCache,
+      shouldReturnRaw,
+    })
 
     return panelErrorResponse(
       'PANEL_ERROR',

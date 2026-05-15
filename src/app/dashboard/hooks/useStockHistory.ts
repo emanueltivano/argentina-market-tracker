@@ -1,35 +1,26 @@
 import useSWR from 'swr'
 import {
+  buildStockHistoryApiPath,
+  DEFAULT_STOCK_HISTORY_MARKET,
+  isStockHistoryMarket,
   type StockHistoryRange,
   type StockHistorySuccessResponse,
 } from '@/lib/stockHistory'
 import { fetchStockHistory } from './stockHistoryClient'
 
-const DEFAULT_MARKET = 'bCBA'
-
-function buildStockHistoryUrl(
-  symbol: string,
-  range: StockHistoryRange,
-  market: string
-): string {
-  const params = new URLSearchParams({
-    range,
-    market,
-  })
-
-  return `/api/stocks/${encodeURIComponent(symbol)}/history?${params.toString()}`
-}
-
 export function useStockHistory(
   symbol: string,
   range: StockHistoryRange,
-  market = DEFAULT_MARKET
+  market: string = DEFAULT_STOCK_HISTORY_MARKET
 ) {
   const normalizedSymbol = symbol.trim()
   const normalizedMarket = market.trim()
+  const historyMarket = isStockHistoryMarket(normalizedMarket)
+    ? normalizedMarket
+    : null
   const fetchUrl =
-    normalizedSymbol && normalizedMarket
-      ? buildStockHistoryUrl(normalizedSymbol, range, normalizedMarket)
+    normalizedSymbol && historyMarket
+      ? buildStockHistoryApiPath(normalizedSymbol, range, historyMarket)
       : null
 
   const { data, error, isLoading, isValidating } = useSWR<
