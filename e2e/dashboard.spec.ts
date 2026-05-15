@@ -7,12 +7,27 @@ type PanelRequest = {
   refresh: string | null
 }
 
+type HistoryRequest = {
+  symbol: string
+  range: string | null
+  market: string | null
+}
+
 type MockPanelItem = {
   simbolo: string
   descripcion: string
   ultimoPrecio?: number
   variacionPorcentual?: number
   volumen?: number
+}
+
+type MockHistoryPoint = {
+  date: string
+  close: number
+  open?: number
+  high?: number
+  low?: number
+  volume?: number
 }
 
 const fetchedAt = '2026-05-04T16:00:00.000Z'
@@ -54,6 +69,24 @@ function panelResponse(data: MockPanelItem[], cacheStatus = 'fresh') {
     fetchedAt,
     servedAt: fetchedAt,
     cacheStatus,
+  }
+}
+
+function historySuccessResponse(
+  symbol: string,
+  range: string,
+  data: MockHistoryPoint[],
+  cacheStatus = 'fresh'
+) {
+  return {
+    ok: true,
+    data,
+    fetchedAt,
+    servedAt: fetchedAt,
+    cacheStatus,
+    range,
+    market: 'bCBA',
+    symbol,
   }
 }
 
@@ -105,6 +138,53 @@ async function mockPanelApi(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(panelResponse(data)),
+    })
+  })
+}
+
+async function mockHistoryApi(
+  page: Page,
+  options: {
+    requests?: HistoryRequest[]
+    responsesByRange?: Partial<
+      Record<'1W' | '1M' | '3M' | '6M' | '1Y', MockHistoryPoint[]>
+    >
+    errorRanges?: string[]
+  } = {}
+) {
+  await page.route(/\/api\/stocks\/[^/]+\/history\?/, async (route) => {
+    const url = new URL(route.request().url())
+    const pathMatch = url.pathname.match(/\/api\/stocks\/([^/]+)\/history$/)
+    const symbol = pathMatch ? decodeURIComponent(pathMatch[1] ?? '') : ''
+    const range = url.searchParams.get('range')
+    const market = url.searchParams.get('market')
+
+    options.requests?.push({ symbol: symbol.toUpperCase(), range, market })
+
+    if (range && options.errorRanges?.includes(range)) {
+      await route.fulfill({
+        status: 502,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: false,
+          error: 'HISTORY_ERROR',
+        }),
+      })
+      return
+    }
+
+    const data = range
+      ? (options.responsesByRange?.[
+          range as keyof NonNullable<typeof options.responsesByRange>
+        ] ?? [])
+      : []
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        historySuccessResponse(symbol.toUpperCase(), range ?? '1M', data)
+      ),
     })
   })
 }
@@ -211,6 +291,7 @@ test.describe('dashboard', () => {
     page,
   }) => {
     await mockPanelApi(page)
+    await mockHistoryApi(page)
     await page.goto('/')
 
     const opener = page.getByRole('button', {
@@ -240,6 +321,7 @@ test.describe('dashboard', () => {
     )
 
     await mockPanelApi(page)
+    await mockHistoryApi(page)
     await page.goto('/')
 
     await page
@@ -253,5 +335,116 @@ test.describe('dashboard', () => {
     await expect(dialog).toBeVisible()
     await expect(dialog.getByText('Cantidad compra')).toBeVisible()
     await expect(dialog.getByText('Volumen')).toBeVisible()
+  })
+
+  test('loads stock history in the modal and changes range with the expected request', async ({
+    page,
+  }) => {
+    const historyRequests: HistoryRequest[] = []
+
+    await mockPanelApi(page)
+    await mockHistoryApi(page, {
+      requests: historyRequests,
+      responsesByRange: {
+        '1M': [
+          { date: '2026-04-13', close: 3900 },
+          { date: '2026-04-21', close: 3960 },
+          { date: '2026-05-01', close: 4165 },
+        ],
+        '1W': [
+          { date: '2026-05-01', close: 4100 },
+          { date: '2026-05-05', close: 4140 },
+          { date: '2026-05-07', close: 4165 },
+        ],
+      },
+    })
+    await page.goto('/')
+
+    const opener = page.getByRole('button', {
+      name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+    })
+
+    await opener.click()
+
+    const dialog = page.getByRole('dialog', { name: 'GGAL' })
+
+    await expect(dialog).toBeVisible()
+    await expect
+      .poll(() => historyRequests.map((request) => request.range))
+      .toContain('1M')
+    await expect(dialog.getByText('Último mes')).toBeVisible()
+    await expect(dialog.getByText(/\+\s*6,79%/)).toBeVisible()
+    await expect(
+      dialog.getByRole('img', { name: 'Evolución del precio de cierre de GGAL' })
+    ).toBeVisible()
+    await expect(dialog.getByText('$ 3.900')).toBeVisible()
+    await expect(dialog.getByText('$ 4.165')).toBeVisible()
+
+    await dialog.getByRole('button', { name: '1W' }).click()
+
+    await expect
+      .poll(() =>
+        historyRequests.some(
+          (request) =>
+            request.symbol === 'GGAL' &&
+            request.range === '1W' &&
+            request.market === 'bCBA'
+        )
+      )
+      .toBe(true)
+    await expect(dialog.getByText('Última semana')).toBeVisible()
+    await expect(dialog.getByText(/\+\s*1,59%/)).toBeVisible()
+    await expect(dialog.getByText('$ 4.100')).toBeVisible()
+    await expect(dialog.getByText('$ 4.165')).toBeVisible()
+
+    await dialog.getByRole('button', { name: 'Cerrar detalle' }).click()
+
+    await expect(dialog).toBeHidden()
+    await expect(opener).toBeFocused()
+  })
+
+  test('renders an error state when stock history fails', async ({ page }) => {
+    await mockPanelApi(page)
+    await mockHistoryApi(page, {
+      errorRanges: ['1M'],
+    })
+    await page.goto('/')
+
+    await page
+      .getByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+      .click()
+
+    const dialog = page.getByRole('dialog', { name: 'GGAL' })
+
+    await expect(dialog).toBeVisible()
+    await expect(
+      dialog.getByRole('alert').getByText('No se pudo cargar el histórico.')
+    ).toBeVisible()
+  })
+
+  test('renders an empty state when stock history has no points', async ({ page }) => {
+    await mockPanelApi(page)
+    await mockHistoryApi(page, {
+      responsesByRange: {
+        '1M': [],
+      },
+    })
+    await page.goto('/')
+
+    await page
+      .getByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+      .click()
+
+    const dialog = page.getByRole('dialog', { name: 'GGAL' })
+
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText('Sin histórico disponible')).toBeVisible()
+    await expect(
+      dialog.getByText('No hay datos históricos para este rango.')
+    ).toBeVisible()
   })
 })

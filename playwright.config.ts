@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: 'http://localhost:3100',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://localhost:3100',
     trace: 'on-first-retry',
   },
   projects: [
@@ -26,10 +26,4 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'node ./node_modules/next/dist/bin/next start -p 3100',
-    url: 'http://localhost:3100',
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
 })
