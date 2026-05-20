@@ -5,35 +5,38 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-green)
 
-Portfolio full-stack dashboard for Argentine equities built with Next.js, React
-and TypeScript.
+Portfolio full-stack dashboard for Argentine equities built with Next.js,
+React, and TypeScript.
 
-This project focuses on the kind of engineering decisions that matter in a real
-frontend/full-stack review: server/client boundaries, validated external data,
-SSR with App Router, resilient API routes, responsive UI states, automated
-tests and production-aware tradeoffs.
-
-It is a portfolio/demo project, not a live trading platform or a production
-fintech system.
+This repository is intentionally positioned as a portfolio/demo project. The
+goal is to show practical frontend and full-stack engineering decisions around
+server/client boundaries, validated external data, resilient UI states,
+performance-minded client behavior, and automated verification. It is not
+presented as an enterprise-grade trading platform.
 
 ## What Problem It Solves
 
-The app exposes market panels and per-symbol historical data from a protected
-external API without leaking credentials to the browser.
+Argentina Market Tracker exposes market panels and per-symbol historical data
+from a protected external API without leaking credentials to the browser.
 
-The browser talks only to stable internal routes:
+The browser interacts only with stable internal routes such as:
 
 - `/api/panel?type=lider|general|cedears`
 - `/api/stocks/[symbol]/history?range=...&market=...`
 
-Those routes validate request input, normalize upstream payloads, apply local
-cache/rate limiting rules, and return contracts the UI can render safely.
+Those routes handle request validation, upstream normalization, controlled error
+mapping, local cache/rate-limit rules, and app-level response contracts that
+the UI can render safely.
+
+From a portfolio perspective, the project demonstrates how to build a market
+dashboard that is more robust than a simple client-only demo, while still being
+small enough to review in an interview or take-home discussion.
 
 ## Stack
 
 - Next.js 16 App Router
 - React 19
-- TypeScript (strict)
+- TypeScript with strict mode
 - Tailwind CSS 4
 - SWR
 - `lightweight-charts`
@@ -41,124 +44,196 @@ cache/rate limiting rules, and return contracts the UI can render safely.
 - Playwright
 - GitHub Actions
 
-## Technical Highlights
+## Main Features
 
-- **Next.js App Router with SSR-first dashboard bootstrapping**
-  - The initial dashboard panel is fetched on the server and hydrated into the
-    client.
-  - SWR remains responsible for client refresh and revalidation.
-
-- **Secure backend-for-frontend**
-  - External API credentials and OAuth handling stay server-side.
-  - The browser never calls the market provider directly.
-
-- **Runtime validation of external data**
-  - Market panels and stock history payloads are normalized and validated before
-    reaching the UI.
-  - Partially invalid upstream payloads are rejected instead of being rendered
-    silently.
-
-- **Resilience against flaky external APIs**
-  - Short in-memory caching
-  - In-flight request deduplication
-  - Manual refresh with cache bypass
-  - Rate limiting and refresh cooldowns
-  - Controlled error mapping for client-facing routes
-
-- **Lightweight observability**
-  - Route failures log structured server-side context without introducing
-    external telemetry vendors.
-  - Client fetch errors keep enough request context to debug invalid responses.
-
-- **UI/UX states that reflect real data flows**
-  - Loading, empty, success, error, refresh-in-progress and stale-data states
-  - Favorites persisted locally, including stale snapshot fallback behavior
-  - Historical modal with range switching and chart rendering
-
-- **Professional validation path**
-  - Unit tests
-  - Route/integration-style tests
-  - Hook/component tests
-  - Playwright E2E against deterministic mocks
-
-- **Accessibility and SEO polish**
-  - Coherent metadata for social previews
-  - Dialog focus restoration
-  - Accessible action labels
-  - Range selector state exposed via `aria-pressed`
+- Dashboard panels for major Argentine market groupings
+- Server-side initial dashboard load with client revalidation
+- Per-symbol detail modal with historical chart and range switching
+- Favorites persisted locally
+- Sorting by ticker, price, variation, and volume
+- Manual refresh with cache bypass
+- Responsive loading, empty, success, stale, and error states
+- Internal API contracts that shield the UI from upstream API inconsistencies
 
 ## Architecture Overview
 
 ```txt
 Browser
-  Server-rendered dashboard shell + SWR hydration
+  App Router page + client dashboard
         |
-        | GET /api/panel?type=lider|general|cedears
+        | GET /api/panel?type=...
         | GET /api/stocks/[symbol]/history?range=...
         v
-Next API Routes
-  Request validation, cache, cooldown, rate limit, normalization
+Next.js Route Handlers
+  Request validation
+  Contract normalization
+  In-memory cache / cooldown / rate limiting
         |
         v
-Server-only IOL client
-  OAuth token cache, timeout, retry, credential protection
+Server-only external API client
+  Credentials
+  OAuth token handling
+  Timeout / upstream protection
         |
         v
 External market API
 ```
 
-The client works only with validated app-level data. Credentials, token refresh
-and upstream-specific failure details stay in the server layer.
+General structure:
 
-## Production Readiness
+```txt
+src/
+  app/
+    api/
+      panel/
+      stocks/[symbol]/history/
+      token/
+    dashboard/
+      components/
+      hooks/
+      lib/
+  lib/
+    server/
+```
 
-This project includes a practical, portfolio-sized production-readiness layer:
+The client is intentionally kept on validated, app-level data contracts.
+Credentials, token refresh, and upstream-specific details stay in the server
+layer.
 
-- server-only external API access
-- runtime validation for external payloads
-- stable internal response contracts
-- SSR initial panel rendering with client revalidation
-- in-memory cache and request deduplication
-- local rate limiting and manual refresh cooldown
-- structured route error logging
-- responsive UI states for loading/error/empty/stale cases
-- CI that runs lint, type-check, tests and build
+## Technical Highlights
 
-Intentional tradeoffs:
+- **App Router**
+  - The project uses Next.js App Router with SSR-first bootstrapping for the
+    initial dashboard render.
 
-- cache and rate limiting are in-memory and per process/serverless instance
-- there is no distributed store such as Redis/KV
-- there is no public telemetry vendor, tracing or alerting setup
-- there is no public demo mode backed by mocked data yet
+- **Server-side API boundaries**
+  - The browser never calls the external market provider directly.
+  - Credentials and upstream integration stay behind internal route handlers.
 
-That makes the project credible as a portfolio piece without pretending to be a
-full production trading system.
+- **Contract validation**
+  - External panel and historical payloads are validated and normalized before
+    they reach the UI.
+  - Invalid or partial upstream responses are rejected with controlled app
+    errors instead of leaking inconsistent state to components.
 
-## Screenshots
+- **Polling optimized with Visibility API**
+  - Dashboard polling pauses when the browser tab is hidden.
+  - Returning to the tab can trigger a refresh when the refresh interval has
+    already elapsed.
 
-### Desktop
+- **Lazy-loaded chart modal**
+  - The stock detail modal is loaded dynamically.
+  - As a result, the historical chart and `lightweight-charts` are deferred
+    until the user actually opens a stock detail view.
 
-![Argentina Market Tracker desktop](./docs/screenshots/desktop.png)
+- **Tests unitarios/componentes**
+  - The project includes unit tests, component tests, hook tests, route-level
+    tests, and Playwright E2E coverage.
 
-### Historical Modal
+## Technical Decisions
 
-![Argentina Market Tracker modal history](./docs/screenshots/modal-history.png)
+- **Backend-for-frontend approach**
+  - A local BFF layer was chosen to avoid exposing credentials and to provide a
+    stable contract for the frontend.
 
-### Mobile
+- **Validated data before UI rendering**
+  - The frontend works with normalized data rather than raw external payloads.
+  - This keeps UI logic simpler and reduces the chance of invalid states
+    leaking into rendering paths.
 
-![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
+- **SWR for client refresh behavior**
+  - SWR handles revalidation and client refresh flows while SSR provides the
+    initial render.
 
-## Local Setup
+- **Incremental state extraction on the dashboard**
+  - `Panel.tsx` was kept as a coordinator while URL/panel state and modal
+    selection logic were extracted into smaller hooks.
+
+- **Performance over unnecessary upfront JS**
+  - The chart path was deferred because historical visualization is secondary to
+    the initial dashboard table.
+
+## Performance Optimizations
+
+- Server-rendered initial panel to reduce empty-client boot experience
+- SWR hydration to avoid an unnecessary duplicate fetch on mount when initial
+  data exists
+- Polling paused on hidden tabs using `document.hidden`
+- `visibilitychange` refresh path to avoid stale data when the user returns
+- Lazy-loaded stock detail modal, which defers chart-related JS
+- Lightweight client refresh path that distinguishes normal polling from manual
+  cache-bypass refresh
+
+## Testing and Validation
+
+The test suite covers the most important behaviors for a project of this scope:
+
+- external response validation and normalization
+- server-side token/cache/rate-limit behavior
+- route handler contracts and controlled errors
+- dashboard hooks and local state flows
+- component behavior across loading/error/empty/success states
+- modal behavior and favorites flows
+- end-to-end interactions with deterministic mocks
+
+CI runs through GitHub Actions and validates:
+
+- lint
+- type-check
+- unit/component/route tests
+- production build
+- Playwright E2E
+
+## Commands
+
+### Installation
 
 ```bash
 npm install
 cp .env.local.example .env.local
+```
+
+### Development
+
+```bash
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+### Lint
 
-Real market data requires valid external API credentials in `.env.local`.
+```bash
+npm run lint
+```
+
+### Type Check
+
+```bash
+npm run type-check
+```
+
+### Tests
+
+```bash
+npm run test
+```
+
+Optional E2E:
+
+```bash
+npm run test:e2e
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Full Local Validation
+
+```bash
+npm run validate:local
+```
 
 ## Environment Variables
 
@@ -176,145 +251,62 @@ Use `.env.local.example` as the reference file.
 | `PANEL_CEDEARS_ENDPOINT` | Yes | Upstream endpoint for CEDEARs |
 | `ENABLE_TOKEN_DEBUG` | No | Enables local-only debug routes when set to `1` |
 
-Notes:
+## Screenshots
 
-- keep real credentials only in `.env.local` and deployment environment
-  variables
-- only `NEXT_PUBLIC_SITE_URL` should be public
-- set `NEXT_PUBLIC_SITE_URL` explicitly for any public deployment so social
-  metadata resolves to the real public origin
-- in production, the app no longer falls back silently to `http://localhost:3000`
-  for `metadataBase`
-- debug routes remain restricted to local development even when
-  `ENABLE_TOKEN_DEBUG=1`
+### Desktop
 
-## Scripts
+![Argentina Market Tracker desktop](./docs/screenshots/desktop.png)
 
-| Script | Description |
-| --- | --- |
-| `npm run dev` | Start Next.js in development on port `3000` |
-| `npm run build` | Build the production app |
-| `npm run start` | Serve the production build on port `3000` |
-| `npm run lint` | Run ESLint |
-| `npm run type-check` | Run TypeScript without emitting files |
-| `npm run test` | Run Vitest |
-| `npm run test:e2e` | Build and run Playwright E2E |
-| `npm run test:e2e:run` | Run E2E against an existing production build |
-| `npm run test:e2e:ui` | Open the Playwright UI runner |
-| `npm run validate` | Run lint, type-check, unit/integration tests and build |
+### Historical Modal
 
-## Quality Gates
+![Argentina Market Tracker modal history](./docs/screenshots/modal-history.png)
 
-Recommended local validation before sharing or deploying:
+### Mobile
 
-```bash
-npm run lint
-npm run type-check
-npm run test
-npm run test:e2e
-npm run build
-```
+![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
 
-For a faster pre-commit path:
+## Known Limitations / Production Considerations
 
-```bash
-npm run validate
-```
+- **Rate limiting is in-memory**
+  - It is useful for a single process or local demo, but it is not a
+    distributed protection layer.
 
-## Testing
+- **Cache is in-memory**
+  - Cached panel/history behavior is process-local and would not be shared
+    across multiple instances.
 
-The test suite covers the highest-risk areas of the project:
+- **CSP is still pending**
+  - Security headers were improved, but a stricter Content Security Policy is
+    still an open production hardening task.
 
-- normalization of external market and history payloads
-- token caching, retry and timeout behavior in the server-only API client
-- internal API route contracts and error handling
-- local cache/rate-limit/cooldown behavior
-- hooks for panel loading, favorites and stock history
-- component behavior for dashboard states and modal flows
-- end-to-end dashboard interactions with deterministic mocks
+- **Favorites rely partially on local snapshots**
+  - Favorites can fall back to locally persisted snapshots when the live source
+    panel is unavailable, which is useful for resilience but not a substitute
+    for durable backend persistence.
 
-Playwright runs against a production build and uses mocked internal API traffic
-where appropriate, so the suite does not depend on live provider credentials.
+- **No persistent shared infrastructure**
+  - There is no Redis/KV/distributed coordination for cache, cooldowns, or rate
+    limits.
 
-First-time Playwright setup:
+- **Not intended for live trading**
+  - This project is suitable for portfolio review and technical discussion, not
+    for real-money trading workflows.
 
-```bash
-npx playwright install chromium
-```
+## MVP Scope and Honest Tradeoffs
 
-## CI
-
-GitHub Actions is configured in [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
-
-The CI pipeline runs:
-
-```bash
-npm ci
-npm run lint
-npm run type-check
-npm run test
-npm run build
-npx playwright install --with-deps chromium
-npm run test:e2e:run
-```
-
-## Repository Structure
-
-```txt
-src/
-  app/
-    api/
-      panel/
-      stocks/[symbol]/history/
-      token/
-    dashboard/
-      components/
-      hooks/
-      lib/
-    layout.tsx
-    page.tsx
-  lib/
-    market.ts
-    panel.ts
-    stockHistory.ts
-    server/
-      env.ts
-      iol.ts
-      observability.ts
-      panelCache.ts
-      tokenCache.ts
-```
-
-## Limitations and Honest Tradeoffs
-
-- No public deployment URL is documented yet.
-- In-memory cache and rate limiting are intentionally simple and not shared
-  across serverless instances.
-- Historical data is fetched on demand and not persisted.
-- There is no analytics, tracing or third-party error reporting vendor.
-- The project is designed for portfolio review and technical discussion, not for
-  real-money trading.
-
-## Public Deploy Notes
-
-- Use real upstream credentials only in controlled server-side environments, or
-  add an explicit demo mode before publishing a public URL.
-- `NEXT_PUBLIC_SITE_URL` should be set to the final public origin for correct
-  social metadata. If it is omitted, production metadata will avoid a fake
-  localhost origin instead of guessing one.
-- Cache, cooldown and rate limiting are per instance in serverless
-  environments; they are useful safeguards, not a global protection layer.
+- The project prioritizes clear engineering decisions over broad product scope.
+- Historical data is fetched on demand and not persisted by the app.
+- There is no analytics, tracing, or third-party observability platform.
+- The architecture is intentionally small enough to review in a technical
+  interview without becoming a large SaaS codebase.
 
 ## Suggested Portfolio Positioning
 
-Good GitHub description:
+Example GitHub description:
 
-`Market dashboard for Argentine equities with a secure Next.js BFF, runtime-validated external data, historical charts, caching, rate limiting and automated tests.`
+`Market dashboard for Argentine equities with a Next.js BFF, validated external contracts, historical charts, optimized polling, lazy-loaded modal charts, and automated tests.`
 
-Suggested repository topics:
+Suggested topics:
 
-`nextjs`, `typescript`, `react`, `tailwindcss`, `playwright`, `vitest`, `portfolio`, `bff`, `financial-dashboard`
+`nextjs`, `typescript`, `react`, `tailwindcss`, `vitest`, `playwright`, `portfolio`, `bff`, `financial-dashboard`
 
-## Backlog
-
-Follow-up ideas are tracked in [`docs/issues.md`](./docs/issues.md).

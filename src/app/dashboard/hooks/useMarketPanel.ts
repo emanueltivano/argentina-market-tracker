@@ -10,6 +10,7 @@ import {
 } from './marketPanelClient';
 
 export { fetchMarketPanel, getMarketPanelFetchError };
+const AUTO_REFRESH_INTERVAL_MS = 60_000;
 
 export type MarketPanelViewStatus = 'loading' | 'error' | 'empty' | 'success';
 
@@ -40,6 +41,7 @@ export function useMarketPanel(
     throw new Error(`Panel de datos sin fetchUrl: ${activePanelKey}`);
   }
   const refreshInFlightKeysRef = useRef(new Set<string>());
+  const lastAutoRefreshAtRef = useRef(0);
   const [refreshingKeys, setRefreshingKeys] = useState<string[]>([]);
   const [refreshError, setRefreshError] = useState<{
     key: string;
@@ -119,15 +121,43 @@ export function useMarketPanel(
   }, [fetchUrl, mutate, setRefreshInFlight]);
 
   const refresh = useCallback(() => runRefresh(true), [runRefresh]);
-  const autoRefresh = useCallback(() => runRefresh(false), [runRefresh]);
+  const autoRefresh = useCallback(async () => {
+    lastAutoRefreshAtRef.current = Date.now();
+    await runRefresh(false);
+  }, [runRefresh]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
+    lastAutoRefreshAtRef.current = Date.now();
+  }, [fetchUrl]);
+
+  useEffect(() => {
+    function tryAutoRefresh() {
+      if (document.hidden) {
+        return;
+      }
+
       void autoRefresh().catch(() => undefined);
-    }, 60_000);
+    }
+
+    function handleVisibilityChange() {
+      if (
+        document.hidden ||
+        Date.now() - lastAutoRefreshAtRef.current < AUTO_REFRESH_INTERVAL_MS
+      ) {
+        return;
+      }
+
+      void autoRefresh().catch(() => undefined);
+    }
+
+    const intervalId = window.setInterval(() => {
+      tryAutoRefresh();
+    }, AUTO_REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [autoRefresh]);
 

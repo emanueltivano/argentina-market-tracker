@@ -53,10 +53,16 @@ describe('PanelMenu', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(toggle.getAttribute('aria-controls')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cerrar navegación de paneles' })).not.toBeNull()
+    const mobileNav = screen
+      .getAllByRole('navigation', { name: 'Paneles de mercado' })
+      .at(-1)!
+
+    expect(document.activeElement).toBe(within(mobileNav).getAllByRole('button')[0])
 
     await userEvent.click(toggle)
 
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(toggle)
   })
 
   it('closes the mobile menu after selecting a panel', async () => {
@@ -144,5 +150,25 @@ describe('PanelMenu', () => {
       screen.getByRole('button', { name: 'Abrir navegación de paneles' })
         .getAttribute('aria-expanded')
     ).toBe('false')
+  })
+
+  it('closes the mobile menu when pressing Escape and returns focus to the toggle', async () => {
+    render(
+      <PanelMenu
+        activePanelKey="lider"
+        onChange={vi.fn()}
+        options={MARKET_PANEL_OPTIONS}
+      />
+    )
+
+    const toggle = screen.getByRole('button', {
+      name: 'Abrir navegación de paneles',
+    })
+
+    await userEvent.click(toggle)
+    await userEvent.keyboard('{Escape}')
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(toggle)
   })
 })

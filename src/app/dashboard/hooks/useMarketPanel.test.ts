@@ -1,5 +1,17 @@
+// @vitest-environment jsdom
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchMarketPanel, getMarketPanelFetchError } from './useMarketPanel';
+import { useMarketPanel } from './useMarketPanel';
+
+const { mutateMock, useSWRMock } = vi.hoisted(() => ({
+  mutateMock: vi.fn(),
+  useSWRMock: vi.fn(),
+}));
+
+vi.mock('swr', () => ({
+  default: useSWRMock,
+}));
 
 function jsonResponse(body: unknown, status = 502): Response {
   return new Response(JSON.stringify(body), {
@@ -243,5 +255,70 @@ describe('fetchMarketPanel', () => {
     await expect(fetchMarketPanel('/api/panel?type=lider')).rejects.toThrow(
       'Respuesta inválida del servidor al cargar el panel: /api/panel?type=lider',
     );
+  });
+});
+
+describe('useMarketPanel', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function mockUseSWR() {
+    mutateMock.mockResolvedValue(undefined);
+    useSWRMock.mockReturnValue({
+      data: undefined,
+      error: undefined,
+      isLoading: false,
+      isValidating: false,
+      mutate: mutateMock,
+    });
+  }
+
+  it('skips auto-refresh while the document is hidden', () => {
+    vi.useFakeTimers();
+    mockUseSWR();
+
+    const hidden = true;
+
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => hidden,
+    });
+
+    renderHook(() => useMarketPanel('lider'));
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+
+    expect(mutateMock).not.toHaveBeenCalled();
+  });
+
+  it('refreshes when the tab becomes visible after the refresh interval elapsed', () => {
+    vi.useFakeTimers();
+    mockUseSWR();
+
+    let hidden = true;
+
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => hidden,
+    });
+
+    renderHook(() => useMarketPanel('lider'));
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+
+    hidden = false;
+
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(mutateMock).toHaveBeenCalled();
   });
 });

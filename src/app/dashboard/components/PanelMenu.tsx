@@ -20,6 +20,9 @@ export default function PanelMenu({
   const mobileMenuId = useId()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const toggleButtonRef = useRef<HTMLButtonElement>(null)
+  const mobileMenuRef = useRef<HTMLElement>(null)
+  const wasMobileMenuOpenRef = useRef(false)
 
   useEffect(() => {
     if (!isMobileMenuOpen) {
@@ -32,10 +35,18 @@ export default function PanelMenu({
       }
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
     document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
 
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isMobileMenuOpen])
 
@@ -58,6 +69,16 @@ export default function PanelMenu({
       mediaQuery.removeEventListener('change', handleViewportChange)
     }
   }, [])
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      mobileMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    } else if (wasMobileMenuOpenRef.current) {
+      toggleButtonRef.current?.focus()
+    }
+
+    wasMobileMenuOpenRef.current = isMobileMenuOpen
+  }, [isMobileMenuOpen])
 
   function handlePanelChange(key: MarketPanelKey) {
     onChange(key)
@@ -96,6 +117,7 @@ export default function PanelMenu({
 
       <div className="panel-menu-mobile">
         <button
+          ref={toggleButtonRef}
           type="button"
           className="panel-menu-toggle"
           aria-expanded={isMobileMenuOpen}
@@ -118,6 +140,7 @@ export default function PanelMenu({
         {isMobileMenuOpen && (
           <nav
             id={mobileMenuId}
+            ref={mobileMenuRef}
             className="panel-menu-mobile-panel"
             aria-label="Paneles de mercado"
           >

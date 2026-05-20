@@ -706,7 +706,7 @@ describe('Panel', () => {
       })
     )
 
-    let dialog = screen.getByRole('dialog', { name: 'GGAL' })
+    let dialog = await screen.findByRole('dialog', { name: 'GGAL' })
     expect(dialog.textContent).toContain('$ 100,00')
 
     await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
@@ -739,7 +739,7 @@ describe('Panel', () => {
       })
     )
 
-    expect(screen.getByRole('dialog', { name: 'GGAL' })).not.toBeNull()
+    expect(await screen.findByRole('dialog', { name: 'GGAL' })).not.toBeNull()
 
     await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
 
@@ -818,7 +818,7 @@ describe('Panel', () => {
       })
     )
 
-    const dialog = screen.getByRole('dialog', { name: 'GGAL' })
+    const dialog = await screen.findByRole('dialog', { name: 'GGAL' })
 
     await userEvent.click(
       within(dialog).getByRole('button', {
@@ -826,9 +826,9 @@ describe('Panel', () => {
       })
     )
 
-    expect(screen.getByRole('dialog', { name: 'GGAL' })).not.toBeNull()
+    expect(await screen.findByRole('dialog', { name: 'GGAL' })).not.toBeNull()
     expect(
-      within(screen.getByRole('dialog', { name: 'GGAL' })).getByRole('button', {
+      within(await screen.findByRole('dialog', { name: 'GGAL' })).getByRole('button', {
         name: 'Agregar GGAL a favoritos',
       })
     ).not.toBeNull()

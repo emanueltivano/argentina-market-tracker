@@ -148,7 +148,6 @@ html.dark {
   .page-title {
     @apply mb-4 text-[28px] font-extrabold tracking-tight md:text-3xl;
     color: var(--text-color);
-    margin-left: 0.5rem;
   }
 
   .panel-menu {
@@ -584,7 +583,7 @@ html.dark {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-left: 0.5rem;
+  margin-left: 0rem;
   margin-right: 0.5rem;
   margin-bottom: 1rem;
 }
