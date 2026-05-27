@@ -15,6 +15,7 @@ const AUTO_REFRESH_INTERVAL_MS = 60_000;
 export type MarketPanelViewStatus = 'loading' | 'error' | 'empty' | 'success';
 
 type UseMarketPanelOptions = {
+  enabled?: boolean;
   initialData?: MarketPanelSuccessResponse;
   initialErrorMessage?: string;
   initialPanelKey?: MarketDataPanelKey;
@@ -35,9 +36,10 @@ export function useMarketPanel(
   options: UseMarketPanelOptions = {},
 ) {
   const activePanel = getMarketPanelOption(activePanelKey);
-  const fetchUrl = activePanel.fetchUrl;
+  const isEnabled = options.enabled ?? true;
+  const fetchUrl = isEnabled ? activePanel.fetchUrl : null;
 
-  if (!fetchUrl) {
+  if (!fetchUrl && isEnabled) {
     throw new Error(`Panel de datos sin fetchUrl: ${activePanelKey}`);
   }
   const refreshInFlightKeysRef = useRef(new Set<string>());
@@ -76,7 +78,7 @@ export function useMarketPanel(
     {
       fallbackData: initialData,
       revalidateOnFocus: false,
-      revalidateOnMount: initialData === undefined,
+      revalidateOnMount: fetchUrl !== null && initialData === undefined,
       // SWR keeps current-key data while revalidating. Keeping this false avoids
       // rendering the previous panel's rows after the user switches panels.
       keepPreviousData: false,
@@ -85,7 +87,7 @@ export function useMarketPanel(
   );
 
   const runRefresh = useCallback(async (bypassCache: boolean) => {
-    if (refreshInFlightKeysRef.current.has(fetchUrl)) return;
+    if (!fetchUrl || refreshInFlightKeysRef.current.has(fetchUrl)) return;
 
     setRefreshInFlight(fetchUrl, true);
     setRefreshError((currentError) =>
@@ -131,6 +133,10 @@ export function useMarketPanel(
   }, [fetchUrl]);
 
   useEffect(() => {
+    if (!fetchUrl) {
+      return;
+    }
+
     function tryAutoRefresh() {
       if (document.hidden) {
         return;
@@ -159,7 +165,7 @@ export function useMarketPanel(
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [autoRefresh]);
+  }, [autoRefresh, fetchUrl]);
 
   const rows = useMemo(
     () => (data?.data ?? []).map(mapPanelTituloToStockProps),
@@ -168,7 +174,7 @@ export function useMarketPanel(
   const hasData = data !== undefined;
   const hasRows = rows.length > 0;
   const activeRefreshError =
-    refreshError?.key === fetchUrl ? refreshError.error : null;
+    fetchUrl && refreshError?.key === fetchUrl ? refreshError.error : null;
   const initialError =
     !hasData && !error && initialErrorMessage
       ? new Error(initialErrorMessage)
@@ -176,15 +182,18 @@ export function useMarketPanel(
   const displayError = activeRefreshError ?? error ?? initialError;
   const hasError = !!displayError;
   const isActivePanelRefreshing =
-    refreshingKeys.includes(fetchUrl) ||
-    (isValidating && hasData && !hasError);
-  const viewStatus: MarketPanelViewStatus = hasError && !hasData
-    ? 'error'
-    : isLoading && !hasData
-      ? 'loading'
-      : !hasRows
-        ? 'empty'
-        : 'success';
+    !!fetchUrl &&
+    (refreshingKeys.includes(fetchUrl) ||
+      (isValidating && hasData && !hasError));
+  const viewStatus: MarketPanelViewStatus = !fetchUrl
+    ? 'empty'
+    : hasError && !hasData
+      ? 'error'
+      : isLoading && !hasData
+        ? 'loading'
+        : !hasRows
+          ? 'empty'
+          : 'success';
 
   return {
     activePanel,

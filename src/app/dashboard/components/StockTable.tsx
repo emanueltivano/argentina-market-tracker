@@ -127,7 +127,31 @@ export function StockTableStaleErrorState() {
 export function StockTableStaleFavoritesState() {
   return (
     <p className='stock-table-stale-error' role='status' aria-live='polite'>
-      Mostrando favoritos guardados localmente. Algunos datos pueden estar desactualizados.
+      Datos locales desactualizados.
+    </p>
+  );
+}
+
+export function StockTableFreshFavoritesState() {
+  return (
+    <p className='stock-table-stale-error' role='status' aria-live='polite'>
+      Mostrando cotizaciones actualizadas para tus favoritos.
+    </p>
+  );
+}
+
+export function StockTableFavoritesMissingItemsState({
+  items,
+}: {
+  items: string[];
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <p className='stock-table-stale-error' role='status' aria-live='polite'>
+      Algunos favoritos no están disponibles: {items.join(', ')}.
     </p>
   );
 }

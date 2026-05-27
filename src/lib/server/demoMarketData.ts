@@ -169,6 +169,23 @@ export function getDemoPanelData(type: MarketDataPanelKey): PanelTitulo[] {
   return clonePanelRows(DEMO_PANEL_DATA[type])
 }
 
+export function getDemoQuoteBySymbol(symbol: string): PanelTitulo | null {
+  const normalizedSymbol = symbol.toUpperCase()
+
+  for (const panel of Object.values(DEMO_PANEL_DATA)) {
+    const match = panel.find((row) => row.simbolo === normalizedSymbol)
+
+    if (match) {
+      return {
+        ...match,
+        puntas: match.puntas ? { ...match.puntas } : undefined,
+      }
+    }
+  }
+
+  return null
+}
+
 export function getDemoHistoryData(
   symbol: string,
   _market: StockHistoryMarket,

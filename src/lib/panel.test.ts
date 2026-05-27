@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { normalizePanelData, normalizePanelDataResult } from './panel'
+import {
+  normalizePanelData,
+  normalizePanelDataResult,
+  normalizeQuoteData,
+} from './panel'
 
 describe('normalizePanelData', () => {
   it('accepts a direct array payload', () => {
@@ -201,5 +205,62 @@ describe('normalizePanelData', () => {
         descripcion: 'Grupo Financiero Galicia',
       },
     ])
+  })
+
+  it('normalizes the individual quote payload shape returned by IOL', () => {
+    expect(
+      normalizeQuoteData(
+        {
+          ultimoPrecio: 967.5,
+          variacion: 3.09,
+          apertura: 948,
+          maximo: 970.5,
+          minimo: 920,
+          cierreAnterior: 938.5,
+          volumenNominal: 407493,
+          descripcionTitulo: 'Aluar',
+          puntas: [
+            {
+              cantidadCompra: 18,
+              precioCompra: 907.5,
+              precioVenta: 974.5,
+              cantidadVenta: 6,
+            },
+          ],
+        },
+        {
+          symbol: 'ALUA',
+        }
+      )
+    ).toEqual({
+      simbolo: 'ALUA',
+      descripcion: 'Aluar',
+      ultimoPrecio: 967.5,
+      variacionPorcentual: 3.09,
+      apertura: 948,
+      maximo: 970.5,
+      minimo: 920,
+      ultimoCierre: 938.5,
+      volumen: 407493,
+      puntas: {
+        cantidadCompra: 18,
+        precioCompra: 907.5,
+        precioVenta: 974.5,
+        cantidadVenta: 6,
+      },
+    })
+  })
+
+  it('throws when an individual quote payload is missing a usable description', () => {
+    expect(() =>
+      normalizeQuoteData(
+        {
+          ultimoPrecio: 100,
+        },
+        {
+          symbol: 'GGAL',
+        }
+      )
+    ).toThrow('Upstream quote payload contains no valid item')
   })
 })

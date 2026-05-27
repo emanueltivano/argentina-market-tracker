@@ -1,6 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MarketDataPanelKey } from '@/lib/market';
+import {
+  normalizeFavoriteIdentities,
+  normalizeFavoriteSymbol,
+  type FavoriteStockIdentity,
+} from '@/lib/favorites';
+import { DEFAULT_STOCK_HISTORY_MARKET } from '@/lib/stockHistory';
 import { type StockData } from '../lib/stockData';
 import { normalizeTicker } from '../lib/ticker';
 
@@ -84,26 +91,13 @@ function normalizeFavoriteSnapshot(value: unknown): StockData | null {
   };
 }
 
-function normalizeFavorites(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-
-  return Array.from(
-    new Set(
-      value
-        .filter((ticker): ticker is string => typeof ticker === 'string')
-        .map(normalizeTicker)
-        .filter(Boolean),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
-}
-
-function readStoredFavorites(): string[] {
+function readStoredFavorites(): FavoriteStockIdentity[] {
   const storedValue = safeGetStorageItem(FAVORITE_STOCKS_STORAGE_KEY);
 
   if (!storedValue) return [];
 
   try {
-    return normalizeFavorites(JSON.parse(storedValue));
+    return normalizeFavoriteIdentities(JSON.parse(storedValue));
   } catch {
     return [];
   }
@@ -138,18 +132,18 @@ function readStoredFavoriteSnapshots(): Record<string, StockData> {
 }
 
 export function useFavoriteStocks() {
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoriteItems, setFavoriteItems] = useState<FavoriteStockIdentity[]>([]);
   const [favoriteSnapshotsByTicker, setFavoriteSnapshotsByTicker] = useState<
     Record<string, StockData>
   >({});
   const [didLoad, setDidLoad] = useState(false);
-  const favoritesRef = useRef<string[]>([]);
+  const favoriteItemsRef = useRef<FavoriteStockIdentity[]>([]);
   const favoriteSnapshotsRef = useRef<Record<string, StockData>>({});
 
   useEffect(() => {
     // localStorage is only available after client mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFavorites(readStoredFavorites());
+    setFavoriteItems(readStoredFavorites());
     setFavoriteSnapshotsByTicker(readStoredFavoriteSnapshots());
     setDidLoad(true);
   }, []);
@@ -159,22 +153,26 @@ export function useFavoriteStocks() {
 
     safeSetStorageItem(
       FAVORITE_STOCKS_STORAGE_KEY,
-      JSON.stringify(favorites),
+      JSON.stringify(favoriteItems),
     );
     safeSetStorageItem(
       FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
       JSON.stringify(favoriteSnapshotsByTicker),
     );
-  }, [didLoad, favoriteSnapshotsByTicker, favorites]);
+  }, [didLoad, favoriteItems, favoriteSnapshotsByTicker]);
 
   useEffect(() => {
-    favoritesRef.current = favorites;
-  }, [favorites]);
+    favoriteItemsRef.current = favoriteItems;
+  }, [favoriteItems]);
 
   useEffect(() => {
     favoriteSnapshotsRef.current = favoriteSnapshotsByTicker;
   }, [favoriteSnapshotsByTicker]);
 
+  const favorites = useMemo(
+    () => favoriteItems.map((item) => item.symbol),
+    [favoriteItems]
+  );
   const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
   const isFavorite = useCallback(
@@ -182,21 +180,36 @@ export function useFavoriteStocks() {
     [favoriteSet],
   );
 
-  const toggleFavorite = useCallback((ticker: string) => {
-    const normalizedTicker = normalizeTicker(ticker);
+  const toggleFavorite = useCallback((
+    ticker: string,
+    options: {
+      market?: FavoriteStockIdentity['market']
+      sourcePanel?: MarketDataPanelKey
+    } = {}
+  ) => {
+    const normalizedTicker = normalizeFavoriteSymbol(ticker);
 
     if (!normalizedTicker) return;
 
-    setFavorites((currentFavorites) => {
-      const nextFavorites = new Set(currentFavorites);
+    setFavoriteItems((currentFavorites) => {
+      const nextFavorites = [...currentFavorites];
+      const existingIndex = nextFavorites.findIndex(
+        (item) => item.symbol === normalizedTicker
+      );
 
-      if (nextFavorites.has(normalizedTicker)) {
-        nextFavorites.delete(normalizedTicker);
+      if (existingIndex >= 0) {
+        nextFavorites.splice(existingIndex, 1);
       } else {
-        nextFavorites.add(normalizedTicker);
+        nextFavorites.push({
+          symbol: normalizedTicker,
+          market: options.market ?? DEFAULT_STOCK_HISTORY_MARKET,
+          ...(options.sourcePanel ? { sourcePanel: options.sourcePanel } : {}),
+        });
       }
 
-      return [...nextFavorites].sort((a, b) => a.localeCompare(b));
+      return nextFavorites.sort((left, right) =>
+        left.symbol.localeCompare(right.symbol)
+      );
     });
   }, []);
 
@@ -227,22 +240,37 @@ export function useFavoriteStocks() {
     });
   }, []);
 
-  const toggleFavoriteStock = useCallback((stock: StockData) => {
+  const toggleFavoriteStock = useCallback((
+    stock: StockData,
+    options: {
+      market?: FavoriteStockIdentity['market']
+      sourcePanel?: MarketDataPanelKey
+    } = {}
+  ) => {
     const snapshot = normalizeFavoriteSnapshot(stock);
 
     if (!snapshot) return;
 
-    const currentFavorites = favoritesRef.current;
-    const nextFavorites = new Set(currentFavorites);
-    const isCurrentlyFavorite = nextFavorites.has(snapshot.ticker);
+    const currentFavorites = favoriteItemsRef.current;
+    const nextFavorites = [...currentFavorites];
+    const existingIndex = nextFavorites.findIndex(
+      (item) => item.symbol === snapshot.ticker
+    );
+    const isCurrentlyFavorite = existingIndex >= 0;
 
     if (isCurrentlyFavorite) {
-      nextFavorites.delete(snapshot.ticker);
+      nextFavorites.splice(existingIndex, 1);
     } else {
-      nextFavorites.add(snapshot.ticker);
+      nextFavorites.push({
+        symbol: snapshot.ticker,
+        market: options.market ?? DEFAULT_STOCK_HISTORY_MARKET,
+        ...(options.sourcePanel ? { sourcePanel: options.sourcePanel } : {}),
+      });
     }
 
-    const nextFavoritesList = [...nextFavorites].sort((a, b) => a.localeCompare(b));
+    const nextFavoritesList = nextFavorites.sort((left, right) =>
+      left.symbol.localeCompare(right.symbol)
+    );
     const currentSnapshots = favoriteSnapshotsRef.current;
     let nextSnapshots = currentSnapshots;
 
@@ -258,14 +286,15 @@ export function useFavoriteStocks() {
       };
     }
 
-    favoritesRef.current = nextFavoritesList;
+    favoriteItemsRef.current = nextFavoritesList;
     favoriteSnapshotsRef.current = nextSnapshots;
-    setFavorites(nextFavoritesList);
+    setFavoriteItems(nextFavoritesList);
     setFavoriteSnapshotsByTicker(nextSnapshots);
   }, []);
 
   return {
     favorites,
+    favoriteItems,
     favoriteSet,
     favoriteSnapshotsByTicker,
     addFavoriteSnapshot,

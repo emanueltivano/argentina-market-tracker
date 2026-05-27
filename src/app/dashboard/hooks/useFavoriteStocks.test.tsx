@@ -82,7 +82,7 @@ describe('useFavoriteStocks', () => {
     })
     expect(screen.getByTestId('ggal-favorite').textContent).toBe('true')
     expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
-      '["GGAL"]'
+      '[{"symbol":"GGAL","market":"bCBA"}]'
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'Toggle GGAL' }))
@@ -107,7 +107,23 @@ describe('useFavoriteStocks', () => {
       )
     })
     expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
-      '["ALUA","GGAL","YPFD"]'
+      '[{"symbol":"ALUA","market":"bCBA"},{"symbol":"GGAL","market":"bCBA"},{"symbol":"YPFD","market":"bCBA"}]'
+    )
+  })
+
+  it('migrates legacy string favorites to minimal identity records', async () => {
+    window.localStorage.setItem(
+      FAVORITE_STOCKS_STORAGE_KEY,
+      JSON.stringify(['GGAL'])
+    )
+
+    render(<FavoriteStocksHarness />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('favorites').textContent).toBe('GGAL')
+    })
+    expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
+      '[{"symbol":"GGAL","market":"bCBA"}]'
     )
   })
 

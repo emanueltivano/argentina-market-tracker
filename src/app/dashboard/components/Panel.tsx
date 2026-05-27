@@ -16,11 +16,14 @@ import {
   StockTableEmptyState,
   StockTableErrorState,
   StockTableFavoritesEmptyState,
+  StockTableFavoritesMissingItemsState,
+  StockTableFreshFavoritesState,
   StockTableLoadingState,
   StockTableStaleFavoritesState,
   StockTableStaleErrorState,
 } from './StockTable';
 import { useMarketPanel } from '../hooks/useMarketPanel';
+import { useFavoritePanel } from '../hooks/useFavoritePanel';
 import { useFavoriteStocks } from '../hooks/useFavoriteStocks';
 import { useStockSortState } from '../hooks/useStockSortState';
 import { useDashboardPanelState } from '../hooks/useDashboardPanelState';
@@ -57,6 +60,7 @@ export default function Panel({
   const { sort, handleSortChange } = useStockSortState();
   const {
     favorites,
+    favoriteItems,
     favoriteSnapshotsByTicker,
     isFavorite,
     toggleFavoriteStock,
@@ -72,6 +76,13 @@ export default function Panel({
   });
   const activePanel = getMarketPanelOption(activePanelKey);
 
+  const marketPanelState = useMarketPanel(dataPanelKey, {
+    enabled: !isFavoritesPanel,
+    initialData,
+    initialErrorMessage,
+    initialPanelKey,
+  });
+  const favoritePanelState = useFavoritePanel(favoriteItems);
   const {
     rows,
     error,
@@ -80,11 +91,7 @@ export default function Panel({
     isRefreshing,
     hasStaleError,
     viewStatus,
-  } = useMarketPanel(dataPanelKey, {
-    initialData,
-    initialErrorMessage,
-    initialPanelKey,
-  });
+  } = isFavoritesPanel ? favoritePanelState : marketPanelState;
 
   const errorMessage = error?.message ?? 'Error desconocido';
   const { filteredRows, staleFavoriteTickers, effectiveViewStatus } = useMemo(
@@ -115,12 +122,17 @@ export default function Panel({
   const hasStaleFavoriteRows =
     isFavoritesPanel &&
     sortedRows.some((row) => staleFavoriteTickers.has(normalizeTicker(row.ticker)));
+  const favoriteMissingItems = isFavoritesPanel ? favoritePanelState.missingItems : [];
+  const shouldShowFreshFavoritesState =
+    isFavoritesPanel &&
+    effectiveViewStatus === 'success' &&
+    !hasStaleFavoriteRows;
 
   const handleToggleFavorite = useCallback(
     (stock: StockData) => {
-      toggleFavoriteStock(stock);
+      toggleFavoriteStock(stock, { sourcePanel: dataPanelKey });
     },
-    [toggleFavoriteStock],
+    [dataPanelKey, toggleFavoriteStock],
   );
   const handlePanelContentChange = useCallback((key: MarketPanelKey) => {
     clearSelectedStock();
@@ -188,7 +200,11 @@ export default function Panel({
       {effectiveViewStatus === 'success' && (
         <>
           {hasStaleError && <StockTableStaleErrorState />}
+          {shouldShowFreshFavoritesState && <StockTableFreshFavoritesState />}
           {hasStaleFavoriteRows && <StockTableStaleFavoritesState />}
+          {isFavoritesPanel && (
+            <StockTableFavoritesMissingItemsState items={favoriteMissingItems} />
+          )}
 
           <StockTable
             isBusy={isRefreshing}
@@ -212,16 +228,17 @@ export default function Panel({
             )}
           </StockTable>
 
-          {selectedStock && (
-            <StockDetailsModal
-              stock={selectedStock}
-              panelKey={activePanelKey}
-              isFavorite={isFavorite(selectedStock.ticker)}
-              onToggleFavorite={handleToggleFavorite}
-              onClose={handleCloseStockDetails}
-            />
-          )}
         </>
+      )}
+
+      {selectedStock && (
+        <StockDetailsModal
+          stock={selectedStock}
+          panelKey={activePanelKey}
+          isFavorite={isFavorite(selectedStock.ticker)}
+          onToggleFavorite={handleToggleFavorite}
+          onClose={handleCloseStockDetails}
+        />
       )}
     </PanelContent>
   );

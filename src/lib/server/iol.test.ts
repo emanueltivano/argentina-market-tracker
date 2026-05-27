@@ -4,6 +4,7 @@ import {
   clearInFlightTokenRequest,
 } from './tokenCache'
 import {
+  getQuoteBySymbol,
   iol,
   IolTokenUpstreamError,
   IolUpstreamHttpError,
@@ -115,6 +116,30 @@ describe('iol server client', () => {
     expect(getFetchCall(2)[0]).toBe('https://api.example.test/panel/second')
     expect(getRequestHeaders(1).get('authorization')).toBe('Bearer cached-token')
     expect(getRequestHeaders(2).get('authorization')).toBe('Bearer cached-token')
+  })
+
+  it('requests the individual quote endpoint for getQuoteBySymbol', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ access_token: 'fresh-token', expires_in: 1800 })
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' })
+        )
+    )
+
+    await expect(getQuoteBySymbol('bCBA', 'GGAL')).resolves.toEqual({
+      simbolo: 'GGAL',
+      descripcion: 'Grupo Financiero Galicia',
+    })
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(getFetchCall(1)[0]).toBe(
+      'https://api.example.test/api/v2/bCBA/Titulos/GGAL/Cotizacion'
+    )
   })
 
   it.each([401, 403])(

@@ -21,6 +21,7 @@ import {
   FAVORITE_STOCKS_STORAGE_KEY,
 } from '../hooks/useFavoriteStocks'
 import { type MarketDataPanelKey } from '@/lib/market'
+import { type FavoritesSuccessResponse } from '@/lib/favorites'
 import { type PanelSuccessResponse, type PanelTitulo } from '@/lib/panel'
 
 const replace = vi.fn()
@@ -50,6 +51,21 @@ function panelResponse(data: PanelTitulo[]) {
     servedAt: '2026-05-04T16:00:00.000Z',
     cacheStatus: 'fresh',
   } satisfies PanelSuccessResponse
+}
+
+function favoritesResponse(rows: PanelTitulo[], overrides: Partial<FavoritesSuccessResponse> = {}) {
+  return {
+    ok: true,
+    rows,
+    missingItems: [],
+    failedItems: [],
+    source: 'live',
+    requestId: 'req-favorites-1234',
+    updatedAt: '2026-05-04T16:00:00.000Z',
+    servedAt: '2026-05-04T16:00:00.000Z',
+    stale: false,
+    ...overrides,
+  } satisfies FavoritesSuccessResponse
 }
 
 function renderPanel(props?: {
@@ -821,7 +837,7 @@ describe('Panel', () => {
 
     await waitFor(() => {
       expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
-        '["GGAL"]'
+        '[{"symbol":"GGAL","market":"bCBA","sourcePanel":"lider"}]'
       )
     })
   })
@@ -899,12 +915,15 @@ describe('Panel', () => {
 
   it('toggles a favorite from the stock details modal without closing it', async () => {
     currentSearchParams = new URLSearchParams('panel=favorites')
-    window.localStorage.setItem(FAVORITE_STOCKS_STORAGE_KEY, '["GGAL"]')
+    window.localStorage.setItem(
+      FAVORITE_STOCKS_STORAGE_KEY,
+      '[{"symbol":"GGAL","market":"bCBA"}]'
+    )
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
         Response.json(
-          panelResponse([
+          favoritesResponse([
             { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
           ])
         )
@@ -945,14 +964,22 @@ describe('Panel', () => {
   })
 
   it('shows a newly favorited stock after switching to the Favorites panel', async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () =>
-      Response.json(
+    const fetchMock = vi.fn<typeof fetch>(async (url) => {
+      if (url === '/api/favorites?items=bCBA%3AGGAL') {
+        return Response.json(
+          favoritesResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      }
+
+      return Response.json(
         panelResponse([
           { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
           { simbolo: 'YPFD', descripcion: 'YPF' },
         ])
       )
-    )
+    })
     vi.stubGlobal('fetch', fetchMock)
 
     const view = renderPanel()
@@ -985,9 +1012,10 @@ describe('Panel', () => {
       cache: 'no-store',
       headers: { accept: 'application/json' },
     })
-    expect(
-      fetchMock.mock.calls.some(([url]) => url === '/api/panel?type=favorites')
-    ).toBe(false)
+    expect(fetchMock).toHaveBeenCalledWith('/api/favorites?items=bCBA%3AGGAL', {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    })
   })
 
   it.each([
@@ -1008,12 +1036,19 @@ describe('Panel', () => {
     async ({ panel, fetchUrl, ticker, description }) => {
       currentSearchParams = new URLSearchParams(`panel=${panel}`)
       const fetchMock = vi.fn<typeof fetch>(async (url) => {
-        const data =
-          url === fetchUrl
-            ? [{ simbolo: ticker, descripcion: description }]
-            : [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }]
+        if (url === '/api/favorites?items=bCBA%3A' + ticker) {
+          return Response.json(
+            favoritesResponse([{ simbolo: ticker, descripcion: description }])
+          )
+        }
 
-        return Response.json(panelResponse(data))
+        return Response.json(
+          panelResponse(
+            url === fetchUrl
+              ? [{ simbolo: ticker, descripcion: description }]
+              : [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }]
+          )
+        )
       })
       vi.stubGlobal('fetch', fetchMock)
 
@@ -1044,23 +1079,34 @@ describe('Panel', () => {
         cache: 'no-store',
         headers: { accept: 'application/json' },
       })
-      expect(
-        fetchMock.mock.calls.some(([url]) => url === '/api/panel?type=favorites')
-      ).toBe(false)
+      expect(fetchMock).toHaveBeenCalledWith(`/api/favorites?items=bCBA%3A${ticker}`, {
+        cache: 'no-store',
+        headers: { accept: 'application/json' },
+      })
     }
   )
 
   it('keeps favorites from different panels in the Favorites listing', async () => {
     currentSearchParams = new URLSearchParams('panel=general')
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
-      const data =
-        url === '/api/panel?type=cedears'
-          ? [{ simbolo: 'AAPL', descripcion: 'Apple' }]
-          : url === '/api/panel?type=general'
-            ? [{ simbolo: 'BMA', descripcion: 'Banco Macro' }]
-            : [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }]
+      if (url === '/api/favorites?items=bCBA%3AAAPL%2CbCBA%3ABMA') {
+        return Response.json(
+          favoritesResponse([
+            { simbolo: 'AAPL', descripcion: 'Apple' },
+            { simbolo: 'BMA', descripcion: 'Banco Macro' },
+          ])
+        )
+      }
 
-      return Response.json(panelResponse(data))
+      return Response.json(
+        panelResponse(
+          url === '/api/panel?type=cedears'
+            ? [{ simbolo: 'AAPL', descripcion: 'Apple' }]
+            : url === '/api/panel?type=general'
+              ? [{ simbolo: 'BMA', descripcion: 'Banco Macro' }]
+              : [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }]
+        )
+      )
     })
     vi.stubGlobal('fetch', fetchMock)
 
@@ -1113,7 +1159,11 @@ describe('Panel', () => {
     currentSearchParams = new URLSearchParams('panel=favorites')
     window.localStorage.setItem(
       FAVORITE_STOCKS_STORAGE_KEY,
-      JSON.stringify(['GGAL', 'BMA', 'AAPL'])
+      JSON.stringify([
+        { symbol: 'GGAL', market: 'bCBA', sourcePanel: 'lider' },
+        { symbol: 'BMA', market: 'bCBA', sourcePanel: 'general' },
+        { symbol: 'AAPL', market: 'bCBA', sourcePanel: 'cedears' },
+      ])
     )
     window.localStorage.setItem(
       FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
@@ -1154,11 +1204,16 @@ describe('Panel', () => {
     )
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
+      vi.fn(async (url) =>
         Response.json(
-          panelResponse([
-            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
-          ])
+          typeof url === 'string' && url.startsWith('/api/favorites?items=')
+            ? favoritesResponse([
+                { simbolo: 'AAPL', descripcion: 'Apple' },
+                { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+              ])
+            : panelResponse([
+                { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+              ])
         )
       )
     )
@@ -1173,10 +1228,12 @@ describe('Panel', () => {
       screen.getByRole('button', { name: 'Quitar BMA de favoritos' })
     )
 
-    expect(renderedTickers()).toEqual(['AAPL', 'GGAL'])
+    await waitFor(() => {
+      expect(renderedTickers()).toEqual(['AAPL', 'GGAL'])
+    })
     await waitFor(() => {
       expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toBe(
-        '["AAPL","GGAL"]'
+        '[{"symbol":"AAPL","market":"bCBA","sourcePanel":"cedears"},{"symbol":"GGAL","market":"bCBA","sourcePanel":"lider"}]'
       )
     })
     expect(
@@ -1188,7 +1245,10 @@ describe('Panel', () => {
 
   it('renders stale favorite snapshots when the source panel fails', async () => {
     currentSearchParams = new URLSearchParams('panel=favorites')
-    window.localStorage.setItem(FAVORITE_STOCKS_STORAGE_KEY, '["AAPL"]')
+    window.localStorage.setItem(
+      FAVORITE_STOCKS_STORAGE_KEY,
+      '[{"symbol":"AAPL","market":"bCBA"}]'
+    )
     window.localStorage.setItem(
       FAVORITE_STOCK_SNAPSHOTS_STORAGE_KEY,
       JSON.stringify({
@@ -1216,7 +1276,7 @@ describe('Panel', () => {
         Response.json(
           {
             ok: false,
-            error: 'PANEL_ERROR',
+            error: 'FAVORITES_ERROR',
           },
           { status: 502 }
         )
@@ -1230,7 +1290,7 @@ describe('Panel', () => {
     ).not.toBeNull()
     expect(
       screen.getByText(
-        'Mostrando favoritos guardados localmente. Algunos datos pueden estar desactualizados.'
+        'Datos locales desactualizados.'
       )
     ).not.toBeNull()
     expect(document.querySelector('tr[data-symbol="AAPL"]')?.className).toContain(
@@ -1259,14 +1319,47 @@ describe('Panel', () => {
     ).not.toBeNull()
   })
 
-  it('filters the favorites panel and keeps sorting over the filtered rows', async () => {
-    currentSearchParams = new URLSearchParams('panel=favorites&sort=var&dir=desc')
-    window.localStorage.setItem(FAVORITE_STOCKS_STORAGE_KEY, '["BAJA","SUBA"]')
+  it('shows updated favorites and missing item notices from /api/favorites', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    window.localStorage.setItem(
+      FAVORITE_STOCKS_STORAGE_KEY,
+      '[{"symbol":"GGAL","market":"bCBA"},{"symbol":"DEMOX","market":"bCBA"}]'
+    )
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
         Response.json(
-          panelResponse([
+          favoritesResponse(
+            [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
+            { missingItems: ['bCBA:DEMOX'] }
+          )
+        )
+      )
+    )
+
+    renderPanel()
+
+    await screen.findByRole('button', { name: 'Quitar GGAL de favoritos' })
+
+    expect(
+      screen.getByText('Mostrando cotizaciones actualizadas para tus favoritos.')
+    ).not.toBeNull()
+    expect(
+      screen.getByText('Algunos favoritos no están disponibles: bCBA:DEMOX.')
+    ).not.toBeNull()
+  })
+
+  it('filters the favorites panel and keeps sorting over the filtered rows', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites&sort=var&dir=desc')
+    window.localStorage.setItem(
+      FAVORITE_STOCKS_STORAGE_KEY,
+      '[{"symbol":"BAJA","market":"bCBA"},{"symbol":"SUBA","market":"bCBA"}]'
+    )
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          favoritesResponse([
             { simbolo: 'BAJA', descripcion: 'Baja', variacionPorcentual: -3 },
             { simbolo: 'FUERA', descripcion: 'Fuera', variacionPorcentual: 10 },
             { simbolo: 'SUBA', descripcion: 'Suba', variacionPorcentual: 4 },

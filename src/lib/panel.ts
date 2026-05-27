@@ -53,6 +53,10 @@ export interface PanelNormalizationResult {
   droppedItemsSummary: PanelNormalizationIssue[]
 }
 
+export interface QuoteNormalizationOptions {
+  symbol: string
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -63,6 +67,26 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (isFiniteNumber(value)) {
+    return value
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmedValue = value.trim()
+
+  if (!trimmedValue) {
+    return null
+  }
+
+  const parsedValue = Number(trimmedValue.replace(/,/g, ''))
+
+  return Number.isFinite(parsedValue) ? parsedValue : null
 }
 
 export function isPanelErrorCode(value: unknown): value is PanelErrorCode {
@@ -152,8 +176,10 @@ function setFiniteNumber(
   field: NumericPanelField,
   value: unknown
 ) {
-  if (isFiniteNumber(value)) {
-    target[field] = value
+  const numericValue = toFiniteNumber(value)
+
+  if (numericValue !== null) {
+    target[field] = numericValue
   }
 }
 
@@ -162,8 +188,10 @@ function setFinitePuntaNumber(
   field: PuntaField,
   value: unknown
 ) {
-  if (isFiniteNumber(value)) {
-    target[field] = value
+  const numericValue = toFiniteNumber(value)
+
+  if (numericValue !== null) {
+    target[field] = numericValue
   }
 }
 
@@ -285,4 +313,57 @@ export function normalizePanelDataResult(data: unknown): PanelNormalizationResul
 
 export function normalizePanelData(data: unknown): PanelTitulo[] {
   return normalizePanelDataResult(data).data
+}
+
+function normalizeQuotePuntas(value: unknown): PanelTitulo['puntas'] {
+  if (Array.isArray(value)) {
+    return normalizePuntas(value[0])
+  }
+
+  return normalizePuntas(value)
+}
+
+export function normalizeQuoteData(
+  data: unknown,
+  options: QuoteNormalizationOptions
+): PanelTitulo {
+  if (!isRecord(data)) {
+    throw new Error('Invalid upstream quote payload structure')
+  }
+
+  const descripcion =
+    typeof data.descripcion === 'string' && data.descripcion.trim().length > 0
+      ? data.descripcion
+      : typeof data.descripcionTitulo === 'string' &&
+          data.descripcionTitulo.trim().length > 0
+        ? data.descripcionTitulo
+        : null
+
+  if (!descripcion) {
+    throw new Error('Upstream quote payload contains no valid item')
+  }
+
+  const item: PanelTitulo = {
+    simbolo: options.symbol,
+    descripcion,
+  }
+  const puntas = normalizeQuotePuntas(data.puntas)
+
+  if (puntas) {
+    item.puntas = puntas
+  }
+
+  setFiniteNumber(item, 'ultimoPrecio', data.ultimoPrecio)
+  setFiniteNumber(
+    item,
+    'variacionPorcentual',
+    data.variacionPorcentual ?? data.variacion
+  )
+  setFiniteNumber(item, 'apertura', data.apertura)
+  setFiniteNumber(item, 'maximo', data.maximo)
+  setFiniteNumber(item, 'minimo', data.minimo)
+  setFiniteNumber(item, 'ultimoCierre', data.ultimoCierre ?? data.cierreAnterior)
+  setFiniteNumber(item, 'volumen', data.volumen ?? data.volumenNominal)
+
+  return item
 }

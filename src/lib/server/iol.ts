@@ -4,13 +4,16 @@ import {
   extractUpstreamErrorSummary,
   incrementMetricCounter,
   logServerInfo,
+  logServerWarn,
   recordMetricDuration,
+  getSafeErrorDetails,
 } from './observability'
 import {
   setCachedToken,
   clearCachedToken,
   getOrCreateToken,
 } from './tokenCache'
+import { getQuoteEndpoint } from './quoteEndpoint'
 
 /**
  * Configuración general
@@ -264,6 +267,48 @@ export async function refreshTokenForDebug(): Promise<TokenDebugInfo> {
   return {
     expiresIn,
     tokenType: data.token_type,
+  }
+}
+
+export async function getQuoteBySymbol<T = unknown>(
+  market: string,
+  symbol: string,
+  options: {
+    requestId?: string
+  } = {}
+): Promise<T> {
+  const endpoint = getQuoteEndpoint(market, symbol)
+
+  devLog('quote-request', {
+    market,
+    symbol,
+    endpoint,
+    requestId: options.requestId,
+  })
+
+  incrementMetricCounter('favorites.upstream.quote_request.total', 1, {
+    market,
+  })
+
+  try {
+    return await iol<T>(endpoint)
+  } catch (error: unknown) {
+    logServerWarn('iol.quote.request.failed', {
+      requestId: options.requestId,
+      market,
+      symbol,
+      endpoint,
+      reason: getSafeErrorDetails(error),
+      status:
+        error instanceof IolUpstreamHttpError
+          ? error.status
+          : undefined,
+      upstreamPath:
+        error instanceof IolUpstreamHttpError
+          ? error.upstreamPath
+          : undefined,
+    })
+    throw error
   }
 }
 

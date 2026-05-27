@@ -19,6 +19,7 @@ meaningful automated verification.
 The browser talks only to internal routes such as:
 
 - `/api/panel?type=lider|general|cedears`
+- `/api/favorites?items=bCBA:ALUA,bCBA:AAPL`
 - `/api/stocks/[symbol]/history?range=...&market=bCBA`
 - `/api/health`
 - `/api/debug/metrics`
@@ -28,6 +29,7 @@ Those routes handle:
 - request validation
 - upstream normalization
 - rate limiting and refresh cooldowns
+- favorites fan-out to per-symbol upstream quotes
 - process-local cache and stale fallback behavior
 - structured logging and request ID correlation
 - safe demo/live data-source switching
@@ -191,6 +193,7 @@ Current hardening includes:
 - browser never talks directly to the external market provider
 - OAuth token handling stays server-side
 - validated and normalized panel/history contracts before rendering
+- validated favorites identity input before per-symbol quote fan-out
 - stricter production CSP with per-request nonce support
 - request ID propagation via `X-Request-Id`
 - structured log sanitization for secrets and auth material
@@ -202,6 +205,7 @@ Current resilience mechanisms include:
 
 - SSR first paint plus client revalidation
 - panel cache with manual refresh bypass
+- short-lived per-symbol favorites quote cache plus in-flight dedupe
 - hidden-tab polling pause and resume behavior
 - history normalization that discards invalid points when possible
 - stale history fallback from local cache when live upstream fails
@@ -224,6 +228,7 @@ Metrics currently cover:
 - cache hits/misses/writes/stale hits
 - rate-limit allowed/blocked decisions
 - upstream request outcomes
+- favorites quote fan-out and deduplicated symbol fetches
 - discarded history points and stale fallback usage
 - demo vs live response source
 
@@ -248,6 +253,7 @@ Coverage includes:
 
 - unit and component tests with Vitest and Testing Library
 - route and server tests for contracts, rate limiting, caching, and errors
+- favorites quote route coverage, demo resolution, and stale local fallback
 - Playwright dashboard interaction E2E
 - Playwright SSR boot coverage with JavaScript disabled
 
@@ -289,13 +295,36 @@ See [docs/RUNBOOK.md](./docs/RUNBOOK.md) for:
 
 - demo mode is synthetic and not real market data
 - panel and history caches are process-local
+- favorites quote cache and in-flight dedupe are process-local
 - stale history fallback is process-local
 - built-in metrics are process-local
 - live mode still depends on an external upstream provider
 - there is no external observability platform, tracing backend, or formal SLO
-- favorites use local client storage and local snapshots, not backend
-  persistence
+- favorites localStorage persists only minimal identity metadata
+- `/api/favorites` avoids fetching full panels, but still fans out into N
+  internal per-symbol quote lookups per batch
+- stale local favorite snapshots are fallback-only and explicitly marked as
+  outdated in the UI
 - the project is not intended for live trading or financial advice
+
+## Favorites Behavior
+
+Favorites now persist only minimal client identity:
+
+- `symbol`
+- `market`
+- optional `sourcePanel` metadata for UI continuity
+
+The browser refreshes favorite quotes through `GET /api/favorites?items=...`.
+That route validates and deduplicates the requested symbols, applies rate
+limiting, resolves each favorite through the upstream individual quote endpoint,
+normalizes the result to the same row model used by the panel tables, and
+returns `rows`, `missingItems`, `failedItems`, source metadata, request ID, and
+staleness markers.
+
+When live or demo quote refresh cannot resolve a favorite, the dashboard may
+show an explicit local snapshot fallback labeled as outdated. This preserves
+the UI without making local storage the primary source of truth.
 
 ## Screenshots
 
