@@ -14,6 +14,7 @@ import { sortStocks } from '../lib/stockSorting';
 import {
   StockTable,
   StockTableEmptyState,
+  StockTableFavoritesFailedItemsState,
   StockTableErrorState,
   StockTableFavoritesEmptyState,
   StockTableFavoritesMissingItemsState,
@@ -123,6 +124,7 @@ export default function Panel({
     isFavoritesPanel &&
     sortedRows.some((row) => staleFavoriteTickers.has(normalizeTicker(row.ticker)));
   const favoriteMissingItems = isFavoritesPanel ? favoritePanelState.missingItems : [];
+  const favoriteFailedItems = isFavoritesPanel ? favoritePanelState.failedItems : [];
   const shouldShowFreshFavoritesState =
     isFavoritesPanel &&
     effectiveViewStatus === 'success' &&
@@ -203,7 +205,10 @@ export default function Panel({
           {shouldShowFreshFavoritesState && <StockTableFreshFavoritesState />}
           {hasStaleFavoriteRows && <StockTableStaleFavoritesState />}
           {isFavoritesPanel && (
-            <StockTableFavoritesMissingItemsState items={favoriteMissingItems} />
+            <>
+              <StockTableFavoritesMissingItemsState items={favoriteMissingItems} />
+              <StockTableFavoritesFailedItemsState items={favoriteFailedItems} />
+            </>
           )}
 
           <StockTable

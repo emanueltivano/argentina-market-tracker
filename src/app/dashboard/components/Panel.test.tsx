@@ -1319,11 +1319,11 @@ describe('Panel', () => {
     ).not.toBeNull()
   })
 
-  it('shows updated favorites and missing item notices from /api/favorites', async () => {
+  it('shows a temporary failure notice for partially updated favorites', async () => {
     currentSearchParams = new URLSearchParams('panel=favorites')
     window.localStorage.setItem(
       FAVORITE_STOCKS_STORAGE_KEY,
-      '[{"symbol":"GGAL","market":"bCBA"},{"symbol":"DEMOX","market":"bCBA"}]'
+      '[{"symbol":"GGAL","market":"bCBA"},{"symbol":"AGRO","market":"bCBA"}]'
     )
     vi.stubGlobal(
       'fetch',
@@ -1331,7 +1331,40 @@ describe('Panel', () => {
         Response.json(
           favoritesResponse(
             [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
-            { missingItems: ['bCBA:DEMOX'] }
+            { failedItems: ['bCBA:AGRO'] }
+          )
+        )
+      )
+    )
+
+    renderPanel()
+
+    await screen.findByRole('button', { name: 'Quitar GGAL de favoritos' })
+
+    expect(
+      screen.getByText(
+        'Algunos favoritos no pudieron actualizarse temporalmente: bCBA:AGRO.'
+      )
+    ).not.toBeNull()
+    expect(screen.queryByText(/no están disponibles/i)).toBeNull()
+  })
+
+  it('shows differentiated missing and failed item notices from /api/favorites', async () => {
+    currentSearchParams = new URLSearchParams('panel=favorites')
+    window.localStorage.setItem(
+      FAVORITE_STOCKS_STORAGE_KEY,
+      '[{"symbol":"GGAL","market":"bCBA"},{"symbol":"DEMOX","market":"bCBA"},{"symbol":"AGRO","market":"bCBA"}]'
+    )
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          favoritesResponse(
+            [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
+            {
+              missingItems: ['bCBA:DEMOX'],
+              failedItems: ['bCBA:AGRO'],
+            }
           )
         )
       )
@@ -1346,6 +1379,11 @@ describe('Panel', () => {
     ).not.toBeNull()
     expect(
       screen.getByText('Algunos favoritos no están disponibles: bCBA:DEMOX.')
+    ).not.toBeNull()
+    expect(
+      screen.getByText(
+        'Algunos favoritos no pudieron actualizarse temporalmente: bCBA:AGRO.'
+      )
     ).not.toBeNull()
   })
 

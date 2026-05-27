@@ -27,7 +27,7 @@ import {
   shouldReturnRawPanelData,
 } from '@/lib/server/panelRequest'
 import { jsonResponse, panelErrorResponse } from '@/lib/server/panelResponse'
-import { getRetryAfterHeaders } from '@/lib/server/rateLimit'
+import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/rateLimit'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -63,9 +63,40 @@ export async function GET(req: NextRequest) {
   const type = panelType.type
   const shouldReturnRaw = shouldReturnRawPanelData(req)
   const bypassCache = shouldBypassPanelCache(req)
-  const maybeRateLimit = checkPanelRateLimit(req)
-  const rateLimit =
-    maybeRateLimit instanceof Promise ? await maybeRateLimit : maybeRateLimit
+  const rateLimitCheck = await safeCheckRateLimit(() => checkPanelRateLimit(req), {
+    requestId,
+    route: '/api/panel',
+  })
+
+  if (!rateLimitCheck.ok) {
+    incrementMetricCounter('api.request.total', 1, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      outcome: 'rate-limit-unavailable',
+      source: dataSource,
+      status: 503,
+    })
+    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      status: 503,
+    })
+
+    return panelErrorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      {
+        status: rateLimitCheck.status,
+        headers: withRequestIdHeaders(
+          { 'Retry-After': String(rateLimitCheck.retryAfterSec) },
+          requestId
+        ),
+      },
+      undefined,
+      requestId
+    )
+  }
+
+  const rateLimit = rateLimitCheck.rateLimit
 
   if (!rateLimit.ok) {
     incrementMetricCounter('api.request.total', 1, {
@@ -89,11 +120,43 @@ export async function GET(req: NextRequest) {
   // Local in-memory cooldown for manual refresh. In serverless this protects
   // only the current instance; it is not a global distributed limit.
   if (bypassCache && !hasInFlightPanelRefresh(type)) {
-    const maybeRefreshCooldown = checkPanelRefreshCooldown(req, type)
-    const refreshCooldown =
-      maybeRefreshCooldown instanceof Promise
-        ? await maybeRefreshCooldown
-        : maybeRefreshCooldown
+    const refreshCooldownCheck = await safeCheckRateLimit(
+      () => checkPanelRefreshCooldown(req, type),
+      {
+        requestId,
+        route: '/api/panel',
+      }
+    )
+
+    if (!refreshCooldownCheck.ok) {
+      incrementMetricCounter('api.request.total', 1, {
+        endpoint: '/api/panel',
+        method: 'GET',
+        outcome: 'rate-limit-unavailable',
+        source: dataSource,
+        status: 503,
+      })
+      recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+        endpoint: '/api/panel',
+        method: 'GET',
+        status: 503,
+      })
+
+      return panelErrorResponse(
+        'RATE_LIMIT_UNAVAILABLE',
+        {
+          status: refreshCooldownCheck.status,
+          headers: withRequestIdHeaders(
+            { 'Retry-After': String(refreshCooldownCheck.retryAfterSec) },
+            requestId
+          ),
+        },
+        undefined,
+        requestId
+      )
+    }
+
+    const refreshCooldown = refreshCooldownCheck.rateLimit
 
     if (!refreshCooldown.ok) {
       incrementMetricCounter('api.request.total', 1, {

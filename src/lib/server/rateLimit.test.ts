@@ -148,4 +148,63 @@ describe('rateLimit infrastructure', () => {
       })
     )
   })
+
+  it('returns a controlled unavailable result when the store check throws', async () => {
+    process.env = {
+      ...OLD_ENV,
+      NODE_ENV: 'production',
+      RATE_LIMIT_STORE: 'redis-rest',
+      RATE_LIMIT_REDIS_REST_URL: 'https://kv.internal.example.test',
+      RATE_LIMIT_REDIS_REST_TOKEN: 'RATE_LIMIT_REDIS_REST_TOKEN-secret',
+    }
+    vi.doMock('server-only', () => ({}))
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { safeCheckRateLimit } = await import('./rateLimit')
+
+    const result = await safeCheckRateLimit(
+      () => {
+        throw new Error(
+          'redis failed for https://kv.internal.example.test using RATE_LIMIT_REDIS_REST_TOKEN-secret'
+        )
+      },
+      {
+        requestId: 'req-12345678',
+        route: '/api/panel',
+      }
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'RATE_LIMIT_UNAVAILABLE',
+      retryAfterSec: 5,
+      status: 503,
+    })
+    expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(
+      'https://kv.internal.example.test'
+    )
+    expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(
+      'RATE_LIMIT_REDIS_REST_TOKEN-secret'
+    )
+  })
+
+  it('reports degraded runtime info when live mode falls back to memory and global identity', async () => {
+    process.env = {
+      ...OLD_ENV,
+      NODE_ENV: 'production',
+      MARKET_DATA_SOURCE: 'live',
+      RATE_LIMIT_STORE: 'memory',
+      RATE_LIMIT_TRUSTED_PROXY: 'none',
+    }
+    vi.doMock('server-only', () => ({}))
+    const { getRateLimitRuntimeInfo } = await import('./rateLimit')
+
+    expect(getRateLimitRuntimeInfo()).toEqual({
+      configuredStore: 'memory',
+      ok: false,
+      reasons: ['memory-store-fallback', 'shared-global-client-fallback'],
+      status: 'degraded',
+      storeMode: 'memory',
+      trustedProxy: 'none',
+    })
+  })
 })

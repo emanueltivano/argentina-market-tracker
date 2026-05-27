@@ -64,6 +64,8 @@ const HISTORY_ERROR_MESSAGE: Record<StockHistoryErrorCode, string> = {
   INVALID_MARKET: 'Mercado inválido para cargar histórico.',
   INVALID_RANGE: 'Rango inválido para cargar histórico.',
   RATE_LIMITED: 'Demasiadas solicitudes. Esperá unos segundos e intentá nuevamente.',
+  RATE_LIMIT_UNAVAILABLE:
+    'El control de rate limit no está disponible temporalmente. Intentá nuevamente en unos segundos.',
   METHOD_NOT_ALLOWED: 'Método no permitido para cargar histórico.',
 }
 
@@ -74,6 +76,7 @@ function historyErrorMessage(error: StockHistoryErrorCode): string {
     case 'INVALID_MARKET':
     case 'INVALID_RANGE':
     case 'RATE_LIMITED':
+    case 'RATE_LIMIT_UNAVAILABLE':
     case 'METHOD_NOT_ALLOWED':
       return HISTORY_ERROR_MESSAGE[error]
   }

@@ -82,4 +82,56 @@ describe('/api/health route', () => {
     })
     expect(JSON.stringify(body)).not.toContain('password')
   })
+
+  it('reports degraded status when redis-rest rate limiting is misconfigured', async () => {
+    const { GET } = await loadRoute({
+      MARKET_DATA_SOURCE: 'demo',
+      NODE_ENV: 'production',
+      RATE_LIMIT_STORE: 'redis-rest',
+      RATE_LIMIT_REDIS_REST_URL: undefined,
+      RATE_LIMIT_REDIS_REST_TOKEN: undefined,
+    })
+
+    const response = await GET(request('/api/health'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.status).toBe('degraded')
+    expect(body.checks.rateLimit).toEqual({
+      status: 'degraded',
+      configuredStore: 'redis-rest',
+      storeMode: 'unavailable',
+      trustedProxy: 'none',
+      reasons: ['distributed-store-unavailable'],
+      details: 'RATE_LIMIT_STORE_CONFIG_INVALID',
+    })
+  })
+
+  it('reports degraded status when live mode falls back to memory and shared identity', async () => {
+    const { GET } = await loadRoute({
+      MARKET_DATA_SOURCE: 'live',
+      NODE_ENV: 'production',
+      API_URL: 'https://api.example.test',
+      API_USERNAME: 'user',
+      API_PASSWORD: 'password',
+      PANEL_LIDER_ENDPOINT: 'lider-endpoint',
+      PANEL_GENERAL_ENDPOINT: 'general-endpoint',
+      PANEL_CEDEARS_ENDPOINT: 'cedears-endpoint',
+      RATE_LIMIT_STORE: 'memory',
+      RATE_LIMIT_TRUSTED_PROXY: 'none',
+    })
+
+    const response = await GET(request('/api/health'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.status).toBe('degraded')
+    expect(body.checks.rateLimit).toEqual({
+      status: 'degraded',
+      configuredStore: 'memory',
+      storeMode: 'memory',
+      trustedProxy: 'none',
+      reasons: ['memory-store-fallback', 'shared-global-client-fallback'],
+    })
+  })
 })

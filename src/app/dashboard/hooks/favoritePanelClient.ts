@@ -31,6 +31,8 @@ const FAVORITES_ERROR_MESSAGE: Record<FavoritesErrorCode, string> = {
   INVALID_ITEMS: 'Favoritos inválidos.',
   TOO_MANY_ITEMS: 'Hay demasiados favoritos guardados.',
   RATE_LIMITED: 'Demasiadas solicitudes. Esperá unos segundos e intentá nuevamente.',
+  RATE_LIMIT_UNAVAILABLE:
+    'El control de rate limit no está disponible temporalmente. Intentá nuevamente en unos segundos.',
   METHOD_NOT_ALLOWED: 'Método no permitido para cargar favoritos.',
 }
 

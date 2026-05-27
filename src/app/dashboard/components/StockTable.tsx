@@ -155,3 +155,19 @@ export function StockTableFavoritesMissingItemsState({
     </p>
   );
 }
+
+export function StockTableFavoritesFailedItemsState({
+  items,
+}: {
+  items: string[];
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <p className='stock-table-stale-error' role='status' aria-live='polite'>
+      Algunos favoritos no pudieron actualizarse temporalmente: {items.join(', ')}.
+    </p>
+  );
+}

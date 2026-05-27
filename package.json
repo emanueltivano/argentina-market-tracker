@@ -30,7 +30,7 @@
     "swr": "2.4.1"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.15.0 <25"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

@@ -54,6 +54,44 @@ export class FavoritesLookupBatchError extends Error {
   }
 }
 
+function dedupeFavoriteItems(items: FavoriteLookupItem[]): FavoriteLookupItem[] {
+  const itemsByKey = new Map<string, FavoriteLookupItem>()
+
+  for (const item of items) {
+    itemsByKey.set(buildFavoriteLookupKey(item), item)
+  }
+
+  return [...itemsByKey.values()]
+}
+
+async function mapWithConcurrency<TInput, TOutput>(
+  items: TInput[],
+  limit: number,
+  iteratee: (item: TInput, index: number) => Promise<TOutput>
+): Promise<TOutput[]> {
+  if (items.length === 0) {
+    return []
+  }
+
+  const results = new Array<TOutput>(items.length)
+  let nextIndex = 0
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex
+      nextIndex += 1
+      results[currentIndex] = await iteratee(items[currentIndex], currentIndex)
+    }
+  }
+
+  const workerCount = Math.min(limit, items.length)
+  await Promise.all(
+    Array.from({ length: workerCount }, () => worker())
+  )
+
+  return results
+}
+
 async function fetchLiveQuote(
   market: StockHistoryMarket,
   symbol: string,
@@ -178,6 +216,33 @@ async function getQuoteRow(
   }
 }
 
+async function resolveQuoteRow(
+  item: FavoriteLookupItem,
+  options: {
+    bypassCache: boolean
+    requestId?: string
+  }
+): Promise<FavoriteQuoteResolution> {
+  try {
+    return await getQuoteRow(item.market, item.symbol, options)
+  } catch (error: unknown) {
+    const itemKey = buildFavoriteLookupKey(item)
+
+    logServerWarn('favorites.quote.lookup.unhandled', {
+      requestId: options.requestId,
+      market: item.market,
+      symbol: item.symbol,
+      reason: getSafeErrorDetails(error),
+    })
+
+    return {
+      kind: 'failed',
+      itemKey,
+      reason: getSafeErrorDetails(error) ?? 'unknown',
+    }
+  }
+}
+
 export async function getFavoritesResponse(
   items: FavoriteLookupItem[],
   options: {
@@ -185,13 +250,16 @@ export async function getFavoritesResponse(
     requestId?: string
   }
 ): Promise<FavoritesSuccessResponse> {
-  const results = await Promise.all(
-    items.map((item) =>
-      getQuoteRow(item.market, item.symbol, {
+  const uniqueItems = dedupeFavoriteItems(items)
+  const concurrencyLimit = ENV.FAVORITES_QUOTE_CONCURRENCY
+  const results = await mapWithConcurrency(
+    uniqueItems,
+    concurrencyLimit,
+    (item) =>
+      resolveQuoteRow(item, {
         bypassCache: options.bypassCache,
         requestId: options.requestId,
       })
-    )
   )
 
   const rows: PanelTitulo[] = []
@@ -220,6 +288,14 @@ export async function getFavoritesResponse(
     failedItems.push(result.itemKey)
   }
 
+  incrementMetricCounter('favorites.batch.total', 1, {
+    batchSize: items.length,
+    uniqueItemCount: uniqueItems.length,
+    concurrencyLimit,
+    failedCount: failedItems.length,
+    source: ENV.MARKET_DATA_SOURCE,
+  })
+
   if (rows.length === 0 && failedItems.length > 0) {
     throw new FavoritesLookupBatchError(
       `Favorites quote lookup failed for: ${failedItems.join(', ')}`,
@@ -229,6 +305,7 @@ export async function getFavoritesResponse(
   }
 
   incrementMetricCounter('favorites.response.total', 1, {
+    concurrencyLimit,
     source: ENV.MARKET_DATA_SOURCE,
     stale,
   })

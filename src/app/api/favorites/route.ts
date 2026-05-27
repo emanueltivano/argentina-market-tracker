@@ -19,7 +19,7 @@ import {
   recordMetricDuration,
   withRequestIdHeaders,
 } from '@/lib/server/observability'
-import { getRetryAfterHeaders } from '@/lib/server/rateLimit'
+import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/rateLimit'
 import type { FavoritesErrorCode, FavoritesErrorResponse } from '@/lib/favorites'
 
 export const dynamic = 'force-dynamic'
@@ -78,9 +78,43 @@ export async function GET(req: NextRequest) {
     return favoritesErrorResponse(parsedRequest.error, { status }, undefined, requestId)
   }
 
-  const maybeRateLimit = checkFavoritesRateLimit(req)
-  const rateLimit =
-    maybeRateLimit instanceof Promise ? await maybeRateLimit : maybeRateLimit
+  const rateLimitCheck = await safeCheckRateLimit(
+    () => checkFavoritesRateLimit(req),
+    {
+      requestId,
+      route: '/api/favorites',
+    }
+  )
+
+  if (!rateLimitCheck.ok) {
+    incrementMetricCounter('api.request.total', 1, {
+      endpoint: '/api/favorites',
+      method: 'GET',
+      outcome: 'rate-limit-unavailable',
+      source: dataSource,
+      status: 503,
+    })
+    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+      endpoint: '/api/favorites',
+      method: 'GET',
+      status: 503,
+    })
+
+    return favoritesErrorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      {
+        status: rateLimitCheck.status,
+        headers: withRequestIdHeaders(
+          { 'Retry-After': String(rateLimitCheck.retryAfterSec) },
+          requestId
+        ),
+      },
+      undefined,
+      requestId
+    )
+  }
+
+  const rateLimit = rateLimitCheck.rateLimit
 
   if (!rateLimit.ok) {
     incrementMetricCounter('api.request.total', 1, {

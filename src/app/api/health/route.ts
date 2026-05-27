@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const isDegraded =
     runtimeEnv.marketDataSource === 'invalid' ||
     runtimeEnv.missingLiveConfig.length > 0 ||
-    !rateLimit.ok
+    rateLimit.status !== 'ok'
 
   incrementMetricCounter('api.request.total', 1, {
     endpoint: '/api/health',
@@ -70,10 +70,12 @@ export async function GET(req: NextRequest) {
           ...getPanelCacheStats(),
         },
         rateLimit: {
-          status: rateLimit.ok ? 'ok' : 'degraded',
+          status: rateLimit.status,
+          configuredStore: rateLimit.configuredStore,
           storeMode: rateLimit.storeMode,
           trustedProxy: rateLimit.trustedProxy,
-          ...(rateLimit.ok ? {} : { details: rateLimit.error }),
+          ...(rateLimit.reasons.length > 0 ? { reasons: rateLimit.reasons } : {}),
+          ...(!rateLimit.ok ? { details: rateLimit.error } : {}),
         },
       },
     },

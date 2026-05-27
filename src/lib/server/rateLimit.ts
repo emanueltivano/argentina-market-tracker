@@ -3,16 +3,25 @@ import 'server-only'
 import { isIP } from 'node:net'
 import type { NextRequest } from 'next/server'
 import { ENV } from './env'
-import { incrementMetricCounter } from './observability'
+import { incrementMetricCounter, logServerWarn } from './observability'
 
 const RATE_LIMIT_HEADER_LIMIT = 'X-RateLimit-Limit'
 const RATE_LIMIT_HEADER_REMAINING = 'X-RateLimit-Remaining'
 const RATE_LIMIT_HEADER_RESET = 'X-RateLimit-Reset'
 const RATE_LIMIT_NAMESPACE_PREFIX = 'ratelimit'
 const REDIS_KEY_TTL_MULTIPLIER = 2
+const RATE_LIMIT_UNAVAILABLE_RETRY_AFTER_SEC = 5
 
 type ProxyTrustMode = 'none' | 'vercel'
 type RateLimitStoreMode = 'memory' | 'redis-rest'
+type ConfiguredRateLimitStoreMode = 'auto' | RateLimitStoreMode
+type RateLimitRuntimeReason =
+  | 'distributed-store-unavailable'
+  | 'memory-store-fallback'
+  | 'shared-global-client-fallback'
+type RateLimitFailureCode =
+  | 'RATE_LIMIT_STORE_CONFIG_INVALID'
+  | 'RATE_LIMIT_STORE_UNAVAILABLE'
 
 type ResolvedStoreConfig =
   | { mode: 'memory' }
@@ -57,6 +66,18 @@ export type RateLimitCheckResult = {
   storeMode: RateLimitStoreMode
 }
 
+export type SafeRateLimitCheckResult =
+  | {
+      ok: true
+      rateLimit: RateLimitCheckResult
+    }
+  | {
+      error: 'RATE_LIMIT_UNAVAILABLE'
+      ok: false
+      retryAfterSec: number
+      status: 503
+    }
+
 export type RateLimitStore = {
   readonly mode: RateLimitStoreMode
   incrementFixedWindow(
@@ -91,6 +112,20 @@ function isProductionLikeEnvironment() {
   return ENV.NODE_ENV === 'production'
 }
 
+function getMarketDataSourceSafe() {
+  try {
+    return ENV.MARKET_DATA_SOURCE
+  } catch {
+    return 'invalid'
+  }
+}
+
+function shouldEnforceDistributedRateLimitHealth() {
+  return (
+    isProductionLikeEnvironment() || getMarketDataSourceSafe() === 'live'
+  )
+}
+
 function getProxyTrustMode(): ProxyTrustMode {
   const configured = process.env.RATE_LIMIT_TRUSTED_PROXY
 
@@ -108,6 +143,32 @@ function getProxyTrustMode(): ProxyTrustMode {
 function getProxyTrustModeSafe(): ProxyTrustMode | 'invalid' {
   try {
     return getProxyTrustMode()
+  } catch {
+    return 'invalid'
+  }
+}
+
+function getConfiguredStoreMode(): ConfiguredRateLimitStoreMode {
+  const configuredMode = process.env.RATE_LIMIT_STORE?.trim()
+
+  if (!configuredMode || configuredMode === 'auto') {
+    return 'auto'
+  }
+
+  if (configuredMode === 'memory' || configuredMode === 'redis-rest') {
+    return configuredMode
+  }
+
+  throw new Error(
+    'RATE_LIMIT_STORE must be one of auto, memory, redis-rest'
+  )
+}
+
+function getConfiguredStoreModeSafe():
+  | ConfiguredRateLimitStoreMode
+  | 'invalid' {
+  try {
+    return getConfiguredStoreMode()
   } catch {
     return 'invalid'
   }
@@ -415,6 +476,63 @@ export function checkRateLimit(
   return isPromiseLike(state) ? state.then(finalizeState) : finalizeState(state)
 }
 
+function classifyRateLimitFailure(error: unknown): RateLimitFailureCode {
+  if (
+    error instanceof Error &&
+    error.message.includes('RATE_LIMIT_STORE=')
+  ) {
+    return 'RATE_LIMIT_STORE_CONFIG_INVALID'
+  }
+
+  return 'RATE_LIMIT_STORE_UNAVAILABLE'
+}
+
+export async function safeCheckRateLimit(
+  check: () => MaybePromise<RateLimitCheckResult>,
+  context: {
+    requestId: string
+    route: string
+  }
+): Promise<SafeRateLimitCheckResult> {
+  try {
+    const maybeResult = check()
+    const rateLimit =
+      maybeResult instanceof Promise ? await maybeResult : maybeResult
+
+    return {
+      ok: true,
+      rateLimit,
+    }
+  } catch (error: unknown) {
+    const configuredStore = getConfiguredStoreModeSafe()
+    const store =
+      configuredStore === 'memory' || configuredStore === 'redis-rest'
+        ? configuredStore
+        : 'auto'
+    const failureCode = classifyRateLimitFailure(error)
+
+    logServerWarn('rate_limit.unavailable', {
+      requestId: context.requestId,
+      route: context.route,
+      store,
+      failureCode,
+      error,
+    })
+    incrementMetricCounter('rate_limit.unavailable.total', 1, {
+      failureCode,
+      route: context.route,
+      store,
+    })
+
+    return {
+      ok: false,
+      error: 'RATE_LIMIT_UNAVAILABLE',
+      retryAfterSec: RATE_LIMIT_UNAVAILABLE_RETRY_AFTER_SEC,
+      status: 503,
+    }
+  }
+}
+
 export function getRetryAfterHeaders(result: RateLimitCheckResult) {
   return {
     ...result.headers,
@@ -429,20 +547,39 @@ export function clearRateLimitStateForTests() {
 }
 
 export function getRateLimitRuntimeInfo() {
+  const configuredStore = getConfiguredStoreModeSafe()
+  const trustedProxy = getProxyTrustModeSafe()
+  const degradedReasons: RateLimitRuntimeReason[] = []
+
   try {
     const store = getRateLimitStore()
+    const strictHealthMode = shouldEnforceDistributedRateLimitHealth()
+
+    if (strictHealthMode && store.mode === 'memory') {
+      degradedReasons.push('memory-store-fallback')
+    }
+
+    if (strictHealthMode && trustedProxy === 'none') {
+      degradedReasons.push('shared-global-client-fallback')
+    }
 
     return {
-      ok: true as const,
+      configuredStore,
+      ok: degradedReasons.length === 0,
+      reasons: degradedReasons,
+      status: degradedReasons.length === 0 ? ('ok' as const) : ('degraded' as const),
       storeMode: store.mode,
-      trustedProxy: getProxyTrustModeSafe(),
+      trustedProxy,
     }
   } catch (error: unknown) {
     return {
-      error: error instanceof Error ? error.message : String(error ?? 'unknown'),
+      configuredStore,
+      error: classifyRateLimitFailure(error),
       ok: false as const,
+      reasons: ['distributed-store-unavailable'] as const,
+      status: 'degraded' as const,
       storeMode: 'unavailable',
-      trustedProxy: getProxyTrustModeSafe(),
+      trustedProxy,
     }
   }
 }

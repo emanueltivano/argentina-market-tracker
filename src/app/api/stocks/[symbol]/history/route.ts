@@ -16,7 +16,7 @@ import {
   recordMetricDuration,
   withRequestIdHeaders,
 } from '@/lib/server/observability'
-import { getRetryAfterHeaders } from '@/lib/server/rateLimit'
+import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/rateLimit'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -69,9 +69,42 @@ export async function GET(req: NextRequest, context: RouteContext) {
     )
   }
 
-  const maybeRateLimit = checkHistoryRateLimit(req)
-  const rateLimit =
-    maybeRateLimit instanceof Promise ? await maybeRateLimit : maybeRateLimit
+  const rateLimitCheck = await safeCheckRateLimit(
+    () => checkHistoryRateLimit(req),
+    {
+      requestId,
+      route: '/api/stocks/[symbol]/history',
+    }
+  )
+
+  if (!rateLimitCheck.ok) {
+    incrementMetricCounter('api.request.total', 1, {
+      endpoint: '/api/stocks/[symbol]/history',
+      method: 'GET',
+      outcome: 'rate-limit-unavailable',
+      source: dataSource,
+      status: 503,
+    })
+    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+      endpoint: '/api/stocks/[symbol]/history',
+      method: 'GET',
+      status: 503,
+    })
+    return historyErrorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      {
+        status: rateLimitCheck.status,
+        headers: withRequestIdHeaders(
+          { 'Retry-After': String(rateLimitCheck.retryAfterSec) },
+          requestId
+        ),
+      },
+      undefined,
+      requestId
+    )
+  }
+
+  const rateLimit = rateLimitCheck.rateLimit
 
   if (!rateLimit.ok) {
     incrementMetricCounter('api.request.total', 1, {

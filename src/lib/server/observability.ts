@@ -54,10 +54,11 @@ function truncateString(value: string, limit = MAX_LOG_STRING_LENGTH): string {
 
 function getConfiguredSecrets(): string[] {
   return [
+    process.env.API_URL,
     process.env.API_USERNAME,
     process.env.API_PASSWORD,
+    process.env.RATE_LIMIT_REDIS_REST_URL,
     process.env.RATE_LIMIT_REDIS_REST_TOKEN,
-    ENV.RATE_LIMIT_REDIS_REST_TOKEN,
   ].filter(
     (value): value is string => typeof value === 'string' && value.length > 0
   )

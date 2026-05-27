@@ -65,6 +65,8 @@ Common `degraded` causes:
 - `MARKET_DATA_SOURCE=live` but one or more required live env vars are missing
 - rate-limit runtime could not initialize as expected
 - operational config is incomplete for the selected mode
+- live/production-like rate limiting is using process-local memory buckets
+- live/production-like rate limiting is using a shared global client bucket
 
 What to check:
 
@@ -72,6 +74,13 @@ What to check:
 2. `checks.config.missingLiveConfig`
 3. `checks.rateLimit`
 4. deployment environment variables
+
+For rate limiting specifically, inspect:
+
+1. `checks.rateLimit.configuredStore`
+2. `checks.rateLimit.storeMode`
+3. `checks.rateLimit.trustedProxy`
+4. `checks.rateLimit.reasons`
 
 ## If `/api/panel` Fails
 
@@ -114,6 +123,33 @@ Typical causes:
 - rate limiting
 - no stale cache available for fallback on this instance
 
+## Favorites Partial Degradation
+
+If `/api/favorites` returns partial data, interpret the UI messages as follows:
+
+- `missingItems`: a favorite symbol is not available in the current source
+- `failedItems`: a favorite lookup failed temporarily and may succeed on retry
+- `Datos locales desactualizados.`: the dashboard is using a stale local fallback
+
+Operator guidance:
+
+1. capture `X-Request-Id` from the failing favorites response when possible
+2. distinguish source availability issues (`missingItems`) from transient lookup failures (`failedItems`)
+3. if the UI shows stale local fallback, remember that the browser is preserving the last local snapshot rather than confirming fresh upstream data
+
+## Favorites Fan-Out Behavior
+
+`/api/favorites` does not use a true upstream batch endpoint. It fans out into
+individual upstream quote lookups after request validation and deduplication.
+
+Operational notes:
+
+- fan-out concurrency is limited by `FAVORITES_QUOTE_CONCURRENCY`
+- default concurrency is `4`
+- valid configured range is `1-10`
+- lower values reduce upstream burst pressure at the cost of higher batch latency
+- cache hits and in-flight dedupe still apply before extra upstream work
+
 ## If You See `429`
 
 Interpretation:
@@ -134,6 +170,32 @@ What to do:
 
 If live mode is public-facing and still using process-local memory buckets,
 move to distributed storage before treating the deployment as serious.
+
+## If You See `503 RATE_LIMIT_UNAVAILABLE`
+
+Interpretation:
+
+- the API failed closed because the rate-limit backend could not verify limits
+- the JSON contract is still preserved, with `X-Request-Id` and `Retry-After`
+
+What to do:
+
+1. capture `X-Request-Id`
+2. `GET /api/health` and inspect `checks.rateLimit`
+3. inspect structured logs for the same request ID
+4. verify:
+   - `RATE_LIMIT_STORE`
+   - `RATE_LIMIT_REDIS_REST_URL`
+   - `RATE_LIMIT_REDIS_REST_TOKEN`
+   - `RATE_LIMIT_TRUSTED_PROXY`
+5. inspect `rate_limit.unavailable.total` in `/api/debug/metrics`
+
+Notes:
+
+- the route response intentionally does not expose Redis/KV URLs, tokens, or raw
+  backend errors
+- this fail-closed mode protects the upstream when limit verification is not
+  trustworthy
 
 ## If Upstream Fails
 

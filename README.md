@@ -29,6 +29,7 @@ Those routes handle:
 - request validation
 - upstream normalization
 - rate limiting and refresh cooldowns
+- fail-closed `503` JSON responses when the rate-limit backend is unavailable
 - favorites fan-out to per-symbol upstream quotes
 - process-local cache and stale fallback behavior
 - structured logging and request ID correlation
@@ -91,7 +92,8 @@ docs/
 
 Requirements:
 
-- Node `>=20`
+- Node `24.15.0` recommended
+- Node `>=24.15.0 <25` supported by the repo `engines`
 
 Install:
 
@@ -180,11 +182,15 @@ Recommendations:
 - do not trust forwarded IPs unless the deployment boundary is known and owned
 - do not share `OBSERVABILITY_DEBUG_TOKEN`
 - do not expose live credentials in screenshots, logs, issues, or preview demos
+- if the rate limiter is unavailable, the API fails closed with controlled `503`
+  JSON responses to protect the upstream and preserve the route contract
 
 ### CI
 
 GitHub Actions runs `npm run validate` on push and PR in demo mode via
-[ci.yml](./.github/workflows/ci.yml).
+[ci.yml](./.github/workflows/ci.yml), using Node `24.15.0` and the same
+single `npm run validate` entrypoint that covers lint, type-check, Vitest,
+build, SSR E2E, and dashboard E2E.
 
 ## Security
 
@@ -206,6 +212,7 @@ Current resilience mechanisms include:
 - SSR first paint plus client revalidation
 - panel cache with manual refresh bypass
 - short-lived per-symbol favorites quote cache plus in-flight dedupe
+- limited-concurrency favorites fan-out to avoid unbounded cold-cache upstream bursts
 - hidden-tab polling pause and resume behavior
 - history normalization that discards invalid points when possible
 - stale history fallback from local cache when live upstream fails
@@ -235,6 +242,26 @@ Metrics currently cover:
 Health and metrics are documented operationally in
 [docs/RUNBOOK.md](./docs/RUNBOOK.md).
 
+Rate-limit failure mode:
+
+- `/api/panel`, `/api/favorites`, and `/api/stocks/[symbol]/history` never
+  return an uncaught HTML/500 response because of rate-limit store failures
+- if Redis/KV config is invalid or the backend cannot be reached, those routes
+  return:
+
+```json
+{
+  "ok": false,
+  "error": "RATE_LIMIT_UNAVAILABLE",
+  "requestId": "..."
+}
+```
+
+- the response includes `X-Request-Id` and a short `Retry-After`
+- `/api/health` reports `status: "degraded"` when rate limiting falls back to
+  process-local memory/shared identity in live or production-like mode, or when
+  the distributed store cannot initialize safely
+
 ## Accessibility
 
 The dashboard includes a real accessibility pass:
@@ -255,7 +282,7 @@ Coverage includes:
 - route and server tests for contracts, rate limiting, caching, and errors
 - favorites quote route coverage, demo resolution, and stale local fallback
 - Playwright dashboard interaction E2E
-- Playwright SSR boot coverage with JavaScript disabled
+- Playwright SSR boot coverage with JavaScript disabled, plus direct HTML checks against the built app response
 
 Reviewer-friendly commands:
 
@@ -303,6 +330,9 @@ See [docs/RUNBOOK.md](./docs/RUNBOOK.md) for:
 - favorites localStorage persists only minimal identity metadata
 - `/api/favorites` avoids fetching full panels, but still fans out into N
   internal per-symbol quote lookups per batch
+- favorites fan-out is process-local and concurrency-limited by
+  `FAVORITES_QUOTE_CONCURRENCY` (default `4`, valid range `1-10`) to trade a
+  bit of latency for upstream protection when many cold-cache favorites refresh
 - stale local favorite snapshots are fallback-only and explicitly marked as
   outdated in the UI
 - the project is not intended for live trading or financial advice
@@ -321,6 +351,17 @@ limiting, resolves each favorite through the upstream individual quote endpoint,
 normalizes the result to the same row model used by the panel tables, and
 returns `rows`, `missingItems`, `failedItems`, source metadata, request ID, and
 staleness markers.
+
+There is no real upstream batch quote endpoint here. `/api/favorites` performs
+an internal fan-out to individual quote lookups with process-local cache,
+in-flight dedupe, and a bounded concurrency limit so a cold refresh does not
+burst all favorites upstream at once.
+
+Partial favorites degradation is communicated explicitly in the UI:
+
+- `missingItems`: the symbol is not available in the current source
+- `failedItems`: the lookup failed temporarily and may recover on the next refresh
+- stale/local fallback: the dashboard is showing an outdated local snapshot
 
 When live or demo quote refresh cannot resolve a favorite, the dashboard may
 show an explicit local snapshot fallback labeled as outdated. This preserves

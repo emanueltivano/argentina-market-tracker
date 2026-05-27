@@ -1,6 +1,9 @@
 import 'server-only'
 
 export type MarketDataSource = 'demo' | 'live'
+const DEFAULT_FAVORITES_QUOTE_CONCURRENCY = 4
+const MIN_FAVORITES_QUOTE_CONCURRENCY = 1
+const MAX_FAVORITES_QUOTE_CONCURRENCY = 10
 const LIVE_ENV_KEYS = [
   'API_URL',
   'API_USERNAME',
@@ -40,6 +43,33 @@ function getMarketDataSource(): MarketDataSource {
 
 function optionalTrimmed(name: string): string {
   return process.env[name]?.trim() ?? ''
+}
+
+function getBoundedIntegerEnv(
+  name: string,
+  defaultValue: number,
+  options: {
+    min: number
+    max: number
+  }
+): number {
+  const rawValue = optionalTrimmed(name)
+
+  if (!rawValue) {
+    return defaultValue
+  }
+
+  const parsed = Number.parseInt(rawValue, 10)
+
+  if (
+    !Number.isFinite(parsed) ||
+    parsed < options.min ||
+    parsed > options.max
+  ) {
+    return defaultValue
+  }
+
+  return parsed
 }
 
 export function getRuntimeEnvSummary() {
@@ -131,5 +161,16 @@ export const ENV = {
 
   get APP_VERSION() {
     return optionalTrimmed('APP_VERSION') || optionalTrimmed('npm_package_version')
+  },
+
+  get FAVORITES_QUOTE_CONCURRENCY() {
+    return getBoundedIntegerEnv(
+      'FAVORITES_QUOTE_CONCURRENCY',
+      DEFAULT_FAVORITES_QUOTE_CONCURRENCY,
+      {
+        min: MIN_FAVORITES_QUOTE_CONCURRENCY,
+        max: MAX_FAVORITES_QUOTE_CONCURRENCY,
+      }
+    )
   },
 }

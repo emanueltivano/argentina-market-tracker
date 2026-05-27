@@ -444,6 +444,46 @@ describe('/api/stocks/[symbol]/history route', () => {
     })
   })
 
+  it('returns 503 JSON when the rate limit store is unavailable', async () => {
+    const iolFetch = vi.fn()
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(
+        new Error(
+          'redis failed for https://kv.internal.example.test using RATE_LIMIT_REDIS_REST_TOKEN-secret'
+        )
+      )
+    )
+    const { GET } = await loadLiveRoute(iolFetch, 'production', {
+      RATE_LIMIT_STORE: 'redis-rest',
+      RATE_LIMIT_REDIS_REST_URL: 'https://kv.internal.example.test',
+      RATE_LIMIT_REDIS_REST_TOKEN: 'RATE_LIMIT_REDIS_REST_TOKEN-secret',
+    })
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1W'),
+      context('GGAL')
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Retry-After')).toBe('5')
+    expect(body).toEqual({
+      ok: false,
+      error: 'RATE_LIMIT_UNAVAILABLE',
+      requestId: expect.any(String),
+    })
+    expectRequestIdHeader(response, body.requestId)
+    expect(iolFetch).not.toHaveBeenCalled()
+    expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(
+      'https://kv.internal.example.test'
+    )
+    expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(
+      'RATE_LIMIT_REDIS_REST_TOKEN-secret'
+    )
+  })
+
   it('allows history requests again after the rate limit window expires', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },

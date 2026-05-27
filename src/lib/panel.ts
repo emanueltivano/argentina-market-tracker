@@ -27,6 +27,7 @@ export interface PanelSuccessResponse {
 export const PANEL_ERROR_CODES = [
   'PANEL_ERROR',
   'RATE_LIMITED',
+  'RATE_LIMIT_UNAVAILABLE',
   'REFRESH_COOLDOWN',
   'METHOD_NOT_ALLOWED',
   'INVALID_PANEL_TYPE',

@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('dashboard SSR boot', () => {
+  test.use({ javaScriptEnabled: false })
+
   test('@ssr-boot server-renders the initial dashboard panel before hydration', async ({
-    browser,
+    page,
+    request,
     baseURL,
   }) => {
     test.skip(
@@ -10,31 +13,30 @@ test.describe('dashboard SSR boot', () => {
       'SSR boot coverage runs only in the dedicated fixture-backed mode.'
     )
 
-    const context = await browser.newContext({
-      javaScriptEnabled: false,
-    })
-    const page = await context.newPage()
+    const appUrl = baseURL ?? 'http://127.0.0.1:3100'
+    const response = await request.get('/')
 
-    try {
-      const response = await page.goto(`${baseURL}/`, {
-        waitUntil: 'domcontentloaded',
-      })
+    expect(response.ok()).toBe(true)
+    expect(response.headers()['content-type']).toContain('text/html')
 
-      expect(response).not.toBeNull()
-      expect(response?.ok()).toBe(true)
+    const initialHtml = await response.text()
 
-      await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
-      await expect(page.getByText(/Última actualización:/)).toBeVisible()
-      await expect(page.getByText('GGAL')).toBeVisible()
+    expect(initialHtml).toContain('Panel Líder')
+    expect(initialHtml).toContain('GGAL')
+    expect(initialHtml).toContain('data-symbol="GGAL"')
+    expect(initialHtml).toContain('Demo data')
+    expect(initialHtml).not.toContain('Cargando datos...')
 
-      const initialHtml = await page.content()
+    const browserResponse = await page.goto(appUrl)
 
-      expect(initialHtml).toContain('Panel Líder')
-      expect(initialHtml).toContain('GGAL')
-      expect(initialHtml).toContain('data-symbol="GGAL"')
-      expect(initialHtml).not.toContain('Cargando datos...')
-    } finally {
-      await context.close()
-    }
+    expect(browserResponse).not.toBeNull()
+    expect(browserResponse?.ok()).toBe(true)
+
+    await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
+    await expect(page.getByLabel('Demo data badge')).toBeVisible()
+    await expect(page.getByText(/Última actualización:/)).toBeVisible()
+    await expect(page.getByRole('button', {
+      name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+    })).toBeVisible()
   })
 })
