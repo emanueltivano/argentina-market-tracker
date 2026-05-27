@@ -2,6 +2,17 @@ import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const OLD_ENV = { ...process.env }
+const BASE_ENV = {
+  ...OLD_ENV,
+  NODE_ENV: 'test',
+  API_URL: 'https://api.example.test',
+  TOKEN_ENDPOINT: 'token',
+  API_USERNAME: 'user',
+  API_PASSWORD: 'password',
+  PANEL_LIDER_ENDPOINT: 'lider-endpoint',
+  PANEL_GENERAL_ENDPOINT: 'general-endpoint',
+  PANEL_CEDEARS_ENDPOINT: 'cedears-endpoint',
+} satisfies NodeJS.ProcessEnv
 
 function request(path: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
   return new NextRequest(`http://localhost${path}`, init)
@@ -13,15 +24,7 @@ async function loadRoutes(
 ) {
   vi.resetModules()
   process.env = {
-    ...OLD_ENV,
-    NODE_ENV: 'test',
-    API_URL: 'https://api.example.test',
-    TOKEN_ENDPOINT: 'token',
-    API_USERNAME: 'user',
-    API_PASSWORD: 'password',
-    PANEL_LIDER_ENDPOINT: 'lider-endpoint',
-    PANEL_GENERAL_ENDPOINT: 'general-endpoint',
-    PANEL_CEDEARS_ENDPOINT: 'cedears-endpoint',
+    ...BASE_ENV,
     ...envOverrides,
   }
   vi.doMock('server-only', () => ({}))
@@ -62,6 +65,7 @@ describe('/api/debug/metrics route', () => {
 
   it('is disabled by default in production without a token', async () => {
     const { metricsGet } = await loadRoutes(vi.fn(), {
+      MARKET_DATA_SOURCE: 'demo',
       NODE_ENV: 'production',
       OBSERVABILITY_DEBUG_TOKEN: undefined,
     })
@@ -80,6 +84,7 @@ describe('/api/debug/metrics route', () => {
 
   it('rejects invalid tokens in production without revealing metrics', async () => {
     const { metricsGet } = await loadRoutes(vi.fn(), {
+      MARKET_DATA_SOURCE: 'demo',
       NODE_ENV: 'production',
       OBSERVABILITY_DEBUG_TOKEN: 'metrics-secret',
     })
@@ -110,6 +115,7 @@ describe('/api/debug/metrics route', () => {
       return [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }]
     })
     const { panelGet, historyGet, metricsGet } = await loadRoutes(iolFetch, {
+      MARKET_DATA_SOURCE: 'live',
       NODE_ENV: 'production',
       OBSERVABILITY_DEBUG_TOKEN: 'metrics-secret',
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
