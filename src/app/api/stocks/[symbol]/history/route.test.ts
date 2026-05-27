@@ -2,6 +2,13 @@ import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const OLD_ENV = { ...process.env }
+const LIVE_ENV_DEFAULTS = {
+  MARKET_DATA_SOURCE: 'live',
+  API_URL: 'https://api.example.test',
+  TOKEN_ENDPOINT: 'token',
+  API_USERNAME: 'user',
+  API_PASSWORD: 'password',
+} satisfies Record<string, string>
 
 function setRequiredEnv(
   nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
@@ -9,11 +16,7 @@ function setRequiredEnv(
 ) {
   process.env = {
     ...OLD_ENV,
-    MARKET_DATA_SOURCE: 'live',
-    API_URL: 'https://api.example.test',
-    TOKEN_ENDPOINT: 'token',
-    API_USERNAME: 'user',
-    API_PASSWORD: 'password',
+    ...LIVE_ENV_DEFAULTS,
     ...overrides,
     NODE_ENV: nodeEnv,
   }
@@ -67,28 +70,51 @@ async function loadLiveRoute(
 async function loadDemoRouteWithoutLiveEnv() {
   vi.resetModules()
   process.env = {
+    ...OLD_ENV,
     NODE_ENV: 'test',
     MARKET_DATA_SOURCE: 'demo',
   }
+  const iolFetch = vi.fn(() => {
+    throw new Error('live upstream should not be used in demo mode')
+  })
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({
-    iolFetch: vi.fn(() => {
-      throw new Error('live upstream should not be used in demo mode')
-    }),
-  }))
+  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
 
-  return import('./route')
+  const route = await import('./route')
+
+  return {
+    ...route,
+    iolFetch,
+  }
+}
+
+async function clearHistoryTestState() {
+  try {
+    const [{ clearHistoryCacheForTests }, { clearHistoryRateLimitForTests }] =
+      await Promise.all([
+        import('@/lib/server/historyCache'),
+        import('@/lib/server/historyRateLimit'),
+      ])
+
+    clearHistoryCacheForTests()
+    clearHistoryRateLimitForTests()
+  } catch {
+    // Ignore cleanup before the first import of the server modules.
+  }
 }
 
 describe('/api/stocks/[symbol]/history route', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await clearHistoryTestState()
+    vi.clearAllMocks()
     setRequiredEnv()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-07T15:00:00.000Z'))
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await clearHistoryTestState()
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.resetModules()
@@ -709,7 +735,7 @@ describe('/api/stocks/[symbol]/history route', () => {
   })
 
   it('serves deterministic demo history without live credentials', async () => {
-    const { GET } = await loadDemoRouteWithoutLiveEnv()
+    const { GET, iolFetch } = await loadDemoRouteWithoutLiveEnv()
 
     const response = await GET(
       request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
@@ -738,10 +764,11 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
     expect(response.headers.get('X-RateLimit-Limit')).toBe('120')
     expectRequestIdHeader(response)
+    expect(iolFetch).not.toHaveBeenCalled()
   })
 
   it('returns an empty deterministic history for unknown demo symbols', async () => {
-    const { GET } = await loadDemoRouteWithoutLiveEnv()
+    const { GET, iolFetch } = await loadDemoRouteWithoutLiveEnv()
 
     const response = await GET(
       request('/api/stocks/DEMOX/history?range=1M&market=bCBA'),
@@ -759,5 +786,6 @@ describe('/api/stocks/[symbol]/history route', () => {
         stale: false,
       },
     })
+    expect(iolFetch).not.toHaveBeenCalled()
   })
 })
