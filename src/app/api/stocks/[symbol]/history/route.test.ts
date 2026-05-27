@@ -9,6 +9,7 @@ function setRequiredEnv(
 ) {
   process.env = {
     ...OLD_ENV,
+    MARKET_DATA_SOURCE: 'live',
     API_URL: 'https://api.example.test',
     TOKEN_ENDPOINT: 'token',
     API_USERNAME: 'user',
@@ -52,6 +53,17 @@ async function loadRoute(
   return import('./route')
 }
 
+async function loadLiveRoute(
+  iolFetch: ReturnType<typeof vi.fn>,
+  nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
+  envOverrides: Record<string, string | undefined> = {}
+) {
+  return loadRoute(iolFetch, nodeEnv, {
+    MARKET_DATA_SOURCE: 'live',
+    ...envOverrides,
+  })
+}
+
 async function loadDemoRouteWithoutLiveEnv() {
   vi.resetModules()
   process.env = {
@@ -80,7 +92,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.resetModules()
-    process.env = OLD_ENV
+    process.env = { ...OLD_ENV }
   })
 
   it('fetches adjusted historical data through IOL and normalizes it', async () => {
@@ -94,7 +106,7 @@ describe('/api/stocks/[symbol]/history route', () => {
         volumen: 1000,
       },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
@@ -139,7 +151,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/YPFD/history?range=1M&market=bCBA'),
@@ -163,7 +175,7 @@ describe('/api/stocks/[symbol]/history route', () => {
         precio: 916,
       },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/AAPL/history?range=1M&market=bCBA'),
@@ -194,7 +206,7 @@ describe('/api/stocks/[symbol]/history route', () => {
           precio: 916,
         },
       ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/AAPL/history?range=1M&market=bCBA'),
@@ -221,7 +233,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
   it('uses defaults for market and range', async () => {
     const iolFetch = vi.fn().mockResolvedValue([])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/stocks/ypfd/history'), context('ypfd'))
     const body = await response.json()
@@ -234,7 +246,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
   it('returns an empty data array when both IOL history variants are empty', async () => {
     const iolFetch = vi.fn().mockResolvedValue([])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/MSFT/history?range=1M&market=bCBA'),
@@ -265,7 +277,7 @@ describe('/api/stocks/[symbol]/history route', () => {
       { fecha: 'invalid', ultimoPrecio: 99 },
     ])
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
@@ -299,7 +311,7 @@ describe('/api/stocks/[symbol]/history route', () => {
       { fecha: 'invalid', ultimoPrecio: 101 },
       { fecha: null, ultimoPrecio: 99 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
@@ -316,7 +328,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
   it('returns 400 for invalid inputs', async () => {
     const iolFetch = vi.fn()
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     expect(
       (await GET(request('/api/stocks/GGAL/history?range=2Y'), context('GGAL')))
@@ -338,7 +350,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
   it('returns INVALID_SYMBOL for malformed encoded symbols', async () => {
     const iolFetch = vi.fn()
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/%25E0%25A4%25A/history'),
@@ -355,7 +367,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
   it('rejects markets outside the history allowlist', async () => {
     const iolFetch = vi.fn()
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/GGAL/history?market=NYSE'),
@@ -374,7 +386,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch, 'test', {
+    const { GET } = await loadLiveRoute(iolFetch, 'test', {
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
       VERCEL: '1',
     })
@@ -410,7 +422,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch, 'test', {
+    const { GET } = await loadLiveRoute(iolFetch, 'test', {
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
       VERCEL: '1',
     })
@@ -449,7 +461,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch, 'test', {
+    const { GET, getHistoryCacheSizeForTests } = await loadLiveRoute(iolFetch, 'test', {
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
       VERCEL: '1',
     })
@@ -474,7 +486,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch, 'test', {
+    const { GET, getHistoryCacheSizeForTests } = await loadLiveRoute(iolFetch, 'test', {
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
       VERCEL: '1',
     })
@@ -497,7 +509,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/stocks/GGAL/history?range=1W'), context('GGAL'))
     const response = await GET(
@@ -519,7 +531,7 @@ describe('/api/stocks/[symbol]/history route', () => {
       .fn()
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ fecha: '2026-05-07', ultimoPrecio: 101 }])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/stocks/AAPL/history?range=1W'), context('AAPL'))
     const response = await GET(
@@ -540,7 +552,7 @@ describe('/api/stocks/[symbol]/history route', () => {
       .mockResolvedValueOnce([{ fecha: '2026-05-07', ultimoPrecio: 101 }])
       .mockRejectedValueOnce(new Error('upstream failed'))
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const first = await GET(
       request('/api/stocks/GGAL/history?range=1W'),
@@ -580,7 +592,7 @@ describe('/api/stocks/[symbol]/history route', () => {
   it('does not expose upstream error details in production', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('upstream failed'))
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const { GET } = await loadRoute(iolFetch, 'production')
+    const { GET } = await loadLiveRoute(iolFetch, 'production')
 
     const response = await GET(
       request('/api/stocks/GGAL/history'),
@@ -613,7 +625,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
   it('returns 405 and Allow GET for POST requests', async () => {
     const iolFetch = vi.fn()
-    const { POST } = await loadRoute(iolFetch)
+    const { POST } = await loadLiveRoute(iolFetch)
 
     const response = POST(request('/api/stocks/GGAL/history'))
 
@@ -629,7 +641,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     let response = await GET(
       request('/api/stocks/GGAL/history?range=1W', {
@@ -658,7 +670,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(
       request('/api/stocks/GGAL/history?range=1W'),
@@ -676,7 +688,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const propagated = await GET(
       request('/api/stocks/GGAL/history?range=1W', {
