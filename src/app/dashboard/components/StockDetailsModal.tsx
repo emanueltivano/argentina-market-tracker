@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { type MarketPanelKey } from '@/lib/market';
 import { type StockData } from '../lib/stockData';
 import StockFavoriteButton from './StockFavoriteButton';
@@ -21,7 +21,7 @@ type StockDetailsModalProps = {
   stock: StockData;
   onClose: () => void;
   isFavorite?: boolean;
-  onToggleFavorite?: (ticker: string) => void;
+  onToggleFavorite?: (stock: StockData) => void;
   panelKey?: MarketPanelKey;
 };
 
@@ -78,11 +78,13 @@ export default function StockDetailsModal({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  const descriptionId = useId();
   const [historyRange, setHistoryRange] = useState<StockHistoryRange>(
     DEFAULT_STOCK_HISTORY_RANGE
   );
   const {
     points: historyPoints,
+    meta: historyMeta,
     error: historyError,
     isLoading: isHistoryLoading,
     isRefreshing: isHistoryRefreshing,
@@ -123,6 +125,19 @@ export default function StockDetailsModal({
   const historyVariation = getHistoryPeriodVariation(historyPoints);
   const historyVariationClass = getHistoryVariationClass(historyVariation);
   const panelLabel = panelKey ? getMarketPanelOption(panelKey).label : null;
+  const historyMetaMessage =
+    historyStatus === 'success' && historyMeta
+      ? historyMeta.stale
+        ? 'Mostrando histórico cacheado por una falla temporal del upstream.'
+        : historyMeta.discardedPoints > 0
+          ? `Se descartaron ${historyMeta.discardedPoints} de ${historyMeta.totalPoints} puntos inválidos del upstream.`
+          : historyMeta.source === 'demo'
+            ? 'Serie histórica de demo determinística.'
+            : null
+      : null;
+  const handleToggleFavorite = useCallback(() => {
+    onToggleFavorite?.(stock);
+  }, [onToggleFavorite, stock]);
 
   const primaryDetailRows: StockDetailRow[] = [
     { label: 'Último precio', value: formatMoney(stock.price) },
@@ -180,7 +195,11 @@ export default function StockDetailsModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      onCancel={onClose}
+      aria-describedby={descriptionId}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -193,7 +212,7 @@ export default function StockDetailsModal({
             <StockFavoriteButton
               ticker={stock.ticker}
               isFavorite={isFavorite}
-              onToggleFavorite={onToggleFavorite}
+              onToggleFavorite={handleToggleFavorite}
               className="stock-details-favorite-button"
             />
 
@@ -208,7 +227,9 @@ export default function StockDetailsModal({
                   </span>
                 )}
               </div>
-              <p className="stock-details-description">{stock.description}</p>
+              <p id={descriptionId} className="stock-details-description">
+                {stock.description}
+              </p>
             </div>
           </div>
 
@@ -231,6 +252,11 @@ export default function StockDetailsModal({
                 <p className="stock-history-subtitle">
                   {HISTORY_RANGE_LABEL[historyRange]}
                 </p>
+                {historyMetaMessage && (
+                  <p className="stock-history-subtitle stock-history-subtitle-meta">
+                    {historyMetaMessage}
+                  </p>
+                )}
               </div>
 
               {historyStatus === 'success' && historyVariation !== null && (

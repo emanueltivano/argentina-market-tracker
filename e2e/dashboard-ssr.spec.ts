@@ -14,18 +14,21 @@ test.describe('dashboard SSR boot', () => {
       javaScriptEnabled: false,
     })
     const page = await context.newPage()
+    const response = await page.goto(`${baseURL}/`)
 
-    await page.goto(`${baseURL}/`)
+    expect(response).not.toBeNull()
+    expect(response?.ok()).toBe(true)
 
     await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
     await expect(page.getByText(/Última actualización:/)).toBeVisible()
     await expect(page.getByText('GGAL')).toBeVisible()
 
-    const html = await page.content()
+    const initialHtml = await response?.text()
 
-    expect(html).toContain('GGAL')
-    expect(html).toContain('data-symbol="GGAL"')
-    expect(html).not.toContain('Cargando datos...')
+    expect(initialHtml).toContain('Panel Líder')
+    expect(initialHtml).toContain('GGAL')
+    expect(initialHtml).toContain('data-symbol="GGAL"')
+    expect(initialHtml).not.toContain('Cargando datos...')
 
     await context.close()
   })

@@ -1,6 +1,12 @@
 import 'server-only'
 import { ENV } from './env'
 import {
+  extractUpstreamErrorSummary,
+  incrementMetricCounter,
+  logServerInfo,
+  recordMetricDuration,
+} from './observability'
+import {
   setCachedToken,
   clearCachedToken,
   getOrCreateToken,
@@ -11,8 +17,6 @@ import {
  */
 const TOKEN_TIMEOUT_MS = 15_000
 const DEFAULT_REQ_TIMEOUT_MS = 20_000
-const MAX_ERROR_BODY_LENGTH = 1_000
-
 type JsonBody = Record<string, unknown> | unknown[]
 
 type IolRequestInit = Omit<RequestInit, 'body'> & {
@@ -21,7 +25,7 @@ type IolRequestInit = Omit<RequestInit, 'body'> & {
 
 function devLog(...args: unknown[]) {
   if (ENV.NODE_ENV !== 'production') {
-    console.log('[IOL]', ...args)
+    logServerInfo('iol', { args })
   }
 }
 
@@ -40,12 +44,25 @@ export interface TokenDebugInfo {
 }
 
 export class IolTokenUpstreamError extends Error {
+  public readonly category = 'token-upstream-http'
+  public readonly upstreamPath: string
+  public readonly upstreamSummary?: unknown
+  public readonly statusText: string
+
   constructor(
     message: string,
-    public readonly status: number
+    public readonly status: number,
+    options: {
+      statusText: string
+      upstreamPath: string
+      upstreamSummary?: unknown
+    }
   ) {
     super(message)
     this.name = 'IolTokenUpstreamError'
+    this.statusText = options.statusText
+    this.upstreamPath = options.upstreamPath
+    this.upstreamSummary = options.upstreamSummary
   }
 }
 
@@ -53,6 +70,29 @@ export class IolTokenFormatError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'IolTokenFormatError'
+  }
+}
+
+export class IolUpstreamHttpError extends Error {
+  public readonly category = 'upstream-http'
+  public readonly upstreamPath: string
+  public readonly upstreamSummary?: unknown
+  public readonly statusText: string
+
+  constructor(
+    message: string,
+    public readonly status: number,
+    options: {
+      statusText: string
+      upstreamPath: string
+      upstreamSummary?: unknown
+    }
+  ) {
+    super(message)
+    this.name = 'IolUpstreamHttpError'
+    this.statusText = options.statusText
+    this.upstreamPath = options.upstreamPath
+    this.upstreamSummary = options.upstreamSummary
   }
 }
 
@@ -119,6 +159,7 @@ async function fetchWithTimeout(
  */
 async function requestTokenResponse(): Promise<TokenResponse> {
   const url = buildUrl(ENV.TOKEN_ENDPOINT)
+  const startedAt = Date.now()
 
   const body = new URLSearchParams({
     username: ENV.API_USERNAME,
@@ -126,26 +167,55 @@ async function requestTokenResponse(): Promise<TokenResponse> {
     grant_type: 'password',
   })
 
-  const res = await fetchWithTimeout(
-    url,
-    {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/x-www-form-urlencoded',
+  let res: Response
+
+  try {
+    res = await fetchWithTimeout(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body,
+        cache: 'no-store',
       },
-      body,
-      cache: 'no-store',
-    },
-    TOKEN_TIMEOUT_MS,
-    'IOL token request'
-  )
+      TOKEN_TIMEOUT_MS,
+      'IOL token request'
+    )
+  } catch (error: unknown) {
+    recordMetricDuration('upstream.request.duration_ms', Date.now() - startedAt, {
+      kind: 'token',
+      status: 'network-error',
+    })
+    incrementMetricCounter('upstream.request.total', 1, {
+      kind: 'token',
+      outcome: 'network-error',
+      status: 'network-error',
+    })
+    throw error
+  }
+  recordMetricDuration('upstream.request.duration_ms', Date.now() - startedAt, {
+    kind: 'token',
+    status: res.status,
+  })
+  incrementMetricCounter('upstream.request.total', 1, {
+    kind: 'token',
+    outcome: res.ok ? 'success' : 'http-error',
+    status: res.status,
+  })
 
   if (!res.ok) {
     const text = await safeText(res)
     throw new IolTokenUpstreamError(
-      buildHttpErrorMessage('IOL token fetch failed', res, text),
-      res.status
+      buildHttpErrorMessage('IOL token fetch failed', res),
+      res.status,
+      {
+        statusText: res.statusText,
+        upstreamPath: ENV.TOKEN_ENDPOINT,
+        upstreamSummary: extractUpstreamErrorSummary(text),
+      }
     )
   }
 
@@ -209,6 +279,9 @@ export async function iol<T>(path: string, init: IolRequestInit = {}): Promise<T
 
   if (res.status === 401 || res.status === 403) {
     devLog('auth failed, retrying once with fresh token')
+    incrementMetricCounter('upstream.auth.retry.total', 1, {
+      status: res.status,
+    })
     clearCachedToken()
 
     token = await fetchToken()
@@ -217,7 +290,15 @@ export async function iol<T>(path: string, init: IolRequestInit = {}): Promise<T
 
   if (!res.ok) {
     const text = await safeText(res)
-    throw new Error(buildHttpErrorMessage('IOL request failed', res, text))
+    throw new IolUpstreamHttpError(
+      buildHttpErrorMessage('IOL request failed', res),
+      res.status,
+      {
+        statusText: res.statusText,
+        upstreamPath: path,
+        upstreamSummary: extractUpstreamErrorSummary(text),
+      }
+    )
   }
 
   if (res.status === 204 || res.status === 205) {
@@ -236,6 +317,7 @@ async function callWithToken(
   token: string
 ): Promise<Response> {
   const url = buildUrl(path)
+  const startedAt = Date.now()
   const headers = new Headers(init.headers)
 
   if (!headers.has('authorization')) {
@@ -253,18 +335,46 @@ async function callWithToken(
   delete restInit.body
   delete restInit.signal
 
-  const res = await fetchWithTimeout(
-    url,
-    {
-      ...restInit,
-      headers,
-      body,
-      signal: init.signal,
-      cache: 'no-store',
-    },
-    DEFAULT_REQ_TIMEOUT_MS,
-    'IOL request'
-  )
+  let res: Response
+
+  try {
+    res = await fetchWithTimeout(
+      url,
+      {
+        ...restInit,
+        headers,
+        body,
+        signal: init.signal,
+        cache: 'no-store',
+      },
+      DEFAULT_REQ_TIMEOUT_MS,
+      'IOL request'
+    )
+  } catch (error: unknown) {
+    recordMetricDuration('upstream.request.duration_ms', Date.now() - startedAt, {
+      kind: 'api',
+      method: init.method ?? 'GET',
+      status: 'network-error',
+    })
+    incrementMetricCounter('upstream.request.total', 1, {
+      kind: 'api',
+      method: init.method ?? 'GET',
+      outcome: 'network-error',
+      status: 'network-error',
+    })
+    throw error
+  }
+  recordMetricDuration('upstream.request.duration_ms', Date.now() - startedAt, {
+    kind: 'api',
+    method: init.method ?? 'GET',
+    status: res.status,
+  })
+  incrementMetricCounter('upstream.request.total', 1, {
+    kind: 'api',
+    method: init.method ?? 'GET',
+    outcome: res.ok ? 'success' : 'http-error',
+    status: res.status,
+  })
 
   devLog('request', init.method ?? 'GET', url, '→', res.status)
 
@@ -370,38 +480,10 @@ async function safeText(res: Response): Promise<string | null> {
  */
 function buildHttpErrorMessage(
   prefix: string,
-  res: Response,
-  text: string | null
+  res: Response
 ): string {
   const statusText = res.statusText ? ` ${res.statusText}` : ''
-  const body = formatErrorBody(text)
-
-  return `${prefix}: ${res.status}${statusText}${body ? ` - ${body}` : ''}`
-}
-
-function formatErrorBody(text: string | null): string {
-  if (!text) {
-    return ''
-  }
-
-  const normalized = redactConfiguredCredentials(text.trim().replace(/\s+/g, ' '))
-
-  if (normalized.length <= MAX_ERROR_BODY_LENGTH) {
-    return normalized
-  }
-
-  return `${normalized.slice(0, MAX_ERROR_BODY_LENGTH)}…`
-}
-
-function redactConfiguredCredentials(text: string): string {
-  const secrets = [process.env.API_USERNAME, process.env.API_PASSWORD].filter(
-    (value): value is string => typeof value === 'string' && value.length > 0
-  )
-
-  return secrets.reduce(
-    (redacted, secret) => redacted.split(secret).join('[redacted]'),
-    text
-  )
+  return `${prefix}: ${res.status}${statusText}`
 }
 
 export { iol as iolFetch }

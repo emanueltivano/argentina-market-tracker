@@ -45,6 +45,17 @@ function assertStockHistorySuccessResponse(
   ) {
     throw new Error('Respuesta inválida del servidor: metadata histórica inválida.')
   }
+
+  if (
+    !isRecord(value.meta) ||
+    typeof value.meta.discardedPoints !== 'number' ||
+    typeof value.meta.totalPoints !== 'number' ||
+    typeof value.meta.stale !== 'boolean' ||
+    (value.meta.source !== 'demo' && value.meta.source !== 'live') ||
+    (value.meta.requestId !== undefined && typeof value.meta.requestId !== 'string')
+  ) {
+    throw new Error('Respuesta inválida del servidor: meta histórica inválida.')
+  }
 }
 
 const HISTORY_ERROR_MESSAGE: Record<StockHistoryErrorCode, string> = {

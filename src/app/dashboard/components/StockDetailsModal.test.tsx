@@ -74,8 +74,10 @@ describe('StockDetailsModal', () => {
     await userEvent.click(opener)
 
     const closeButton = screen.getByRole('button', { name: 'Cerrar detalle' })
+    const dialog = screen.getByRole('dialog', { name: 'GGAL' })
 
     expect(document.activeElement).toBe(closeButton)
+    expect(dialog.getAttribute('aria-describedby')).toBeTruthy()
 
     await userEvent.click(closeButton)
 

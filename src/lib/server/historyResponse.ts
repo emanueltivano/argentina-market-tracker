@@ -5,9 +5,11 @@ import {
   type StockHistoryErrorCode,
   type StockHistoryErrorResponse,
   type StockHistoryMarket,
+  type StockHistoryResponseMeta,
   type StockHistoryRange,
   type StockHistorySuccessResponse,
 } from '@/lib/stockHistory'
+import { withRequestIdHeaders } from '@/lib/server/observability'
 
 const HISTORY_CACHE_CONTROL = 'no-store'
 const JSON_HEADERS = {
@@ -20,7 +22,8 @@ export function createHistoryResponse(
   market: StockHistoryMarket,
   range: StockHistoryRange,
   fetchedAt: string,
-  cacheStatus: StockHistorySuccessResponse['cacheStatus']
+  cacheStatus: StockHistorySuccessResponse['cacheStatus'],
+  meta: StockHistoryResponseMeta
 ): StockHistorySuccessResponse {
   return {
     ok: true,
@@ -31,11 +34,18 @@ export function createHistoryResponse(
     range,
     market,
     symbol,
+    meta,
   }
 }
 
-export function jsonHistoryResponse(body: unknown, init: ResponseInit = {}) {
-  const headers = new Headers(init.headers)
+export function jsonHistoryResponse(
+  body: unknown,
+  init: ResponseInit = {},
+  requestId?: string
+) {
+  const headers = requestId
+    ? withRequestIdHeaders(init.headers, requestId)
+    : new Headers(init.headers)
 
   for (const [key, value] of Object.entries(JSON_HEADERS)) {
     if (!headers.has(key)) {
@@ -52,13 +62,15 @@ export function jsonHistoryResponse(body: unknown, init: ResponseInit = {}) {
 export function historyErrorResponse(
   error: StockHistoryErrorCode,
   init: ResponseInit,
-  details?: string
+  details?: string,
+  requestId?: string
 ) {
   const body: StockHistoryErrorResponse = {
     ok: false,
     error,
+    ...(requestId ? { requestId } : {}),
     ...(details ? { details } : {}),
   }
 
-  return jsonHistoryResponse(body, init)
+  return jsonHistoryResponse(body, init, requestId)
 }

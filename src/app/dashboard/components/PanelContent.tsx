@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import Link from 'next/link';
 
 import { type MarketPanelKey } from '@/lib/market';
@@ -7,10 +7,13 @@ import PanelMenu from './PanelMenu';
 import Title from './PageTitle';
 import ThemeToggle from './ThemeToggle';
 import { MARKET_PANEL_OPTIONS } from '../lib/marketPanelOptions';
+import { type Theme } from '@/lib/theme';
 
 type PanelContentProps = {
   title: string;
   activePanelKey: MarketPanelKey;
+  initialTheme?: Theme;
+  isDemoMode?: boolean;
   onChange: (key: MarketPanelKey) => void;
   actions?: ReactNode;
   children: ReactNode;
@@ -19,13 +22,17 @@ type PanelContentProps = {
 export default function PanelContent({
   title,
   activePanelKey,
+  initialTheme,
+  isDemoMode = false,
   onChange,
   actions,
   children,
 }: PanelContentProps) {
+  const titleId = useId();
+
   return (
-    <section className="dashboard-container py-4">
-      <Title>{title}</Title>
+    <section className="dashboard-container py-4" aria-labelledby={titleId}>
+      <Title id={titleId}>{title}</Title>
 
       <div className="panel-toolbar">
         <PanelMenu
@@ -35,10 +42,15 @@ export default function PanelContent({
         />
 
         <div className="panel-actions">
+          {isDemoMode && (
+            <span className="panel-demo-badge" aria-label="Demo data badge">
+              Demo data
+            </span>
+          )}
           <Link className="panel-about-link" href="/about">
             About
           </Link>
-          <ThemeToggle />
+          <ThemeToggle initialTheme={initialTheme} />
           {actions}
         </div>
       </div>

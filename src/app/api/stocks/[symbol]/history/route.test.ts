@@ -1,15 +1,19 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const OLD_ENV = process.env
+const OLD_ENV = { ...process.env }
 
-function setRequiredEnv(nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test') {
+function setRequiredEnv(
+  nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
+  overrides: Record<string, string | undefined> = {}
+) {
   process.env = {
     ...OLD_ENV,
     API_URL: 'https://api.example.test',
     TOKEN_ENDPOINT: 'token',
     API_USERNAME: 'user',
     API_PASSWORD: 'password',
+    ...overrides,
     NODE_ENV: nodeEnv,
   }
 }
@@ -24,14 +28,42 @@ function context(symbol: string) {
   }
 }
 
+function expectRequestIdHeader(response: Response, expected?: string) {
+  const requestId = response.headers.get('X-Request-Id')
+
+  if (expected) {
+    expect(requestId).toBe(expected)
+    return
+  }
+
+  expect(requestId).toMatch(/^[A-Za-z0-9._:-]{8,128}$/)
+}
+
 async function loadRoute(
   iolFetch: ReturnType<typeof vi.fn>,
-  nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test'
+  nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
+  envOverrides: Record<string, string | undefined> = {}
 ) {
   vi.resetModules()
-  setRequiredEnv(nodeEnv)
+  setRequiredEnv(nodeEnv, envOverrides)
   vi.doMock('server-only', () => ({}))
   vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+
+  return import('./route')
+}
+
+async function loadDemoRouteWithoutLiveEnv() {
+  vi.resetModules()
+  process.env = {
+    NODE_ENV: 'test',
+    MARKET_DATA_SOURCE: 'demo',
+  }
+  vi.doMock('server-only', () => ({}))
+  vi.doMock('@/lib/server/iol', () => ({
+    iolFetch: vi.fn(() => {
+      throw new Error('live upstream should not be used in demo mode')
+    }),
+  }))
 
   return import('./route')
 }
@@ -89,6 +121,13 @@ describe('/api/stocks/[symbol]/history route', () => {
       range: '1M',
       market: 'bCBA',
       symbol: 'GGAL',
+      meta: {
+        discardedPoints: 0,
+        requestId: expect.any(String),
+        source: 'live',
+        stale: false,
+        totalPoints: 1,
+      },
     })
     expect(iolFetch).toHaveBeenCalledWith(
       '/api/v2/bCBA/Titulos/GGAL/Cotizacion/seriehistorica/2026-04-06/2026-05-07/ajustada'
@@ -220,10 +259,45 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
   })
 
-  it('returns HISTORY_ERROR when the upstream payload is partially invalid', async () => {
+  it('returns filtered success when the upstream payload is partially invalid', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
       { fecha: 'invalid', ultimoPrecio: 99 },
+    ])
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
+      context('GGAL')
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      data: [{ date: '2026-05-07', close: 101 }],
+      meta: {
+        discardedPoints: 1,
+        source: 'live',
+        stale: false,
+        totalPoints: 2,
+      },
+    })
+    expect(consoleWarn).toHaveBeenCalledWith(
+      '[history.normalize.partial]',
+      expect.objectContaining({
+        level: 'warn',
+        symbol: 'GGAL',
+        discardedPoints: 1,
+        totalPoints: 2,
+      })
+    )
+  })
+
+  it('returns HISTORY_ERROR when every history point is invalid', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: 'invalid', ultimoPrecio: 101 },
+      { fecha: null, ultimoPrecio: 99 },
     ])
     const { GET } = await loadRoute(iolFetch)
 
@@ -233,10 +307,10 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
 
     expect(response.status).toBe(502)
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       ok: false,
       error: 'HISTORY_ERROR',
-      details: 'Upstream history payload contains partially invalid items',
+      details: 'Upstream history payload contains no valid items',
     })
   })
 
@@ -272,7 +346,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
 
     expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       ok: false,
       error: 'INVALID_SYMBOL',
     })
@@ -289,7 +363,7 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
 
     expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       ok: false,
       error: 'INVALID_MARKET',
     })
@@ -300,7 +374,10 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadRoute(iolFetch, 'test', {
+      RATE_LIMIT_TRUSTED_PROXY: 'vercel',
+      VERCEL: '1',
+    })
 
     for (let index = 0; index < 120; index += 1) {
       const response = await GET(
@@ -321,8 +398,9 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
 
     expect(response.status).toBe(429)
-    expect(response.headers.get('Retry-After')).toBe('60')
-    expect(await response.json()).toEqual({
+    expect(Number(response.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1)
+    expect(Number(response.headers.get('Retry-After'))).toBeLessThanOrEqual(60)
+    expect(await response.json()).toMatchObject({
       ok: false,
       error: 'RATE_LIMITED',
     })
@@ -332,7 +410,10 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadRoute(iolFetch, 'test', {
+      RATE_LIMIT_TRUSTED_PROXY: 'vercel',
+      VERCEL: '1',
+    })
 
     for (let index = 0; index < 120; index += 1) {
       await GET(
@@ -368,14 +449,19 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch)
+    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch, 'test', {
+      RATE_LIMIT_TRUSTED_PROXY: 'vercel',
+      VERCEL: '1',
+    })
 
     for (let index = 0; index < 501; index += 1) {
       const symbol = `SYM${index}`
 
       await GET(
         request(`/api/stocks/${symbol}/history?range=1W`, {
-          headers: { 'x-forwarded-for': `203.0.113.${index}` },
+          headers: {
+            'x-forwarded-for': `198.51.${Math.floor(index / 256)}.${index % 256}`,
+          },
         }),
         context(symbol)
       )
@@ -384,11 +470,14 @@ describe('/api/stocks/[symbol]/history route', () => {
     expect(getHistoryCacheSizeForTests()).toBe(500)
   })
 
-  it('prunes expired history cache entries', async () => {
+  it('keeps stale history cached beyond the fresh ttl', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { fecha: '2026-05-07', ultimoPrecio: 101 },
     ])
-    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch)
+    const { GET, getHistoryCacheSizeForTests } = await loadRoute(iolFetch, 'test', {
+      RATE_LIMIT_TRUSTED_PROXY: 'vercel',
+      VERCEL: '1',
+    })
 
     await GET(
       request('/api/stocks/GGAL/history?range=1W', {
@@ -401,7 +490,7 @@ describe('/api/stocks/[symbol]/history route', () => {
 
     vi.setSystemTime(new Date('2026-05-07T15:05:01.000Z'))
 
-    expect(getHistoryCacheSizeForTests()).toBe(0)
+    expect(getHistoryCacheSizeForTests()).toBe(1)
   })
 
   it('uses memory cache for repeated requests', async () => {
@@ -420,6 +509,9 @@ describe('/api/stocks/[symbol]/history route', () => {
     expect(response.status).toBe(200)
     expect(body.cacheStatus).toBe('memory-cache')
     expect(iolFetch).toHaveBeenCalledTimes(1)
+    expect(body.meta).toMatchObject({
+      stale: false,
+    })
   })
 
   it('caches a fallback history response without repeating either variant', async () => {
@@ -442,6 +534,49 @@ describe('/api/stocks/[symbol]/history route', () => {
     expect(iolFetch).toHaveBeenCalledTimes(2)
   })
 
+  it('returns stale cached history when the upstream fails after the fresh ttl expires', async () => {
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ fecha: '2026-05-07', ultimoPrecio: 101 }])
+      .mockRejectedValueOnce(new Error('upstream failed'))
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { GET } = await loadRoute(iolFetch)
+
+    const first = await GET(
+      request('/api/stocks/GGAL/history?range=1W'),
+      context('GGAL')
+    )
+
+    expect(first.status).toBe(200)
+
+    vi.setSystemTime(new Date('2026-05-07T15:05:01.000Z'))
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1W'),
+      context('GGAL')
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      ok: true,
+      cacheStatus: 'memory-cache',
+      data: [{ date: '2026-05-07', close: 101 }],
+      meta: {
+        stale: true,
+        source: 'live',
+      },
+    })
+    expect(consoleWarn).toHaveBeenCalledWith(
+      '[history.stale-fallback]',
+      expect.objectContaining({
+        level: 'warn',
+        symbol: 'GGAL',
+        cachedPoints: 1,
+      })
+    )
+  })
+
   it('does not expose upstream error details in production', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('upstream failed'))
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -453,13 +588,18 @@ describe('/api/stocks/[symbol]/history route', () => {
     )
 
     expect(response.status).toBe(502)
-    expect(await response.json()).toEqual({
+    const body = await response.json()
+
+    expect(body).toMatchObject({
       ok: false,
       error: 'HISTORY_ERROR',
     })
+    expect(body.requestId).toEqual(expect.any(String))
     expect(consoleError).toHaveBeenCalledWith(
       '[api.stocks.history.GET]',
       expect.objectContaining({
+        level: 'error',
+        requestId: body.requestId,
         route: '/api/stocks/[symbol]/history',
         symbol: 'GGAL',
         market: 'bCBA',
@@ -475,13 +615,137 @@ describe('/api/stocks/[symbol]/history route', () => {
     const iolFetch = vi.fn()
     const { POST } = await loadRoute(iolFetch)
 
-    const response = POST()
+    const response = POST(request('/api/stocks/GGAL/history'))
 
     expect(response.status).toBe(405)
     expect(response.headers.get('Allow')).toBe('GET')
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       ok: false,
       error: 'METHOD_NOT_ALLOWED',
+    })
+  })
+
+  it('does not trust spoofed forwarded IP headers when proxy trust is disabled', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    let response = await GET(
+      request('/api/stocks/GGAL/history?range=1W', {
+        headers: { 'x-forwarded-for': '203.0.113.10' },
+      }),
+      context('GGAL')
+    )
+
+    for (let index = 1; index < 121; index += 1) {
+      response = await GET(
+        request('/api/stocks/GGAL/history?range=1W', {
+          headers: { 'x-forwarded-for': `203.0.113.${index}` },
+        }),
+        context('GGAL')
+      )
+    }
+
+    expect(response.status).toBe(429)
+    expect(Number(response.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1)
+    expect(Number(response.headers.get('Retry-After'))).toBeLessThanOrEqual(60)
+    expect(response.headers.get('X-RateLimit-Limit')).toBe('120')
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('0')
+  })
+
+  it('returns rate limit headers on successful history responses', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1W'),
+      context('GGAL')
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('X-RateLimit-Limit')).toBe('120')
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('119')
+    expect(response.headers.get('X-RateLimit-Reset')).toMatch(/^\d+$/)
+    expectRequestIdHeader(response)
+  })
+
+  it('propagates a valid x-request-id and regenerates invalid values', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+    ])
+    const { GET } = await loadRoute(iolFetch)
+
+    const propagated = await GET(
+      request('/api/stocks/GGAL/history?range=1W', {
+        headers: { 'x-request-id': 'req-12345678' },
+      }),
+      context('GGAL')
+    )
+    const regenerated = await GET(
+      request('/api/stocks/GGAL/history?range=1W', {
+        headers: { 'x-request-id': 'bad id' },
+      }),
+      context('GGAL')
+    )
+
+    expectRequestIdHeader(propagated, 'req-12345678')
+    expectRequestIdHeader(regenerated)
+    expect(regenerated.headers.get('X-Request-Id')).not.toBe('bad id')
+  })
+
+  it('serves deterministic demo history without live credentials', async () => {
+    const { GET } = await loadDemoRouteWithoutLiveEnv()
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
+      context('GGAL')
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      ok: true,
+      market: 'bCBA',
+      range: '1M',
+      symbol: 'GGAL',
+      meta: {
+        discardedPoints: 0,
+        source: 'demo',
+        stale: false,
+      },
+    })
+    expect(body.data.length).toBeGreaterThan(20)
+    expect(body.data[0]).toEqual(
+      expect.objectContaining({
+        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        close: expect.any(Number),
+      })
+    )
+    expect(response.headers.get('X-RateLimit-Limit')).toBe('120')
+    expectRequestIdHeader(response)
+  })
+
+  it('returns an empty deterministic history for unknown demo symbols', async () => {
+    const { GET } = await loadDemoRouteWithoutLiveEnv()
+
+    const response = await GET(
+      request('/api/stocks/DEMOX/history?range=1M&market=bCBA'),
+      context('DEMOX')
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      ok: true,
+      symbol: 'DEMOX',
+      data: [],
+      meta: {
+        source: 'demo',
+        stale: false,
+      },
     })
   })
 })

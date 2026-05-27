@@ -24,6 +24,15 @@ export interface StockHistorySuccessResponse {
   range: StockHistoryRange
   market: StockHistoryMarket
   symbol: string
+  meta: StockHistoryResponseMeta
+}
+
+export interface StockHistoryResponseMeta {
+  discardedPoints: number
+  requestId?: string
+  source: 'demo' | 'live'
+  stale: boolean
+  totalPoints: number
 }
 
 export const STOCK_HISTORY_ERROR_CODES = [
@@ -40,6 +49,7 @@ export type StockHistoryErrorCode = (typeof STOCK_HISTORY_ERROR_CODES)[number]
 export interface StockHistoryErrorResponse {
   ok: false
   error: StockHistoryErrorCode
+  requestId?: string
   details?: string
 }
 
@@ -292,7 +302,15 @@ function normalizeHistoryPoint(value: unknown): StockHistoryPoint | null {
   return point
 }
 
-export function normalizeStockHistoryData(data: unknown): StockHistoryPoint[] {
+export interface StockHistoryNormalizationResult {
+  data: StockHistoryPoint[]
+  discardedPoints: number
+  totalPoints: number
+}
+
+export function normalizeStockHistoryDataResult(
+  data: unknown
+): StockHistoryNormalizationResult {
   const payload = extractArrayPayload(data)
 
   if (!payload) {
@@ -306,13 +324,17 @@ export function normalizeStockHistoryData(data: unknown): StockHistoryPoint[] {
     throw new Error('Upstream history payload contains no valid items')
   }
 
-  if (invalidItemsCount > 0) {
-    throw new Error('Upstream history payload contains partially invalid items')
+  return {
+    data: normalizedItems.filter(isNotNull).sort((first, second) =>
+      first.date.localeCompare(second.date)
+    ),
+    discardedPoints: invalidItemsCount,
+    totalPoints: payload.length,
   }
+}
 
-  return normalizedItems.filter(isNotNull).sort((first, second) =>
-    first.date.localeCompare(second.date)
-  )
+export function normalizeStockHistoryData(data: unknown): StockHistoryPoint[] {
+  return normalizeStockHistoryDataResult(data).data
 }
 
 export function isStockHistoryRange(

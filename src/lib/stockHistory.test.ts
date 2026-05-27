@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isStockHistoryRange,
   normalizeStockHistoryData,
+  normalizeStockHistoryDataResult,
 } from './stockHistory'
 
 describe('stock history normalization', () => {
@@ -105,13 +106,17 @@ describe('stock history normalization', () => {
     ])
   })
 
-  it('throws when a payload mixes valid and invalid history rows', () => {
-    expect(() =>
-      normalizeStockHistoryData([
+  it('filters partially invalid rows and keeps valid history points', () => {
+    expect(
+      normalizeStockHistoryDataResult([
         { fecha: 'invalid', ultimoPrecio: 100 },
         { fecha: '2026-05-07', ultimoPrecio: 101 },
       ])
-    ).toThrow('Upstream history payload contains partially invalid items')
+    ).toEqual({
+      data: [{ date: '2026-05-07', close: 101 }],
+      discardedPoints: 1,
+      totalPoints: 2,
+    })
   })
 
   it('throws when no valid history item remains', () => {

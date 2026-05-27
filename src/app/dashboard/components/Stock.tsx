@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback, useId } from 'react';
 import { STOCK_COLUMN_VISIBILITY, STOCK_GRID_LAYOUT } from './stockTableLayout';
 import {
   formatMoney,
@@ -19,7 +19,7 @@ export interface StockProps extends StockData {
   onSelect?: (stock: StockData) => void;
   isFavorite?: boolean;
   isStale?: boolean;
-  onToggleFavorite?: (ticker: string) => void;
+  onToggleFavorite?: (stock: StockData) => void;
 }
 
 function getVariationAriaLabel(
@@ -53,10 +53,14 @@ function Stock(props: StockProps) {
   const varClass = VAR_CLASS_BY_TYPE[stock.varType];
   const strengthClass =
     stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
+  const staleLabelId = useId();
 
-  function handleSelect() {
+  const handleSelect = useCallback(() => {
     onSelect?.(stock);
-  }
+  }, [onSelect, stock]);
+  const handleToggleFavorite = useCallback(() => {
+    onToggleFavorite?.(stock);
+  }, [onToggleFavorite, stock]);
 
   return (
     <tr
@@ -71,7 +75,7 @@ function Stock(props: StockProps) {
         <StockFavoriteButton
           ticker={stock.ticker}
           isFavorite={isFavorite}
-          onToggleFavorite={onToggleFavorite}
+          onToggleFavorite={handleToggleFavorite}
         />
       </td>
 
@@ -88,9 +92,15 @@ function Stock(props: StockProps) {
             handleSelect();
           }}
           aria-haspopup="dialog"
+          aria-describedby={isStale ? staleLabelId : undefined}
           aria-label={`Abrir detalle de ${stock.ticker}, ${stock.description}`}
         >
           {stock.ticker}
+          {isStale && (
+            <span id={staleLabelId} className="stock-stale-badge">
+              Local
+            </span>
+          )}
         </button>
       </th>
 

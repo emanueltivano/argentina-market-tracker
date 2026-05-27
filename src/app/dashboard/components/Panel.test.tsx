@@ -3,6 +3,7 @@ import { SWRConfig } from 'swr'
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -55,6 +56,7 @@ function renderPanel(props?: {
   initialData?: PanelSuccessResponse
   initialErrorMessage?: string
   initialPanelKey?: MarketDataPanelKey
+  isDemoMode?: boolean
 }) {
   return render(
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
@@ -67,6 +69,18 @@ function renderedTickers() {
   return Array.from(document.querySelectorAll('tbody tr[data-symbol]')).map(
     (row) => row.getAttribute('data-symbol')
   )
+}
+
+async function tabUntilFocus(target: HTMLElement, maxTabs = 20) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    if (document.activeElement === target) {
+      return
+    }
+
+    await userEvent.tab()
+  }
+
+  throw new Error(`Could not focus target after ${maxTabs} tabs`)
 }
 
 describe('Panel', () => {
@@ -119,6 +133,22 @@ describe('Panel', () => {
         name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
       })
     ).not.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('shows a demo badge when demo mode is enabled', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel({
+      isDemoMode: true,
+      initialData: panelResponse([
+        { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+      ]),
+      initialPanelKey: 'lider',
+    })
+
+    expect(await screen.findByLabelText('Demo data badge')).not.toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -794,6 +824,77 @@ describe('Panel', () => {
         '["GGAL"]'
       )
     })
+  })
+
+  it('supports toggling a favorite with the keyboard', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+    )
+
+    renderPanel()
+
+    const favoriteButton = await screen.findByRole('button', {
+      name: 'Agregar GGAL a favoritos',
+    })
+
+    await tabUntilFocus(favoriteButton)
+    expect(document.activeElement).toBe(favoriteButton)
+    expect(favoriteButton.getAttribute('aria-pressed')).toBe('false')
+
+    await userEvent.keyboard('{Enter}')
+
+    expect(
+      screen.getByRole('button', { name: 'Quitar GGAL de favoritos' })
+    ).not.toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Quitar GGAL de favoritos' }).getAttribute('aria-pressed')
+    ).toBe('true')
+  })
+
+  it('opens the modal by keyboard and restores focus after Escape', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+    )
+
+    renderPanel()
+
+    await userEvent.tab()
+    await userEvent.tab()
+
+    const opener = await screen.findByRole('button', {
+      name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+    })
+    await tabUntilFocus(opener)
+    expect(document.activeElement).toBe(opener)
+    await userEvent.keyboard('{Enter}')
+
+    const dialog = await screen.findByRole('dialog', { name: 'GGAL' })
+    expect(dialog.getAttribute('aria-describedby')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cerrar detalle' })).toBe(
+      document.activeElement
+    )
+
+    fireEvent(
+      dialog,
+      new Event('cancel', { cancelable: true })
+    )
+
+    expect(screen.queryByRole('dialog', { name: 'GGAL' })).toBeNull()
+    expect(document.activeElement).toBe(opener)
   })
 
   it('toggles a favorite from the stock details modal without closing it', async () => {

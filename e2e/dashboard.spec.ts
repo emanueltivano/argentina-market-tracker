@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 type PanelKey = 'lider' | 'general' | 'cedears'
 
@@ -11,6 +11,11 @@ type HistoryRequest = {
   symbol: string
   range: string | null
   market: string | null
+}
+
+type BrowserDiagnostics = {
+  consoleErrors: string[]
+  pageErrors: string[]
 }
 
 type MockPanelItem = {
@@ -87,6 +92,12 @@ function historySuccessResponse(
     range,
     market: 'bCBA',
     symbol,
+    meta: {
+      discardedPoints: 0,
+      source: 'demo',
+      stale: false,
+      totalPoints: data.length,
+    },
   }
 }
 
@@ -205,15 +216,97 @@ async function selectMarketPanel(page: Page, label: string) {
   await panelButton.click()
 }
 
+function attachBrowserDiagnostics(page: Page): BrowserDiagnostics {
+  const consoleErrors: string[] = []
+  const pageErrors: string[] = []
+
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text())
+    }
+  })
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.stack ?? error.message)
+  })
+
+  return {
+    consoleErrors,
+    pageErrors,
+  }
+}
+
+function expectNoBrowserErrors(
+  diagnostics: BrowserDiagnostics,
+  options: {
+    allowedConsoleErrors?: RegExp[]
+  } = {}
+) {
+  const unexpectedConsoleErrors = diagnostics.consoleErrors.filter(
+    (message) =>
+      !options.allowedConsoleErrors?.some((pattern) => pattern.test(message))
+  )
+
+  expect(
+    unexpectedConsoleErrors,
+    `Unexpected browser console errors:\n${unexpectedConsoleErrors.join('\n')}`
+  ).toEqual([])
+  expect(
+    diagnostics.pageErrors,
+    `Unexpected browser runtime errors:\n${diagnostics.pageErrors.join('\n')}`
+  ).toEqual([])
+}
+
+async function expectPanelRequest(
+  requests: PanelRequest[],
+  expectedType: PanelKey = 'lider'
+) {
+  await expect
+    .poll(
+      () => requests.some((request) => request.type === expectedType),
+      {
+        message: `Expected an intercepted /api/panel request for type=${expectedType}. Recorded requests: ${JSON.stringify(
+          requests
+        )}`,
+      }
+    )
+    .toBe(true)
+}
+
+async function tabUntilFocused(
+  page: Page,
+  locator: Locator,
+  maxTabs = 20
+) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    if (await locator.evaluate((node) => node === document.activeElement)) {
+      return
+    }
+
+    await page.keyboard.press('Tab')
+  }
+
+  throw new Error(`Could not focus target after ${maxTabs} tabs`)
+}
+
 test.describe('dashboard', () => {
   test('loads the initial panel with mocked market data and freshness metadata', async ({
     page,
   }) => {
-    await mockPanelApi(page)
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { requests })
 
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics, {
+      allowedConsoleErrors: [
+        /Failed to load resource: the server responded with a status of 502/,
+      ],
+    })
 
     await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
+    await expect(page.getByLabel('Demo data badge')).toBeVisible()
     await expect(
       page.getByRole('button', {
         name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
@@ -224,9 +317,12 @@ test.describe('dashboard', () => {
 
   test('switches panels and requests the selected panel type', async ({ page }) => {
     const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
 
     await mockPanelApi(page, { requests })
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
 
     await selectMarketPanel(page, 'Panel General')
     await expect(page.getByRole('heading', { name: 'Panel General' })).toBeVisible()
@@ -249,9 +345,12 @@ test.describe('dashboard', () => {
     page,
   }) => {
     const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
 
     await mockPanelApi(page, { requests, delayRefreshMs: 300 })
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
 
     await expect(
       page.getByRole('button', {
@@ -271,10 +370,94 @@ test.describe('dashboard', () => {
     ).toBeVisible()
   })
 
+  test('toggles favorites without breaking the modal flow', async ({ page }) => {
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { requests })
+    await mockHistoryApi(page)
+    await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
+
+    const favoriteButton = page.getByRole('button', {
+      name: 'Agregar GGAL a favoritos',
+    })
+
+    await favoriteButton.click()
+    await expect(
+      page.getByRole('button', { name: 'Quitar GGAL de favoritos' })
+    ).toBeVisible()
+
+    await page.getByRole('button', {
+      name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+    }).click()
+
+    const dialog = page.getByRole('dialog', { name: 'GGAL' })
+
+    await expect(dialog).toBeVisible()
+    await expect(
+      dialog.getByRole('button', { name: 'Quitar GGAL de favoritos' })
+    ).toBeVisible()
+  })
+
+  test('supports keyboard navigation for favorites and modal focus restoration', async ({
+    page,
+  }) => {
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { requests })
+    await mockHistoryApi(page)
+    await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
+
+    const favoriteButton = page.getByRole('button', {
+      name: 'Agregar GGAL a favoritos',
+    })
+
+    await tabUntilFocused(page, favoriteButton)
+    await expect(favoriteButton).toBeFocused()
+
+    await page.keyboard.press('Space')
+    await expect(
+      page.getByRole('button', { name: 'Quitar GGAL de favoritos' })
+    ).toBeFocused()
+
+    const opener = page.getByRole('button', {
+      name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+    })
+    await tabUntilFocused(page, opener)
+    await expect(opener).toBeFocused()
+
+    await page.keyboard.press('Enter')
+
+    const dialog = page.getByRole('dialog', { name: 'GGAL' })
+    await expect(dialog).toBeVisible()
+    await expect(
+      dialog.getByRole('button', { name: 'Cerrar detalle' })
+    ).toBeFocused()
+
+    await page.keyboard.press('Escape')
+
+    await expect(dialog).toBeHidden()
+    await expect(opener).toBeFocused()
+  })
+
   test('renders API errors and keeps manual refresh available', async ({ page }) => {
-    await mockPanelApi(page, { error: true })
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { error: true, requests })
 
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics, {
+      allowedConsoleErrors: [
+        /Failed to load resource: the server responded with a status of 502/,
+      ],
+    })
 
     const errorMessage = page.getByText(
       'Error cargando datos: No se pudo cargar el panel de mercado.'
@@ -290,9 +473,14 @@ test.describe('dashboard', () => {
   test('opens and closes the stock details modal while restoring focus', async ({
     page,
   }) => {
-    await mockPanelApi(page)
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { requests })
     await mockHistoryApi(page)
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
 
     const opener = page.getByRole('button', {
       name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
@@ -320,9 +508,14 @@ test.describe('dashboard', () => {
       'Responsive hidden-column coverage is mobile-specific.'
     )
 
-    await mockPanelApi(page)
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { requests })
     await mockHistoryApi(page)
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
 
     await page
       .getByRole('button', {
@@ -341,8 +534,10 @@ test.describe('dashboard', () => {
     page,
   }) => {
     const historyRequests: HistoryRequest[] = []
+    const panelRequests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
 
-    await mockPanelApi(page)
+    await mockPanelApi(page, { requests: panelRequests })
     await mockHistoryApi(page, {
       requests: historyRequests,
       responsesByRange: {
@@ -359,6 +554,8 @@ test.describe('dashboard', () => {
       },
     })
     await page.goto('/')
+    await expectPanelRequest(panelRequests)
+    expectNoBrowserErrors(diagnostics)
 
     const opener = page.getByRole('button', {
       name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
@@ -404,11 +601,16 @@ test.describe('dashboard', () => {
   })
 
   test('renders an error state when stock history fails', async ({ page }) => {
-    await mockPanelApi(page)
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { requests })
     await mockHistoryApi(page, {
       errorRanges: ['1M'],
     })
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
 
     await page
       .getByRole('button', {
@@ -425,13 +627,18 @@ test.describe('dashboard', () => {
   })
 
   test('renders an empty state when stock history has no points', async ({ page }) => {
-    await mockPanelApi(page)
+    const requests: PanelRequest[] = []
+    const diagnostics = attachBrowserDiagnostics(page)
+
+    await mockPanelApi(page, { requests })
     await mockHistoryApi(page, {
       responsesByRange: {
         '1M': [],
       },
     })
     await page.goto('/')
+    await expectPanelRequest(requests)
+    expectNoBrowserErrors(diagnostics)
 
     await page
       .getByRole('button', {

@@ -3,7 +3,11 @@ import {
   clearCachedToken,
   clearInFlightTokenRequest,
 } from './tokenCache'
-import { iol, IolTokenUpstreamError } from './iol'
+import {
+  iol,
+  IolTokenUpstreamError,
+  IolUpstreamHttpError,
+} from './iol'
 
 const OLD_ENV = process.env
 
@@ -203,7 +207,7 @@ describe('iol server client', () => {
     )
   })
 
-  it('truncates long upstream error bodies', async () => {
+  it('does not include long upstream error bodies in error messages', async () => {
     const longBody = ` ${'x'.repeat(1_200)} `
 
     vi.stubGlobal(
@@ -216,9 +220,16 @@ describe('iol server client', () => {
         .mockResolvedValueOnce(textResponse(longBody, { status: 502 }))
     )
 
-    await expect(iol('/panel')).rejects.toThrow(
-      /^IOL request failed: 502 - x{1000}…$/
-    )
+    await expect(iol('/panel')).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(IolUpstreamHttpError)
+
+      const typedError = error as IolUpstreamHttpError
+
+      expect(typedError.message).toBe('IOL request failed: 502')
+      expect(typedError.upstreamSummary).toBe('x'.repeat(512) + '…')
+
+      return true
+    })
   })
 
   it('does not include configured credentials in token error messages', async () => {
@@ -242,12 +253,15 @@ describe('iol server client', () => {
       expect(message).toContain('IOL token fetch failed: 401 Unauthorized')
       expect(message).not.toContain('test-user')
       expect(message).not.toContain('super-secret-password')
+      expect(error).toMatchObject({
+        upstreamPath: 'token',
+      })
 
       return true
     })
   })
 
-  it('redacts configured credentials if an upstream error body echoes them', async () => {
+  it('does not leak configured credentials if an upstream error body echoes them', async () => {
     vi.stubGlobal(
       'fetch',
       vi
@@ -264,15 +278,65 @@ describe('iol server client', () => {
     )
 
     await expect(iol('/panel')).rejects.toSatisfy((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error)
+      expect(error).toBeInstanceOf(IolUpstreamHttpError)
 
-      expect(message).toBe(
-        'IOL request failed: 500 - upstream echoed [redacted] and [redacted]'
+      const typedError = error as IolUpstreamHttpError
+
+      expect(typedError.message).toBe('IOL request failed: 500')
+      expect(typedError.upstreamSummary).toBe(
+        'upstream echoed [redacted] and [redacted]'
       )
-      expect(message).not.toContain('test-user')
-      expect(message).not.toContain('super-secret-password')
+      expect(String(typedError.upstreamSummary)).not.toContain('test-user')
+      expect(String(typedError.upstreamSummary)).not.toContain(
+        'super-secret-password'
+      )
 
       return true
     })
+  })
+
+  it('redacts bearer tokens and jwt-like strings from upstream summaries', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ access_token: 'fresh-token', expires_in: 1800 })
+        )
+        .mockResolvedValueOnce(
+          textResponse(
+            'Authorization: Bearer top-secret-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature',
+            { status: 500 }
+          )
+        )
+    )
+
+    await expect(iol('/panel')).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(IolUpstreamHttpError)
+
+      const typedError = error as IolUpstreamHttpError
+      const summary = String(typedError.upstreamSummary)
+
+      expect(summary).toContain('Authorization: "Bearer [redacted]"')
+      expect(summary).toContain('[redacted-jwt]')
+      expect(summary).not.toContain('top-secret-token')
+
+      return true
+    })
+  })
+
+  it('requires live credentials when using the upstream client', async () => {
+    process.env = {
+      ...OLD_ENV,
+      API_URL: 'https://api.example.test',
+      TOKEN_ENDPOINT: 'token',
+      NODE_ENV: 'test',
+      API_USERNAME: '',
+      API_PASSWORD: '',
+    }
+    vi.stubGlobal('fetch', vi.fn())
+
+    await expect(iol('/panel')).rejects.toThrow('Missing API_USERNAME')
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

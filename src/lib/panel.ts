@@ -37,6 +37,7 @@ export type PanelErrorCode = (typeof PANEL_ERROR_CODES)[number]
 export interface PanelErrorResponse {
   ok: false
   error: PanelErrorCode
+  requestId?: string
   details?: string
 }
 

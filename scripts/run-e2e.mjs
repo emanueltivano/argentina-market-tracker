@@ -43,6 +43,12 @@ function spawnCommand(command, args, options = {}) {
   })
 }
 
+function withDefinedEnv(env) {
+  return Object.fromEntries(
+    Object.entries(env).filter(([, value]) => value !== undefined)
+  )
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -106,19 +112,26 @@ async function main() {
   const playwrightCli = './node_modules/@playwright/test/cli.js'
   const { mode, playwrightArgs } = parseArgs(process.argv.slice(2))
   const isSsrMode = mode === 'ssr'
+  const resolvedPlaywrightArgs =
+    playwrightArgs.length > 0
+      ? playwrightArgs
+      : isSsrMode
+        ? ['e2e/dashboard-ssr.spec.ts']
+        : []
   const serverProcess = spawnCommand(
     process.execPath,
     [nextBin, 'start', '-p', SERVER_PORT],
     {
-      env: {
+      env: withDefinedEnv({
         ...process.env,
+        MARKET_DATA_SOURCE: process.env.MARKET_DATA_SOURCE ?? 'demo',
         DISABLE_SERVER_DASHBOARD_PREFETCH:
           process.env.DISABLE_SERVER_DASHBOARD_PREFETCH ??
           (isSsrMode ? '0' : '1'),
         PANEL_RESPONSE_FIXTURE_JSON:
           process.env.PANEL_RESPONSE_FIXTURE_JSON ??
           (isSsrMode ? SSR_PANEL_FIXTURE : undefined),
-      },
+      }),
     }
   )
 
@@ -135,11 +148,18 @@ async function main() {
 
   try {
     await waitForServer(SERVER_URL, SERVER_START_TIMEOUT_MS)
+    console.log(
+      `[run-e2e] mode=${mode} args=${
+        resolvedPlaywrightArgs.length > 0
+          ? resolvedPlaywrightArgs.join(' ')
+          : '(default)'
+      }`
+    )
 
     exitCode = await new Promise((resolve, reject) => {
       const playwrightProcess = spawnCommand(
         process.execPath,
-        [playwrightCli, 'test', ...playwrightArgs],
+        [playwrightCli, 'test', ...resolvedPlaywrightArgs],
         {
           env: {
             ...process.env,

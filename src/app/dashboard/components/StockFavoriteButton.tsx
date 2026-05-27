@@ -1,7 +1,7 @@
 type StockFavoriteButtonProps = {
   ticker: string;
   isFavorite?: boolean;
-  onToggleFavorite?: (ticker: string) => void;
+  onToggleFavorite?: () => void;
   className?: string;
 };
 
@@ -19,7 +19,7 @@ export default function StockFavoriteButton({
       } ${className}`.trim()}
       onClick={(event) => {
         event.stopPropagation();
-        onToggleFavorite?.(ticker);
+        onToggleFavorite?.();
       }}
       aria-label={
         isFavorite

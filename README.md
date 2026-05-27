@@ -5,57 +5,52 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-green)
 
-Portfolio full-stack dashboard for Argentine equities built with Next.js,
-React, and TypeScript.
+Production-oriented portfolio dashboard for Argentine equities built with
+Next.js, React, and TypeScript.
 
-This repository is intentionally positioned as a portfolio/demo project. The
-goal is to show practical frontend and full-stack engineering decisions around
-server/client boundaries, validated external data, resilient UI states,
-performance-minded client behavior, and automated verification. It is not
-presented as an enterprise-grade trading platform.
+This repo is intentionally a technical demo, not a broker, trading platform,
+or financial advisory product. The goal is to show a pragmatic BFF-style
+Next.js architecture with validated upstream contracts, SSR bootstrapping,
+resilient client refresh, safer defaults for public demo deploys, and
+meaningful automated verification.
 
-## What Problem It Solves
+## Overview
 
-Argentina Market Tracker exposes market panels and per-symbol historical data
-from a protected external API without leaking credentials to the browser.
-
-The browser interacts only with stable internal routes such as:
+The browser talks only to internal routes such as:
 
 - `/api/panel?type=lider|general|cedears`
-- `/api/stocks/[symbol]/history?range=...&market=...`
+- `/api/stocks/[symbol]/history?range=...&market=bCBA`
+- `/api/health`
+- `/api/debug/metrics`
 
-Those routes handle request validation, upstream normalization, controlled error
-mapping, local cache/rate-limit rules, and app-level response contracts that
-the UI can render safely.
+Those routes handle:
 
-From a portfolio perspective, the project demonstrates how to build a market
-dashboard that is more robust than a simple client-only demo, while still being
-small enough to review in an interview or take-home discussion.
+- request validation
+- upstream normalization
+- rate limiting and refresh cooldowns
+- process-local cache and stale fallback behavior
+- structured logging and request ID correlation
+- safe demo/live data-source switching
 
-## Stack
+## Demo vs Live
 
-- Next.js 16 App Router
-- React 19
-- TypeScript with strict mode
-- Tailwind CSS 4
-- SWR
-- `lightweight-charts`
-- Vitest
-- Playwright
-- GitHub Actions
+Two server-side modes are supported:
 
-## Main Features
+- `demo`: deterministic fixture data, no upstream credentials required, safest
+  choice for public portfolio deploys
+- `live`: real upstream market API through the internal BFF, intended for
+  controlled/private review of the integration
 
-- Dashboard panels for major Argentine market groupings
-- Server-side initial dashboard load with client revalidation
-- Per-symbol detail modal with historical chart and range switching
-- Favorites persisted locally
-- Sorting by ticker, price, variation, and volume
-- Manual refresh with cache bypass
-- Responsive loading, empty, success, stale, and error states
-- Internal API contracts that shield the UI from upstream API inconsistencies
+Recommendation:
 
-## Architecture Overview
+- public portfolio deploy: `MARKET_DATA_SOURCE=demo`
+- live integration review: `MARKET_DATA_SOURCE=live` plus distributed
+  rate-limit storage and trusted proxy configuration
+
+The UI shows a `Demo data` badge in demo mode, and `/api/health` reports the
+active `dataSource`.
+
+## Architecture
 
 ```txt
 Browser
@@ -65,191 +60,242 @@ Browser
         | GET /api/stocks/[symbol]/history?range=...
         v
 Next.js Route Handlers
-  Request validation
+  Validation
   Contract normalization
-  In-memory cache / cooldown / rate limiting
+  Rate limiting / cooldowns
+  Demo fixtures or live upstream integration
         |
         v
-Server-only external API client
-  Credentials
-  OAuth token handling
-  Timeout / upstream protection
-        |
-        v
-External market API
+Server-only market data layer
+  Demo dataset
+  or
+  External API client with OAuth, timeout and retry protections
 ```
 
-General structure:
+Important structure:
 
 ```txt
 src/
   app/
     api/
-      panel/
-      stocks/[symbol]/history/
-      token/
     dashboard/
-      components/
-      hooks/
-      lib/
   lib/
     server/
+e2e/
+docs/
 ```
 
-The client is intentionally kept on validated, app-level data contracts.
-Credentials, token refresh, and upstream-specific details stay in the server
-layer.
+## Local Setup
 
-## Technical Highlights
+Requirements:
 
-- **App Router**
-  - The project uses Next.js App Router with SSR-first bootstrapping for the
-    initial dashboard render.
+- Node `>=20`
 
-- **Server-side API boundaries**
-  - The browser never calls the external market provider directly.
-  - Credentials and upstream integration stay behind internal route handlers.
-
-- **Contract validation**
-  - External panel and historical payloads are validated and normalized before
-    they reach the UI.
-  - Invalid or partial upstream responses are rejected with controlled app
-    errors instead of leaking inconsistent state to components.
-
-- **Polling optimized with Visibility API**
-  - Dashboard polling pauses when the browser tab is hidden.
-  - Returning to the tab can trigger a refresh when the refresh interval has
-    already elapsed.
-
-- **Lazy-loaded chart modal**
-  - The stock detail modal is loaded dynamically.
-  - As a result, the historical chart and `lightweight-charts` are deferred
-    until the user actually opens a stock detail view.
-
-- **Tests unitarios/componentes**
-  - The project includes unit tests, component tests, hook tests, route-level
-    tests, and Playwright E2E coverage.
-
-## Technical Decisions
-
-- **Backend-for-frontend approach**
-  - A local BFF layer was chosen to avoid exposing credentials and to provide a
-    stable contract for the frontend.
-
-- **Validated data before UI rendering**
-  - The frontend works with normalized data rather than raw external payloads.
-  - This keeps UI logic simpler and reduces the chance of invalid states
-    leaking into rendering paths.
-
-- **SWR for client refresh behavior**
-  - SWR handles revalidation and client refresh flows while SSR provides the
-    initial render.
-
-- **Incremental state extraction on the dashboard**
-  - `Panel.tsx` was kept as a coordinator while URL/panel state and modal
-    selection logic were extracted into smaller hooks.
-
-- **Performance over unnecessary upfront JS**
-  - The chart path was deferred because historical visualization is secondary to
-    the initial dashboard table.
-
-## Performance Optimizations
-
-- Server-rendered initial panel to reduce empty-client boot experience
-- SWR hydration to avoid an unnecessary duplicate fetch on mount when initial
-  data exists
-- Polling paused on hidden tabs using `document.hidden`
-- `visibilitychange` refresh path to avoid stale data when the user returns
-- Lazy-loaded stock detail modal, which defers chart-related JS
-- Lightweight client refresh path that distinguishes normal polling from manual
-  cache-bypass refresh
-
-## Testing and Validation
-
-The test suite covers the most important behaviors for a project of this scope:
-
-- external response validation and normalization
-- server-side token/cache/rate-limit behavior
-- route handler contracts and controlled errors
-- dashboard hooks and local state flows
-- component behavior across loading/error/empty/success states
-- modal behavior and favorites flows
-- end-to-end interactions with deterministic mocks
-
-CI runs through GitHub Actions and validates:
-
-- lint
-- type-check
-- unit/component/route tests
-- production build
-- Playwright E2E
-
-## Commands
-
-### Installation
+Install:
 
 ```bash
 npm install
 cp .env.local.example .env.local
 ```
 
-### Development
+Run locally:
 
 ```bash
 npm run dev
 ```
 
-### Lint
+Useful scripts:
 
-```bash
-npm run lint
-```
+- `npm run lint`
+- `npm run type-check`
+- `npm run test`
+- `npm run build`
+- `npm run validate`
+- `npm run test:e2e`
+- `npm run test:e2e:ssr`
+- `npm run test:e2e:app`
 
-### Type Check
-
-```bash
-npm run type-check
-```
-
-### Tests
-
-```bash
-npm run test
-```
-
-Optional E2E:
-
-```bash
-npm run test:e2e
-```
-
-### Build
-
-```bash
-npm run build
-```
-
-### Full Local Validation
-
-```bash
-npm run validate:local
-```
+`npm run validate` is the closest "reviewer command": static checks, unit and
+component tests, production build, SSR E2E, and dashboard E2E.
 
 ## Environment Variables
 
-Use `.env.local.example` as the reference file.
+Use [.env.local.example](./.env.local.example)
+as the source of truth.
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `API_URL` | Yes | External market API base URL, without trailing slash |
-| `NEXT_PUBLIC_SITE_URL` | Recommended for public deploys | Public site URL for metadata/Open Graph |
-| `TOKEN_ENDPOINT` | No | Token endpoint path, defaults to `token` |
-| `API_USERNAME` | Yes | External API username |
-| `API_PASSWORD` | Yes | External API password |
-| `PANEL_LIDER_ENDPOINT` | Yes | Upstream endpoint for the leader panel |
-| `PANEL_GENERAL_ENDPOINT` | Yes | Upstream endpoint for the general panel |
-| `PANEL_CEDEARS_ENDPOINT` | Yes | Upstream endpoint for CEDEARs |
-| `ENABLE_TOKEN_DEBUG` | No | Enables local-only debug routes when set to `1` |
+| `MARKET_DATA_SOURCE` | No | `demo` or `live`; defaults to `live` |
+| `API_URL` | Live mode only | External API base URL, no trailing slash |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Public origin for metadata/Open Graph |
+| `TOKEN_ENDPOINT` | Live mode only | Token endpoint path; defaults to `token` |
+| `API_USERNAME` | Live mode only | Upstream API username |
+| `API_PASSWORD` | Live mode only | Upstream API password |
+| `PANEL_LIDER_ENDPOINT` | Live mode only | Upstream endpoint for leader panel |
+| `PANEL_GENERAL_ENDPOINT` | Live mode only | Upstream endpoint for general panel |
+| `PANEL_CEDEARS_ENDPOINT` | Live mode only | Upstream endpoint for CEDEARs |
+| `ENABLE_TOKEN_DEBUG` | No | Localhost-only debug switch for `/api/token` and `/api/panel?raw=1` |
+| `APP_VERSION` | No | Optional deploy/version string exposed by `/api/health` |
+| `OBSERVABILITY_DEBUG_TOKEN` | No | Enables `/api/debug/metrics` in production and becomes the required `x-observability-token` |
+| `RATE_LIMIT_STORE` | No | `auto`, `memory`, or `redis-rest` |
+| `RATE_LIMIT_TRUSTED_PROXY` | No | `none` or `vercel` |
+| `RATE_LIMIT_REDIS_REST_URL` | No | Upstash Redis / Vercel KV REST-compatible URL |
+| `RATE_LIMIT_REDIS_REST_TOKEN` | No | Token for the Redis/KV REST endpoint |
+
+## Production Strategy
+
+This project is best described as production-oriented, not "production-ready
+for every workload". It includes meaningful hardening and operational docs, but
+it still has honest scope limits.
+
+### Public Portfolio Deploy
+
+Recommended defaults:
+
+- `MARKET_DATA_SOURCE=demo`
+- no live credentials
+- keep CSP, request IDs, health, and metrics support enabled
+- optionally set `APP_VERSION` from CI/CD or the hosting platform
+
+This is the safest Vercel posture for a recruiter-facing deployment.
+
+### Live Integration Deploy
+
+Recommended minimum:
+
+- `MARKET_DATA_SOURCE=live`
+- valid upstream credentials and panel endpoints
+- `RATE_LIMIT_STORE=redis-rest`
+- `RATE_LIMIT_REDIS_REST_URL`
+- `RATE_LIMIT_REDIS_REST_TOKEN`
+- `RATE_LIMIT_TRUSTED_PROXY=vercel` on Vercel
+- `OBSERVABILITY_DEBUG_TOKEN` for protected debug metrics access
+- `APP_VERSION` for easier operational identification
+
+Recommendations:
+
+- do not run public live mode without distributed rate-limit storage
+- do not trust forwarded IPs unless the deployment boundary is known and owned
+- do not share `OBSERVABILITY_DEBUG_TOKEN`
+- do not expose live credentials in screenshots, logs, issues, or preview demos
+
+### CI
+
+GitHub Actions runs `npm run validate` on push and PR in demo mode via
+[ci.yml](./.github/workflows/ci.yml).
+
+## Security
+
+Current hardening includes:
+
+- browser never talks directly to the external market provider
+- OAuth token handling stays server-side
+- validated and normalized panel/history contracts before rendering
+- stricter production CSP with per-request nonce support
+- request ID propagation via `X-Request-Id`
+- structured log sanitization for secrets and auth material
+- local-only debug routes for raw token/panel inspection
+
+## Resilience
+
+Current resilience mechanisms include:
+
+- SSR first paint plus client revalidation
+- panel cache with manual refresh bypass
+- hidden-tab polling pause and resume behavior
+- history normalization that discards invalid points when possible
+- stale history fallback from local cache when live upstream fails
+- route-level rate limiting and panel refresh cooldown
+
+## Observability
+
+Built-in observability is intentionally lightweight:
+
+- structured server logs
+- `X-Request-Id` correlation
+- `GET /api/health`
+- `GET /api/debug/metrics`
+- process-local counters and timing summaries
+
+Metrics currently cover:
+
+- request totals by endpoint/status/outcome
+- request durations
+- cache hits/misses/writes/stale hits
+- rate-limit allowed/blocked decisions
+- upstream request outcomes
+- discarded history points and stale fallback usage
+- demo vs live response source
+
+Health and metrics are documented operationally in
+[docs/RUNBOOK.md](./docs/RUNBOOK.md).
+
+## Accessibility
+
+The dashboard includes a real accessibility pass:
+
+- keyboard access to panel controls, favorites, refresh, theme toggle, and
+  modal open/close
+- semantic table structure
+- native dialog semantics with focus restoration
+- explicit favorite labels and `aria-pressed`
+- visible focus states
+- component and E2E coverage for keyboard flows
+
+## Testing
+
+Coverage includes:
+
+- unit and component tests with Vitest and Testing Library
+- route and server tests for contracts, rate limiting, caching, and errors
+- Playwright dashboard interaction E2E
+- Playwright SSR boot coverage with JavaScript disabled
+
+Reviewer-friendly commands:
+
+```bash
+npm run lint
+npm run type-check
+npm run test
+npm run build
+npm run validate
+```
+
+## Operational Runbook
+
+See [docs/RUNBOOK.md](./docs/RUNBOOK.md) for:
+
+- health checks
+- request ID correlation
+- debug metrics access
+- how to interpret `degraded` health
+- what to inspect when `/api/panel` fails
+- what to inspect when `/api/stocks/[symbol]/history` fails
+- how to reason about `429`
+- upstream failure handling
+- demo vs live identification
+- basic config rollback
+
+## Reviewer Checklist
+
+- `npm run validate` passes locally
+- SSR E2E passes
+- dashboard E2E passes
+- `/api/health` reports the expected mode
+- CSP/security headers are present in production mode
+- public demo deploy runs with `MARKET_DATA_SOURCE=demo`
+
+## Known Limitations
+
+- demo mode is synthetic and not real market data
+- panel and history caches are process-local
+- stale history fallback is process-local
+- built-in metrics are process-local
+- live mode still depends on an external upstream provider
+- there is no external observability platform, tracing backend, or formal SLO
+- favorites use local client storage and local snapshots, not backend
+  persistence
+- the project is not intended for live trading or financial advice
 
 ## Screenshots
 
@@ -265,48 +311,8 @@ Use `.env.local.example` as the reference file.
 
 ![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
 
-## Known Limitations / Production Considerations
-
-- **Rate limiting is in-memory**
-  - It is useful for a single process or local demo, but it is not a
-    distributed protection layer.
-
-- **Cache is in-memory**
-  - Cached panel/history behavior is process-local and would not be shared
-    across multiple instances.
-
-- **CSP is still pending**
-  - Security headers were improved, but a stricter Content Security Policy is
-    still an open production hardening task.
-
-- **Favorites rely partially on local snapshots**
-  - Favorites can fall back to locally persisted snapshots when the live source
-    panel is unavailable, which is useful for resilience but not a substitute
-    for durable backend persistence.
-
-- **No persistent shared infrastructure**
-  - There is no Redis/KV/distributed coordination for cache, cooldowns, or rate
-    limits.
-
-- **Not intended for live trading**
-  - This project is suitable for portfolio review and technical discussion, not
-    for real-money trading workflows.
-
-## MVP Scope and Honest Tradeoffs
-
-- The project prioritizes clear engineering decisions over broad product scope.
-- Historical data is fetched on demand and not persisted by the app.
-- There is no analytics, tracing, or third-party observability platform.
-- The architecture is intentionally small enough to review in a technical
-  interview without becoming a large SaaS codebase.
-
-## Suggested Portfolio Positioning
+## Suggested Positioning
 
 Example GitHub description:
 
-`Market dashboard for Argentine equities with a Next.js BFF, validated external contracts, historical charts, optimized polling, lazy-loaded modal charts, and automated tests.`
-
-Suggested topics:
-
-`nextjs`, `typescript`, `react`, `tailwindcss`, `vitest`, `playwright`, `portfolio`, `bff`, `financial-dashboard`
-
+`Market dashboard for Argentine equities with a Next.js BFF, validated external contracts, resilient historical data handling, protected demo/live modes, structured observability, and automated SSR/E2E verification.`

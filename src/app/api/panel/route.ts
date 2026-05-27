@@ -1,7 +1,15 @@
 import type { NextRequest } from 'next/server'
 import { ENV } from '@/lib/server/env'
+import { getDemoPanelData } from '@/lib/server/demoMarketData'
 import { iolFetch } from '@/lib/server/iol'
-import { logServerError } from '@/lib/server/observability'
+import {
+  getRequestId,
+  getSafeErrorDetails,
+  incrementMetricCounter,
+  logServerError,
+  recordMetricDuration,
+  withRequestIdHeaders,
+} from '@/lib/server/observability'
 import { getPanelEndpoint } from '@/lib/server/panelEndpoint'
 import {
   clearPanelResponseCacheForTests,
@@ -19,6 +27,7 @@ import {
   shouldReturnRawPanelData,
 } from '@/lib/server/panelRequest'
 import { jsonResponse, panelErrorResponse } from '@/lib/server/panelResponse'
+import { getRetryAfterHeaders } from '@/lib/server/rateLimit'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -30,80 +39,188 @@ export function clearPanelCacheForTests() {
 }
 
 export async function GET(req: NextRequest) {
+  const startedAt = Date.now()
+  const requestId = getRequestId(req)
   const panelType = getPanelType(req)
+  const dataSource = ENV.MARKET_DATA_SOURCE
 
   if (!panelType.ok) {
-    return panelErrorResponse('INVALID_PANEL_TYPE', { status: 400 })
+    incrementMetricCounter('api.request.total', 1, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      outcome: 'error',
+      source: dataSource,
+      status: 400,
+    })
+    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      status: 400,
+    })
+    return panelErrorResponse('INVALID_PANEL_TYPE', { status: 400 }, undefined, requestId)
   }
 
   const type = panelType.type
   const shouldReturnRaw = shouldReturnRawPanelData(req)
   const bypassCache = shouldBypassPanelCache(req)
-  const rateLimit = checkPanelRateLimit(req)
+  const maybeRateLimit = checkPanelRateLimit(req)
+  const rateLimit =
+    maybeRateLimit instanceof Promise ? await maybeRateLimit : maybeRateLimit
 
   if (!rateLimit.ok) {
+    incrementMetricCounter('api.request.total', 1, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      outcome: 'rate-limited',
+      source: dataSource,
+      status: 429,
+    })
+    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      status: 429,
+    })
     return panelErrorResponse('RATE_LIMITED', {
       status: 429,
-      headers: {
-        'Retry-After': String(rateLimit.retryAfterSec),
-      },
-    })
+      headers: withRequestIdHeaders(getRetryAfterHeaders(rateLimit), requestId),
+    }, undefined, requestId)
   }
 
   // Local in-memory cooldown for manual refresh. In serverless this protects
   // only the current instance; it is not a global distributed limit.
   if (bypassCache && !hasInFlightPanelRefresh(type)) {
-    const refreshCooldown = checkPanelRefreshCooldown(req, type)
+    const maybeRefreshCooldown = checkPanelRefreshCooldown(req, type)
+    const refreshCooldown =
+      maybeRefreshCooldown instanceof Promise
+        ? await maybeRefreshCooldown
+        : maybeRefreshCooldown
 
     if (!refreshCooldown.ok) {
+      incrementMetricCounter('api.request.total', 1, {
+        endpoint: '/api/panel',
+        method: 'GET',
+        outcome: 'cooldown-blocked',
+        source: dataSource,
+        status: 429,
+      })
+      recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+        endpoint: '/api/panel',
+        method: 'GET',
+        status: 429,
+      })
       return panelErrorResponse('REFRESH_COOLDOWN', {
         status: 429,
-        headers: {
-          'Retry-After': String(refreshCooldown.retryAfterSec),
-        },
-      })
+        headers: withRequestIdHeaders(
+          getRetryAfterHeaders(refreshCooldown),
+          requestId
+        ),
+      }, undefined, requestId)
     }
   }
 
   try {
     if (shouldReturnRaw) {
-      const data = await iolFetch(getPanelEndpoint(type))
-
-      return jsonResponse({
-        ok: true,
-        type,
-        data,
+      const data =
+        ENV.MARKET_DATA_SOURCE === 'demo'
+          ? getDemoPanelData(type)
+          : await iolFetch(getPanelEndpoint(type))
+      incrementMetricCounter('api.request.total', 1, {
+        endpoint: '/api/panel',
+        method: 'GET',
+        outcome: 'success',
+        source: dataSource,
+        status: 200,
       })
+      recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+        endpoint: '/api/panel',
+        method: 'GET',
+        status: 200,
+      })
+
+      return jsonResponse(
+        {
+          ok: true,
+          type,
+          data,
+        },
+        {
+          headers: withRequestIdHeaders(rateLimit.headers, requestId),
+        },
+        requestId
+      )
     }
 
     const response = await getOrCreatePanelResponse(type, bypassCache)
+    incrementMetricCounter('panel.response.total', 1, {
+      cacheStatus: response.cacheStatus,
+      panelType: type,
+      source: dataSource,
+    })
+    incrementMetricCounter('api.request.total', 1, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      outcome: 'success',
+      source: dataSource,
+      status: 200,
+    })
+    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      status: 200,
+    })
 
-    return jsonResponse(response)
+    return jsonResponse(response, {
+      headers: withRequestIdHeaders(rateLimit.headers, requestId),
+    }, requestId)
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err ?? 'unknown')
     const isProd = ENV.NODE_ENV === 'production'
 
     logServerError('api.panel.GET', err, {
+      requestId,
       route: '/api/panel',
       panelType: type,
       bypassCache,
       shouldReturnRaw,
     })
+    incrementMetricCounter('api.request.total', 1, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      outcome: 'error',
+      source: dataSource,
+      status: 502,
+    })
+    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+      endpoint: '/api/panel',
+      method: 'GET',
+      status: 502,
+    })
 
     return panelErrorResponse(
       'PANEL_ERROR',
       { status: 502 },
-      isProd ? undefined : message
+      isProd ? undefined : getSafeErrorDetails(err),
+      requestId
     )
   }
 }
 
-export function POST() {
+export function POST(req: NextRequest) {
+  const requestId = getRequestId(req)
+  incrementMetricCounter('api.request.total', 1, {
+    endpoint: '/api/panel',
+    method: 'POST',
+    outcome: 'method-not-allowed',
+    source: ENV.MARKET_DATA_SOURCE,
+    status: 405,
+  })
+
   return panelErrorResponse(
     'METHOD_NOT_ALLOWED',
     {
       status: 405,
-      headers: { Allow: 'GET' },
-    }
+      headers: withRequestIdHeaders({ Allow: 'GET' }, requestId),
+    },
+    undefined,
+    requestId
   )
 }

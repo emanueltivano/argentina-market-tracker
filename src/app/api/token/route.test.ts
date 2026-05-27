@@ -55,6 +55,7 @@ describe('/api/token debug route', () => {
       cached: false,
       status: 'refreshed',
     })
+    expect(response.headers.get('X-Request-Id')).toMatch(/^[A-Za-z0-9._:-]{8,128}$/)
   })
 
   it('returns not found for remote hosts even when debug is enabled', async () => {
@@ -64,10 +65,11 @@ describe('/api/token debug route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(404)
-    expect(body).toEqual({
+    expect(body).toMatchObject({
       ok: false,
       error: 'NOT_FOUND',
     })
+    expect(body.requestId).toEqual(expect.any(String))
   })
 
   it('returns not found in production even when the debug flag is set', async () => {
@@ -78,9 +80,10 @@ describe('/api/token debug route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(404)
-    expect(body).toEqual({
+    expect(body).toMatchObject({
       ok: false,
       error: 'NOT_FOUND',
     })
+    expect(body.requestId).toEqual(expect.any(String))
   })
 })

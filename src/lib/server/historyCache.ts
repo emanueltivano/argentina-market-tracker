@@ -6,13 +6,17 @@ import {
   type StockHistoryResponse,
   type StockHistorySuccessResponse,
 } from '@/lib/stockHistory'
+import { incrementMetricCounter } from '@/lib/server/observability'
 
 const HISTORY_CACHE_TTL_MS = 5 * 60_000
+const HISTORY_CACHE_STALE_TTL_MS = 30 * 60_000
 const HISTORY_CACHE_MAX_KEYS = 500
 
 type HistoryCacheEntry = {
+  fetchedAt: string
   response: StockHistorySuccessResponse
-  expiresAt: number
+  freshUntil: number
+  staleUntil: number
 }
 
 const historyCache = new Map<string, HistoryCacheEntry>()
@@ -28,7 +32,7 @@ function getCacheKey(
 
 function pruneHistoryCache(now = Date.now()) {
   for (const [key, entry] of historyCache) {
-    if (now >= entry.expiresAt) {
+    if (now >= entry.staleUntil) {
       historyCache.delete(key)
     }
   }
@@ -38,7 +42,7 @@ function pruneHistoryCache(now = Date.now()) {
   }
 
   const entriesByOldestExpiry = [...historyCache.entries()].sort(
-    ([, first], [, second]) => first.expiresAt - second.expiresAt
+    ([, first], [, second]) => first.staleUntil - second.staleUntil
   )
 
   for (const [key] of entriesByOldestExpiry.slice(
@@ -49,26 +53,87 @@ function pruneHistoryCache(now = Date.now()) {
   }
 }
 
+function buildCachedHistoryResponse(
+  entry: HistoryCacheEntry,
+  cacheStatus: StockHistorySuccessResponse['cacheStatus'],
+  stale: boolean
+): StockHistorySuccessResponse {
+  return {
+    ...entry.response,
+    servedAt: new Date().toISOString(),
+    cacheStatus,
+    meta: {
+      ...entry.response.meta,
+      stale,
+    },
+  }
+}
+
 export function getCachedHistoryResponse(
   symbol: string,
   market: StockHistoryMarket,
   range: StockHistoryRange
-): StockHistoryResponse | null {
+): StockHistorySuccessResponse | null {
   pruneHistoryCache()
 
   const cacheKey = getCacheKey(symbol, market, range)
   const cached = historyCache.get(cacheKey)
 
-  if (!cached || Date.now() >= cached.expiresAt) {
+  if (!cached || Date.now() >= cached.staleUntil) {
     historyCache.delete(cacheKey)
+    incrementMetricCounter('history.cache.event.total', 1, {
+      event: 'miss',
+      market,
+      range,
+    })
     return null
   }
 
-  return {
-    ...cached.response,
-    servedAt: new Date().toISOString(),
-    cacheStatus: 'memory-cache',
+  if (Date.now() >= cached.freshUntil) {
+    incrementMetricCounter('history.cache.event.total', 1, {
+      event: 'stale-window-miss',
+      market,
+      range,
+    })
+    return null
   }
+
+  incrementMetricCounter('history.cache.event.total', 1, {
+    event: 'hit',
+    market,
+    range,
+  })
+
+  return buildCachedHistoryResponse(cached, 'memory-cache', false)
+}
+
+export function getStaleHistoryResponse(
+  symbol: string,
+  market: StockHistoryMarket,
+  range: StockHistoryRange
+): StockHistorySuccessResponse | null {
+  pruneHistoryCache()
+
+  const cacheKey = getCacheKey(symbol, market, range)
+  const cached = historyCache.get(cacheKey)
+
+  if (!cached || Date.now() >= cached.staleUntil) {
+    historyCache.delete(cacheKey)
+    incrementMetricCounter('history.cache.event.total', 1, {
+      event: 'stale-miss',
+      market,
+      range,
+    })
+    return null
+  }
+
+  incrementMetricCounter('history.cache.event.total', 1, {
+    event: 'stale-hit',
+    market,
+    range,
+  })
+
+  return buildCachedHistoryResponse(cached, 'memory-cache', true)
 }
 
 export function setCachedHistoryResponse(
@@ -83,11 +148,25 @@ export function setCachedHistoryResponse(
 
   historyCache.set(getCacheKey(symbol, market, range), {
     response,
-    expiresAt: Date.now() + HISTORY_CACHE_TTL_MS,
+    fetchedAt: response.fetchedAt,
+    freshUntil: Date.now() + HISTORY_CACHE_TTL_MS,
+    staleUntil: Date.now() + HISTORY_CACHE_STALE_TTL_MS,
   })
   pruneHistoryCache()
+  incrementMetricCounter('history.cache.event.total', 1, {
+    event: 'write',
+    market,
+    range,
+    source: response.meta.source,
+  })
 }
 
+export function getOrCreateInFlightHistoryRequest(
+  symbol: string,
+  market: StockHistoryMarket,
+  range: StockHistoryRange,
+  factory: () => Promise<StockHistorySuccessResponse>
+): Promise<StockHistorySuccessResponse>
 export function getOrCreateInFlightHistoryRequest(
   symbol: string,
   market: StockHistoryMarket,
@@ -98,6 +177,11 @@ export function getOrCreateInFlightHistoryRequest(
   const inFlight = inFlightHistoryRequests.get(cacheKey)
 
   if (inFlight) {
+    incrementMetricCounter('history.cache.event.total', 1, {
+      event: 'inflight-hit',
+      market,
+      range,
+    })
     return inFlight
   }
 
@@ -114,4 +198,26 @@ export function getOrCreateInFlightHistoryRequest(
 export function getHistoryCacheSizeForTests() {
   pruneHistoryCache()
   return historyCache.size
+}
+
+export function getHistoryCacheStats() {
+  pruneHistoryCache()
+
+  return {
+    entries: historyCache.size,
+    freshTtlMs: HISTORY_CACHE_TTL_MS,
+    inFlight: inFlightHistoryRequests.size,
+    maxKeys: HISTORY_CACHE_MAX_KEYS,
+    staleTtlMs: HISTORY_CACHE_STALE_TTL_MS,
+  }
+}
+
+export function clearHistoryCacheForTests() {
+  historyCache.clear()
+  inFlightHistoryRequests.clear()
+}
+
+export const historyCacheTestExports = {
+  HISTORY_CACHE_TTL_MS,
+  HISTORY_CACHE_STALE_TTL_MS,
 }

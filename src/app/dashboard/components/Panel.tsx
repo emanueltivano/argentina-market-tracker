@@ -30,6 +30,7 @@ import { type StockData } from '../lib/stockData';
 import { resolvePanelRows } from '../lib/panelState';
 import { type MarketPanelSuccessResponse } from '../hooks/marketPanelClient';
 import { normalizeTicker } from '../lib/ticker';
+import { type Theme } from '@/lib/theme';
 
 const StockDetailsModal = dynamic(() => import('./StockDetailsModal'), {
   ssr: false,
@@ -41,6 +42,8 @@ type PanelProps = {
   initialData?: MarketPanelSuccessResponse;
   initialErrorMessage?: string;
   initialPanelKey?: MarketDataPanelKey;
+  initialTheme?: Theme;
+  isDemoMode?: boolean;
 };
 
 export default function Panel({
@@ -48,15 +51,15 @@ export default function Panel({
   initialData,
   initialErrorMessage,
   initialPanelKey,
+  initialTheme,
+  isDemoMode = false,
 }: PanelProps) {
   const { sort, handleSortChange } = useStockSortState();
   const {
-    addFavoriteSnapshot,
     favorites,
     favoriteSnapshotsByTicker,
     isFavorite,
-    removeFavoriteSnapshot,
-    toggleFavorite,
+    toggleFavoriteStock,
   } = useFavoriteStocks();
   const {
     activePanelKey,
@@ -113,29 +116,24 @@ export default function Panel({
     isFavoritesPanel &&
     sortedRows.some((row) => staleFavoriteTickers.has(normalizeTicker(row.ticker)));
 
-  const createToggleFavoriteHandler = useCallback(
-    (stock: StockData) => (ticker: string) => {
-      const normalizedTicker = normalizeTicker(ticker);
-
-      if (!isFavorite(ticker) && normalizedTicker) {
-        addFavoriteSnapshot(stock);
-      } else {
-        removeFavoriteSnapshot(ticker);
-      }
-
-      toggleFavorite(ticker);
+  const handleToggleFavorite = useCallback(
+    (stock: StockData) => {
+      toggleFavoriteStock(stock);
     },
-    [addFavoriteSnapshot, isFavorite, removeFavoriteSnapshot, toggleFavorite],
+    [toggleFavoriteStock],
   );
+  const handlePanelContentChange = useCallback((key: MarketPanelKey) => {
+    clearSelectedStock();
+    handlePanelChange(key);
+  }, [clearSelectedStock, handlePanelChange]);
 
   return (
     <PanelContent
       title={activePanel.title}
       activePanelKey={activePanelKey}
-      onChange={(key: MarketPanelKey) => {
-        clearSelectedStock();
-        handlePanelChange(key);
-      }}
+      initialTheme={initialTheme}
+      isDemoMode={isDemoMode}
+      onChange={handlePanelContentChange}
       actions={
         effectiveViewStatus === 'loading' ? (
           <PanelFreshnessSkeleton />
@@ -208,7 +206,7 @@ export default function Panel({
                   isFavorite={isFavorite(row.ticker)}
                   isStale={staleFavoriteTickers.has(normalizeTicker(row.ticker))}
                   onSelect={handleStockSelect}
-                  onToggleFavorite={createToggleFavoriteHandler(row)}
+                  onToggleFavorite={handleToggleFavorite}
                 />
               ))
             )}
@@ -219,7 +217,7 @@ export default function Panel({
               stock={selectedStock}
               panelKey={activePanelKey}
               isFavorite={isFavorite(selectedStock.ticker)}
-              onToggleFavorite={createToggleFavoriteHandler(selectedStock)}
+              onToggleFavorite={handleToggleFavorite}
               onClose={handleCloseStockDetails}
             />
           )}

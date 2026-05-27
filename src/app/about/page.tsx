@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ENV } from '@/lib/server/env';
 
 export const metadata: Metadata = {
   title: 'About',
@@ -33,6 +34,8 @@ const tradeoffs = [
 ];
 
 export default function AboutPage() {
+  const isDemoMode = ENV.MARKET_DATA_SOURCE === 'demo';
+
   return (
     <main className="about-page">
       <div className="about-shell">
@@ -47,6 +50,12 @@ export default function AboutPage() {
             frontend work: data contracts, secure server boundaries, resilient
             UI states and a testable architecture.
           </p>
+          {isDemoMode && (
+            <p className="about-mode-note">
+              Public demo mode is active. The dashboard is rendering deterministic
+              fixture data, not live market quotes.
+            </p>
+          )}
         </header>
 
         <section className="about-section" aria-labelledby="why-heading">
@@ -55,8 +64,8 @@ export default function AboutPage() {
             Financial dashboards are useful portfolio projects because they
             expose real product problems: protected APIs, changing external
             payloads, stale data, loading states, mobile density, formatting and
-            trust. This project keeps those concerns visible instead of hiding
-            them behind static mock data.
+            trust. This project keeps those concerns visible while still
+            supporting a deterministic demo mode for public review.
           </p>
         </section>
 
@@ -77,7 +86,10 @@ export default function AboutPage() {
           <ol className="about-steps">
             <li>React requests market panels through SWR.</li>
             <li>Next API routes validate the requested panel or symbol.</li>
-            <li>The server-only IOL client obtains and refreshes OAuth tokens.</li>
+            <li>
+              The server-side data layer resolves either deterministic demo
+              fixtures or the live IOL-backed upstream.
+            </li>
             <li>Responses are normalized into stable TypeScript contracts.</li>
             <li>The dashboard renders loading, empty, error, stale and success states.</li>
           </ol>

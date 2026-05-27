@@ -26,3 +26,6 @@ jobs:
 
       - name: Validate
         run: npm run validate
+        env:
+          MARKET_DATA_SOURCE: demo
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100

@@ -7,7 +7,10 @@ import {
   type PanelSuccessResponse,
   type PanelTitulo,
 } from '@/lib/panel'
+import { getDemoPanelData } from '@/lib/server/demoMarketData'
+import { ENV } from '@/lib/server/env'
 import { iolFetch } from '@/lib/server/iol'
+import { incrementMetricCounter, logServerWarn } from '@/lib/server/observability'
 import { getPanelEndpoint } from '@/lib/server/panelEndpoint'
 
 const PANEL_CACHE_TTL_MS = 30_000
@@ -56,6 +59,10 @@ function getFixturePanelResponse(
   const typedFixture = parsedFixture as Partial<Record<MarketDataPanelKey, unknown>>
   const data = normalizePanelData(typedFixture[type] ?? [])
   const fetchedAt = new Date().toISOString()
+  incrementMetricCounter('panel.cache.event.total', 1, {
+    event: 'fixture-hit',
+    panelType: type,
+  })
 
   return createPanelResponse(data, fetchedAt, 'fresh')
 }
@@ -81,8 +88,17 @@ function getCachedPanelResponse(
 
   if (!cached || Date.now() >= cached.expiresAt) {
     panelCache.delete(type)
+    incrementMetricCounter('panel.cache.event.total', 1, {
+      event: 'miss',
+      panelType: type,
+    })
     return null
   }
+
+  incrementMetricCounter('panel.cache.event.total', 1, {
+    event: 'hit',
+    panelType: type,
+  })
 
   return createPanelResponse(cached.data, cached.fetchedAt, 'memory-cache')
 }
@@ -96,17 +112,25 @@ function setCachedPanelResponse(
     fetchedAt: response.fetchedAt,
     expiresAt: Date.now() + PANEL_CACHE_TTL_MS,
   })
+  incrementMetricCounter('panel.cache.event.total', 1, {
+    event: 'write',
+    panelType: type,
+    source: ENV.MARKET_DATA_SOURCE,
+  })
 }
 
 async function fetchPanelResponse(
   type: MarketDataPanelKey
 ): Promise<PanelSuccessResponse> {
-  const data = await iolFetch(getPanelEndpoint(type))
   const fetchedAt = new Date().toISOString()
+  const data =
+    ENV.MARKET_DATA_SOURCE === 'demo'
+      ? getDemoPanelData(type)
+      : await iolFetch(getPanelEndpoint(type))
   const normalized = normalizePanelDataResult(data)
 
   if (normalized.droppedItemsCount > 0) {
-    console.warn('[panel.normalize.partial]', {
+    logServerWarn('panel.normalize.partial', {
       panelType: type,
       droppedItemsCount: normalized.droppedItemsCount,
       droppedItemsSummary: normalized.droppedItemsSummary.map(
@@ -155,6 +179,10 @@ export function getOrCreatePanelResponse(
   }
 
   if (bypassCache) {
+    incrementMetricCounter('panel.cache.event.total', 1, {
+      event: 'refresh-bypass',
+      panelType: type,
+    })
     return getOrCreateRefreshPanelResponse(type)
   }
 
@@ -167,12 +195,20 @@ export function getOrCreatePanelResponse(
   const inFlight = inFlightPanelRequests.get(type)
 
   if (inFlight) {
+    incrementMetricCounter('panel.cache.event.total', 1, {
+      event: 'inflight-hit',
+      panelType: type,
+    })
     return inFlight
   }
 
   const inFlightRefresh = inFlightPanelRefreshRequests.get(type)
 
   if (inFlightRefresh) {
+    incrementMetricCounter('panel.cache.event.total', 1, {
+      event: 'refresh-inflight-hit',
+      panelType: type,
+    })
     return inFlightRefresh
   }
 
@@ -194,4 +230,13 @@ export function clearPanelResponseCacheForTests() {
   panelCache.clear()
   inFlightPanelRequests.clear()
   inFlightPanelRefreshRequests.clear()
+}
+
+export function getPanelCacheStats() {
+  return {
+    entries: panelCache.size,
+    inFlight: inFlightPanelRequests.size,
+    inFlightRefresh: inFlightPanelRefreshRequests.size,
+    ttlMs: PANEL_CACHE_TTL_MS,
+  }
 }

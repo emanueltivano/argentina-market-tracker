@@ -43,6 +43,7 @@ export function useStockHistory(
 
   return {
     points,
+    meta: data?.meta,
     error,
     isLoading: viewStatus === 'loading',
     isRefreshing: isValidating && hasData && !error,

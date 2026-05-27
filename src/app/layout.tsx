@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { cookies } from 'next/headers'
+import { THEME_COOKIE_NAME, isTheme } from '@/lib/theme'
 import './globals.css'
 
 function getPublicSiteUrl() {
@@ -78,26 +80,19 @@ type RootLayoutProps = {
   children: ReactNode
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const cookieStore = await cookies()
+  const storedTheme = cookieStore.get(THEME_COOKIE_NAME)?.value
+  const themeClassName = isTheme(storedTheme) ? storedTheme : undefined
+  const colorScheme = storedTheme === 'dark' ? 'dark' : 'light'
+
   return (
-    <html lang="es" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-try {
-  var storedTheme = window.localStorage.getItem('argentina-market-tracker:theme');
-  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  var theme = storedTheme === 'light' || storedTheme === 'dark'
-    ? storedTheme
-    : prefersDark ? 'dark' : 'light';
-  document.documentElement.classList.toggle('dark', theme === 'dark');
-  document.documentElement.style.colorScheme = theme;
-} catch {}
-            `.trim(),
-          }}
-        />
-      </head>
+    <html
+      lang="es"
+      className={themeClassName}
+      style={{ colorScheme }}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   )

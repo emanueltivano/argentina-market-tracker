@@ -1,20 +1,29 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { canUseLocalDebug } from '@/lib/server/debug'
 import { getCachedToken } from '@/lib/server/tokenCache'
-import { logServerError } from '@/lib/server/observability'
+import {
+  getRequestId,
+  getSafeErrorDetails,
+  logServerError,
+  withRequestIdHeaders,
+} from '@/lib/server/observability'
 import {
   IolTokenFormatError,
   IolTokenUpstreamError,
   refreshTokenForDebug,
 } from '@/lib/server/iol'
 
-function notFound() {
+function notFound(requestId: string) {
   return NextResponse.json(
     {
       ok: false,
       error: 'NOT_FOUND',
+      requestId,
     },
-    { status: 404 }
+    {
+      status: 404,
+      headers: withRequestIdHeaders(undefined, requestId),
+    }
   )
 }
 
@@ -29,14 +38,16 @@ function isSafeTokenType(value: unknown): value is string {
 
 // Debug local only: never expose full OAuth tokens from this route.
 export async function GET(req: NextRequest) {
+  const requestId = getRequestId(req)
+
   if (!canUseLocalDebug(req)) {
-    return notFound()
+    return notFound(requestId)
   }
 
   const cached = getCachedToken()
 
   if (!cached) {
-    return POST(req)
+    return POST(req, requestId)
   }
 
   return NextResponse.json({
@@ -45,12 +56,15 @@ export async function GET(req: NextRequest) {
     expires_in: null,
     status: 'cached',
     message: 'Token is cached',
+  }, {
+    headers: withRequestIdHeaders(undefined, requestId),
   })
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest, requestId = getRequestId(req)) {
+
   if (!canUseLocalDebug(req)) {
-    return notFound()
+    return notFound(requestId)
   }
 
   try {
@@ -63,10 +77,13 @@ export async function POST(req: NextRequest) {
       cached: false,
       status: 'refreshed',
       message: 'Token fetched and cached',
+    }, {
+      headers: withRequestIdHeaders(undefined, requestId),
     })
   } catch (err: unknown) {
     if (err instanceof IolTokenUpstreamError) {
       logServerError('api.token.POST', err, {
+        requestId,
         route: '/api/token',
         errorCode: 'TOKEN_UPSTREAM',
         status: err.status,
@@ -77,13 +94,18 @@ export async function POST(req: NextRequest) {
           ok: false,
           error: 'TOKEN_UPSTREAM',
           status: err.status,
+          requestId,
         },
-        { status: 502 }
+        {
+          status: 502,
+          headers: withRequestIdHeaders(undefined, requestId),
+        }
       )
     }
 
     if (err instanceof IolTokenFormatError) {
       logServerError('api.token.POST', err, {
+        requestId,
         route: '/api/token',
         errorCode: 'TOKEN_FORMAT',
       })
@@ -92,15 +114,18 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: 'TOKEN_FORMAT',
-          details: err.message,
+          details: getSafeErrorDetails(err),
+          requestId,
         },
-        { status: 502 }
+        {
+          status: 502,
+          headers: withRequestIdHeaders(undefined, requestId),
+        }
       )
     }
 
-    const message = err instanceof Error ? err.message : String(err ?? 'unknown')
-
     logServerError('api.token.POST', err, {
+      requestId,
       route: '/api/token',
       errorCode: 'TOKEN_ERROR',
     })
@@ -109,9 +134,13 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: 'TOKEN_ERROR',
-        details: message,
+        details: getSafeErrorDetails(err),
+        requestId,
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: withRequestIdHeaders(undefined, requestId),
+      }
     )
   }
 }

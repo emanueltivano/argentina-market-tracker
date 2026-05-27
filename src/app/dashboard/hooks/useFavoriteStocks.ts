@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type StockData } from '../lib/stockData';
 import { normalizeTicker } from '../lib/ticker';
 
@@ -143,6 +143,8 @@ export function useFavoriteStocks() {
     Record<string, StockData>
   >({});
   const [didLoad, setDidLoad] = useState(false);
+  const favoritesRef = useRef<string[]>([]);
+  const favoriteSnapshotsRef = useRef<Record<string, StockData>>({});
 
   useEffect(() => {
     // localStorage is only available after client mount.
@@ -164,6 +166,14 @@ export function useFavoriteStocks() {
       JSON.stringify(favoriteSnapshotsByTicker),
     );
   }, [didLoad, favoriteSnapshotsByTicker, favorites]);
+
+  useEffect(() => {
+    favoritesRef.current = favorites;
+  }, [favorites]);
+
+  useEffect(() => {
+    favoriteSnapshotsRef.current = favoriteSnapshotsByTicker;
+  }, [favoriteSnapshotsByTicker]);
 
   const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
@@ -217,6 +227,43 @@ export function useFavoriteStocks() {
     });
   }, []);
 
+  const toggleFavoriteStock = useCallback((stock: StockData) => {
+    const snapshot = normalizeFavoriteSnapshot(stock);
+
+    if (!snapshot) return;
+
+    const currentFavorites = favoritesRef.current;
+    const nextFavorites = new Set(currentFavorites);
+    const isCurrentlyFavorite = nextFavorites.has(snapshot.ticker);
+
+    if (isCurrentlyFavorite) {
+      nextFavorites.delete(snapshot.ticker);
+    } else {
+      nextFavorites.add(snapshot.ticker);
+    }
+
+    const nextFavoritesList = [...nextFavorites].sort((a, b) => a.localeCompare(b));
+    const currentSnapshots = favoriteSnapshotsRef.current;
+    let nextSnapshots = currentSnapshots;
+
+    if (isCurrentlyFavorite) {
+      if (snapshot.ticker in currentSnapshots) {
+        nextSnapshots = { ...currentSnapshots };
+        delete nextSnapshots[snapshot.ticker];
+      }
+    } else {
+      nextSnapshots = {
+        ...currentSnapshots,
+        [snapshot.ticker]: snapshot,
+      };
+    }
+
+    favoritesRef.current = nextFavoritesList;
+    favoriteSnapshotsRef.current = nextSnapshots;
+    setFavorites(nextFavoritesList);
+    setFavoriteSnapshotsByTicker(nextSnapshots);
+  }, []);
+
   return {
     favorites,
     favoriteSet,
@@ -225,5 +272,6 @@ export function useFavoriteStocks() {
     isFavorite,
     removeFavoriteSnapshot,
     toggleFavorite,
+    toggleFavoriteStock,
   };
 }
