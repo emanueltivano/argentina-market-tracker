@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24.15.0'
           cache: npm
 
       - name: Install dependencies
@@ -23,6 +23,28 @@ jobs:
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
+
+      - name: Diagnose CI environment
+        shell: bash
+        env:
+          MARKET_DATA_SOURCE: demo
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
+        run: |
+          set -euo pipefail
+          echo 'node -v'
+          node -v
+          echo 'npm -v'
+          npm -v
+          echo 'pwd'
+          pwd
+          echo 'ls -la'
+          ls -la
+          echo 'sanitized env'
+          printenv \
+            | grep -Ev '(^|_)(TOKEN|PASSWORD|SECRET|KEY|AUTH|COOKIE|CREDENTIAL|PASS)=' \
+            | sort
+          echo 'vitest verbose preflight'
+          npm run test -- --reporter=verbose
 
       - name: Validate
         run: npm run validate

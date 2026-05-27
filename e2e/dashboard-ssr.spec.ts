@@ -14,22 +14,27 @@ test.describe('dashboard SSR boot', () => {
       javaScriptEnabled: false,
     })
     const page = await context.newPage()
-    const response = await page.goto(`${baseURL}/`)
 
-    expect(response).not.toBeNull()
-    expect(response?.ok()).toBe(true)
+    try {
+      const response = await page.goto(`${baseURL}/`, {
+        waitUntil: 'domcontentloaded',
+      })
 
-    await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
-    await expect(page.getByText(/Última actualización:/)).toBeVisible()
-    await expect(page.getByText('GGAL')).toBeVisible()
+      expect(response).not.toBeNull()
+      expect(response?.ok()).toBe(true)
 
-    const initialHtml = await response?.text()
+      await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
+      await expect(page.getByText(/Última actualización:/)).toBeVisible()
+      await expect(page.getByText('GGAL')).toBeVisible()
 
-    expect(initialHtml).toContain('Panel Líder')
-    expect(initialHtml).toContain('GGAL')
-    expect(initialHtml).toContain('data-symbol="GGAL"')
-    expect(initialHtml).not.toContain('Cargando datos...')
+      const initialHtml = await page.content()
 
-    await context.close()
+      expect(initialHtml).toContain('Panel Líder')
+      expect(initialHtml).toContain('GGAL')
+      expect(initialHtml).toContain('data-symbol="GGAL"')
+      expect(initialHtml).not.toContain('Cargando datos...')
+    } finally {
+      await context.close()
+    }
   })
 })

@@ -2,6 +2,16 @@ import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const OLD_ENV = { ...process.env }
+const LIVE_ENV_DEFAULTS = {
+  MARKET_DATA_SOURCE: 'live',
+  API_URL: 'https://api.example.test',
+  TOKEN_ENDPOINT: 'token',
+  API_USERNAME: 'user',
+  API_PASSWORD: 'password',
+  PANEL_LIDER_ENDPOINT: 'lider-endpoint',
+  PANEL_GENERAL_ENDPOINT: 'general-endpoint',
+  PANEL_CEDEARS_ENDPOINT: 'cedears-endpoint',
+} satisfies Record<string, string>
 
 function setRequiredEnv(
   nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
@@ -9,13 +19,7 @@ function setRequiredEnv(
 ) {
   process.env = {
     ...OLD_ENV,
-    API_URL: 'https://api.example.test',
-    TOKEN_ENDPOINT: 'token',
-    API_USERNAME: 'user',
-    API_PASSWORD: 'password',
-    PANEL_LIDER_ENDPOINT: 'lider-endpoint',
-    PANEL_GENERAL_ENDPOINT: 'general-endpoint',
-    PANEL_CEDEARS_ENDPOINT: 'cedears-endpoint',
+    ...LIVE_ENV_DEFAULTS,
     ...overrides,
     NODE_ENV: nodeEnv,
   }
@@ -54,23 +58,60 @@ function expectRequestIdHeader(response: Response, expected?: string) {
   expect(requestId).toMatch(/^[A-Za-z0-9._:-]{8,128}$/)
 }
 
-async function loadRoute(
+async function loadLiveRoute(
   iolFetch: ReturnType<typeof vi.fn>,
   nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
   envOverrides: Record<string, string | undefined> = {}
 ) {
   vi.resetModules()
-  setRequiredEnv(nodeEnv, envOverrides)
+  setRequiredEnv(nodeEnv, {
+    MARKET_DATA_SOURCE: 'live',
+    ...envOverrides,
+  })
   vi.doMock('server-only', () => ({}))
   vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
 
   return import('./route')
+}
+
+async function loadDemoRoute(
+  nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
+  envOverrides: Record<string, string | undefined> = {}
+) {
+  vi.resetModules()
+  process.env = {
+    ...OLD_ENV,
+    NODE_ENV: nodeEnv,
+    MARKET_DATA_SOURCE: 'demo',
+    ...envOverrides,
+  }
+  const iolFetch = vi.fn(() => {
+    throw new Error('live upstream should not be used in demo mode')
+  })
+  vi.doMock('server-only', () => ({}))
+  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+
+  const route = await import('./route')
+
+  return {
+    ...route,
+    iolFetch,
+  }
 }
 
 async function loadRouteWithoutRequiredEnv(iolFetch: ReturnType<typeof vi.fn>) {
   vi.resetModules()
   process.env = {
+    ...OLD_ENV,
     NODE_ENV: 'test',
+    MARKET_DATA_SOURCE: 'live',
+    API_URL: undefined,
+    TOKEN_ENDPOINT: undefined,
+    API_USERNAME: undefined,
+    API_PASSWORD: undefined,
+    PANEL_LIDER_ENDPOINT: undefined,
+    PANEL_GENERAL_ENDPOINT: undefined,
+    PANEL_CEDEARS_ENDPOINT: undefined,
   }
   vi.doMock('server-only', () => ({}))
   vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
@@ -78,37 +119,44 @@ async function loadRouteWithoutRequiredEnv(iolFetch: ReturnType<typeof vi.fn>) {
   return import('./route')
 }
 
-async function loadDemoRouteWithoutLiveEnv() {
-  vi.resetModules()
-  process.env = {
-    NODE_ENV: 'test',
-    MARKET_DATA_SOURCE: 'demo',
-  }
-  vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({
-    iolFetch: vi.fn(() => {
-      throw new Error('live upstream should not be used in demo mode')
-    }),
-  }))
+async function clearPanelTestState() {
+  try {
+    const [
+      { clearPanelResponseCacheForTests },
+      { clearPanelLimitsForTests },
+      { clearObservabilityStateForTests },
+    ] = await Promise.all([
+      import('@/lib/server/panelCache'),
+      import('@/lib/server/panelLimits'),
+      import('@/lib/server/observability'),
+    ])
 
-  return import('./route')
+    clearPanelResponseCacheForTests()
+    clearPanelLimitsForTests()
+    clearObservabilityStateForTests()
+  } catch {
+    // Ignore cleanup before the first import of the server modules.
+  }
 }
 
 describe('/api/panel route', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await clearPanelTestState()
+    vi.clearAllMocks()
     setRequiredEnv()
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await clearPanelTestState()
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.resetModules()
-    process.env = OLD_ENV
+    process.env = { ...OLD_ENV }
   })
 
   it('returns 400 when the panel type is invalid', async () => {
     const iolFetch = vi.fn()
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=invalid'))
     const body = await response.json()
@@ -127,7 +175,7 @@ describe('/api/panel route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel'))
     const body = await response.json()
@@ -137,6 +185,7 @@ describe('/api/panel route', () => {
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
     expect(iolFetch).toHaveBeenCalledWith('lider-endpoint')
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('normalizes valid upstream responses', async () => {
@@ -149,7 +198,7 @@ describe('/api/panel route', () => {
         },
       ],
     })
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=general'))
     const body = await response.json()
@@ -158,13 +207,14 @@ describe('/api/panel route', () => {
       { simbolo: 'YPFD', descripcion: 'YPF', ultimoPrecio: 100 },
     ])
     expect(iolFetch).toHaveBeenCalledWith('general-endpoint')
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('uses the cedears endpoint for type=cedears', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'AAPL', descripcion: 'Apple' },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=cedears'))
     const body = await response.json()
@@ -172,11 +222,12 @@ describe('/api/panel route', () => {
     expect(response.status).toBe(200)
     expectPanelSuccess(body, [{ simbolo: 'AAPL', descripcion: 'Apple' }])
     expect(iolFetch).toHaveBeenCalledWith('cedears-endpoint')
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('returns 400 for the UI-only favorites panel type', async () => {
     const iolFetch = vi.fn()
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=favorites'))
     const body = await response.json()
@@ -190,21 +241,21 @@ describe('/api/panel route', () => {
     expect(iolFetch).not.toHaveBeenCalled()
   })
 
-
   it('returns an empty data array for an empty upstream payload', async () => {
     const iolFetch = vi.fn().mockResolvedValue({ data: [] })
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=lider'))
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expectPanelSuccess(body, [])
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('returns PANEL_ERROR with status 502 for invalid upstream payloads', async () => {
     const iolFetch = vi.fn().mockResolvedValue({ items: [] })
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=lider'))
     const body = await response.json()
@@ -216,6 +267,7 @@ describe('/api/panel route', () => {
       details: 'Invalid upstream payload structure',
     })
     expect(body.requestId).toEqual(expect.any(String))
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('returns partial valid panel data when the upstream payload is partially invalid', async () => {
@@ -224,7 +276,7 @@ describe('/api/panel route', () => {
       { simbolo: '', descripcion: 'Missing ticker' },
     ])
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=lider'))
     const body = await response.json()
@@ -233,6 +285,7 @@ describe('/api/panel route', () => {
     expectPanelSuccess(body, [
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
+    expect(iolFetch).toHaveBeenCalledTimes(1)
     expect(consoleWarn).toHaveBeenCalledWith(
       '[panel.normalize.partial]',
       expect.objectContaining({
@@ -248,7 +301,7 @@ describe('/api/panel route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'ALUA', descripcion: 'Aluar' },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/panel?type=cedears'))
     const response = await GET(request('/api/panel?type=cedears'))
@@ -267,7 +320,7 @@ describe('/api/panel route', () => {
       .fn()
       .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
       .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/panel?type=lider'))
     const response = await GET(request('/api/panel?type=lider&refresh=1'))
@@ -284,7 +337,7 @@ describe('/api/panel route', () => {
       .fn()
       .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
       .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(
       request('/api/panel?type=lider', {
@@ -314,7 +367,7 @@ describe('/api/panel route', () => {
       .fn()
       .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
       .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/panel?type=lider'))
     await GET(request('/api/panel?type=lider&refresh=1'))
@@ -340,7 +393,7 @@ describe('/api/panel route', () => {
       .fn()
       .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
       .mockRejectedValueOnce(new Error('upstream failed'))
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/panel?type=lider'))
 
@@ -370,7 +423,7 @@ describe('/api/panel route', () => {
       .fn()
       .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
       .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/panel?type=lider'))
     await GET(request('/api/panel?type=lider&refresh=1'))
@@ -396,7 +449,7 @@ describe('/api/panel route', () => {
       .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
       .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
       .mockResolvedValueOnce([{ simbolo: 'PAMP', descripcion: 'Pampa Energia' }])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     await GET(request('/api/panel?type=lider'))
     await GET(request('/api/panel?type=lider&refresh=1'))
@@ -421,7 +474,7 @@ describe('/api/panel route', () => {
           resolvePanel = resolve
         })
     )
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const first = GET(request('/api/panel?type=lider'))
     const second = GET(request('/api/panel?type=lider'))
@@ -450,7 +503,7 @@ describe('/api/panel route', () => {
           resolvePanel = resolve
         })
     )
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const first = GET(request('/api/panel?type=lider&refresh=1'))
     const second = GET(request('/api/panel?type=lider&refresh=1'))
@@ -478,7 +531,7 @@ describe('/api/panel route', () => {
       .fn()
       .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
       .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const [refreshResponse, normalResponse] = await Promise.all([
       GET(request('/api/panel?type=lider&refresh=1')),
@@ -512,7 +565,7 @@ describe('/api/panel route', () => {
           })
       )
       .mockResolvedValue([{ simbolo: 'PAMP', descripcion: 'Pampa Energia' }])
-    const { GET, clearPanelCacheForTests } = await loadRoute(iolFetch)
+    const { GET, clearPanelCacheForTests } = await loadLiveRoute(iolFetch)
 
     const first = GET(request('/api/panel?type=lider'))
     await vi.waitFor(() => {
@@ -559,7 +612,7 @@ describe('/api/panel route', () => {
   it('returns PANEL_ERROR with status 502 for upstream errors', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('upstream failed'))
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const { GET } = await loadRoute(iolFetch, 'test', {
+    const { GET } = await loadLiveRoute(iolFetch, 'test', {
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
       VERCEL: '1',
     })
@@ -574,6 +627,7 @@ describe('/api/panel route', () => {
       details: 'upstream failed',
     })
     expect(body.requestId).toEqual(expect.any(String))
+    expect(iolFetch).toHaveBeenCalledTimes(1)
     expect(consoleError).toHaveBeenCalledWith(
       '[api.panel.GET]',
       expect.objectContaining({
@@ -594,12 +648,13 @@ describe('/api/panel route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=lider'))
 
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expectRequestIdHeader(response)
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('does not expose raw upstream payloads from non-local debug requests', async () => {
@@ -610,7 +665,7 @@ describe('/api/panel route', () => {
         rawOnly: 'hidden',
       },
     ])
-    const { GET } = await loadRoute(iolFetch, 'development')
+    const { GET } = await loadLiveRoute(iolFetch, 'development')
     process.env.ENABLE_TOKEN_DEBUG = '1'
 
     const response = await GET(remoteRequest('/api/panel?type=lider&raw=1'))
@@ -619,11 +674,12 @@ describe('/api/panel route', () => {
     expectPanelSuccess(body, [
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('allows raw upstream payloads only for local debug requests', async () => {
     const iolFetch = vi.fn().mockResolvedValue({ upstream: true })
-    const { GET } = await loadRoute(iolFetch, 'development')
+    const { GET } = await loadLiveRoute(iolFetch, 'development')
     process.env.ENABLE_TOKEN_DEBUG = '1'
 
     const response = await GET(request('/api/panel?type=lider&raw=1'))
@@ -634,13 +690,14 @@ describe('/api/panel route', () => {
       type: 'lider',
       data: { upstream: true },
     })
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('rate limits repeated requests from the same client', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
-    const { GET } = await loadRoute(iolFetch, 'test', {
+    const { GET } = await loadLiveRoute(iolFetch, 'test', {
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
       VERCEL: '1',
     })
@@ -677,7 +734,7 @@ describe('/api/panel route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
-    const { GET } = await loadRoute(iolFetch, 'test', {
+    const { GET } = await loadLiveRoute(iolFetch, 'test', {
       RATE_LIMIT_TRUSTED_PROXY: 'vercel',
       VERCEL: '1',
     })
@@ -732,7 +789,7 @@ describe('/api/panel route', () => {
   })
 
   it('serves deterministic demo panel data without live credentials', async () => {
-    const { GET } = await loadDemoRouteWithoutLiveEnv()
+    const { GET, iolFetch } = await loadDemoRoute()
 
     const response = await GET(request('/api/panel?type=lider'))
     const body = await response.json()
@@ -750,11 +807,12 @@ describe('/api/panel route', () => {
     })
     expect(response.headers.get('X-RateLimit-Limit')).toBe('120')
     expect(response.headers.get('X-Request-Id')).toMatch(/^[A-Za-z0-9._:-]{8,128}$/)
+    expect(iolFetch).not.toHaveBeenCalled()
   })
 
   it('does not expose error details in production', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('secret upstream detail'))
-    const { GET } = await loadRoute(iolFetch, 'production')
+    const { GET } = await loadLiveRoute(iolFetch, 'production')
 
     const response = await GET(request('/api/panel?type=lider'))
     const body = await response.json()
@@ -765,11 +823,12 @@ describe('/api/panel route', () => {
       error: 'PANEL_ERROR',
     })
     expect(body.requestId).toEqual(expect.any(String))
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('exposes error details outside production', async () => {
     const iolFetch = vi.fn().mockRejectedValue(new Error('development detail'))
-    const { GET } = await loadRoute(iolFetch, 'development')
+    const { GET } = await loadLiveRoute(iolFetch, 'development')
 
     const response = await GET(request('/api/panel?type=lider'))
     const body = await response.json()
@@ -781,11 +840,12 @@ describe('/api/panel route', () => {
       details: 'development detail',
     })
     expect(body.requestId).toEqual(expect.any(String))
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('returns 405 and Allow GET for POST requests', async () => {
     const iolFetch = vi.fn()
-    const { POST } = await loadRoute(iolFetch)
+    const { POST } = await loadLiveRoute(iolFetch)
 
     const response = POST(request('/api/panel'))
     const body = await response.json()
@@ -805,7 +865,7 @@ describe('/api/panel route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     let response = await GET(
       request('/api/panel?type=lider', {
@@ -832,7 +892,7 @@ describe('/api/panel route', () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const response = await GET(request('/api/panel?type=lider'))
 
@@ -841,13 +901,14 @@ describe('/api/panel route', () => {
     expect(response.headers.get('X-RateLimit-Remaining')).toBe('119')
     expect(response.headers.get('X-RateLimit-Reset')).toMatch(/^\d+$/)
     expectRequestIdHeader(response)
+    expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
   it('propagates a valid x-request-id and discards an invalid one', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
     ])
-    const { GET } = await loadRoute(iolFetch)
+    const { GET } = await loadLiveRoute(iolFetch)
 
     const propagated = await GET(
       request('/api/panel?type=lider', {
