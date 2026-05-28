@@ -5,20 +5,20 @@
 `argentina-market-tracker` es un dashboard demo/portfolio sobre mercado argentino.
 Tratarlo como proyecto de muestra técnica: no como plataforma real de trading, broker ni asesor financiero.
 
-El repo muestra una arquitectura Next.js con BFF interno, validación de contratos, SSR inicial, revalidación cliente y tests automatizados.
+El repo muestra una arquitectura Next.js con BFF interno, validación de contratos, SSR inicial, revalidación cliente, modo `demo/live`, observabilidad liviana y tests automatizados.
 
 ## Stack real
 
-- Next.js 16.2.4 con App Router
-- React 19.2.5
-- TypeScript 6 en `strict`
-- Tailwind CSS 4
-- SWR 2 para revalidación cliente
+- Next.js `16.2.6` con App Router
+- React `19.2.6`
+- TypeScript `6.0.3` en `strict`
+- Tailwind CSS `4`
+- SWR `2.4.1`
 - `lightweight-charts` para histórico
 - Vitest + Testing Library para unit/component/hook/route tests
 - Playwright para E2E
 - GitHub Actions en `.github/workflows/ci.yml`
-- Node `>=20`
+- Node `>=24.15.0 <25`
 
 ## Comandos reales
 
@@ -49,7 +49,10 @@ E2E:
 ```bash
 npm run test:e2e
 npm run test:e2e:run
+npm run test:e2e:app
+npm run test:e2e:app:run
 npm run test:e2e:ssr
+npm run test:e2e:ssr:run
 npm run test:e2e:ui
 ```
 
@@ -63,31 +66,57 @@ npm run validate
 Notas:
 
 - `validate:local` corre `lint`, `type-check`, `test` y `build`.
-- `validate` agrega E2E sobre build ya generado.
-- `test:e2e` y `test:e2e:ssr` hacen `next build` antes de correr Playwright.
+- `validate` corre `validate:local` y luego `test:e2e:run`.
+- `test:e2e`, `test:e2e:app` y `test:e2e:ssr` hacen `next build` antes de correr Playwright.
+- `test:e2e:run` ejecuta `scripts/run-e2e-suite.mjs`, que corre SSR E2E y luego E2E interactivo.
+- `deps:update` existe pero modifica lockfile y dependencias; no usarlo salvo pedido explícito.
 
 ## Variables de entorno esperadas
 
 Referencia: `.env.local.example`
 
+Modo de datos:
+
+- `MARKET_DATA_SOURCE`
+  - `demo`: datos determinísticos, sin credenciales upstream
+  - `live`: integración real con API externa
+
+Live mode:
+
 - `API_URL`
-- `NEXT_PUBLIC_SITE_URL`
 - `TOKEN_ENDPOINT`
 - `API_USERNAME`
 - `API_PASSWORD`
 - `PANEL_LIDER_ENDPOINT`
 - `PANEL_GENERAL_ENDPOINT`
 - `PANEL_CEDEARS_ENDPOINT`
-- `ENABLE_TOKEN_DEBUG`
 
-Variables usadas solo para testing/dev controlado:
+Generales / despliegue:
+
+- `NEXT_PUBLIC_SITE_URL`
+- `APP_VERSION`
+
+Debug / observabilidad:
+
+- `ENABLE_TOKEN_DEBUG`
+- `OBSERVABILITY_DEBUG_TOKEN`
+
+Rate limiting / operación:
+
+- `FAVORITES_QUOTE_CONCURRENCY`
+- `RATE_LIMIT_STORE`
+- `RATE_LIMIT_TRUSTED_PROXY`
+- `RATE_LIMIT_REDIS_REST_URL`
+- `RATE_LIMIT_REDIS_REST_TOKEN`
+
+Variables usadas en testing/dev controlado:
 
 - `PANEL_RESPONSE_FIXTURE_JSON`
 - `DISABLE_SERVER_DASHBOARD_PREFETCH`
 - `PLAYWRIGHT_TEST_BASE_URL`
 - `PLAYWRIGHT_E2E_MODE`
 
-No incluir secretos ni valores reales en commits, logs, issues ni snapshots.
+No incluir secretos ni valores reales en commits, logs, issues, snapshots ni documentación.
 
 ## Estructura importante
 
@@ -98,7 +127,10 @@ src/
     layout.tsx
     api/
       panel/route.ts
+      favorites/route.ts
       stocks/[symbol]/history/route.ts
+      health/route.ts
+      debug/metrics/route.ts
       token/route.ts
     dashboard/
       components/
@@ -108,16 +140,29 @@ src/
     market.ts
     panel.ts
     stockHistory.ts
+    favorites.ts
     server/
       env.ts
       iol.ts
+      demoMarketData.ts
       panelCache.ts
       panelLimits.ts
       historyCache.ts
       historyRateLimit.ts
       historyService.ts
+      favoritesRequest.ts
+      favoritesRateLimit.ts
+      favoritesService.ts
+      quoteCache.ts
+      quoteEndpoint.ts
+      rateLimit.ts
+      observability.ts
+      debug.ts
+docs/
+  RUNBOOK.md
 e2e/
 scripts/run-e2e.mjs
+scripts/run-e2e-suite.mjs
 .github/workflows/ci.yml
 ```
 
@@ -128,57 +173,98 @@ scripts/run-e2e.mjs
 - Conservar separación:
   - UI/hooks cliente en `src/app/dashboard/**`
   - contratos y normalización compartida en `src/lib/**`
-  - integración externa y lógica sensible en `src/lib/server/**`
-- No duplicar tipos de panel o histórico si ya existen en `src/lib/market.ts`, `src/lib/panel.ts` o `src/lib/stockHistory.ts`.
+  - integración externa, cachés, rate limiting y observabilidad en `src/lib/server/**`
+- No duplicar tipos si ya existen en `src/lib/market.ts`, `src/lib/panel.ts`, `src/lib/stockHistory.ts` o `src/lib/favorites.ts`.
 - El frontend debe consumir datos ya validados; no empujar payloads upstream crudos a componentes.
+- Si cambia un contrato del BFF o del upstream, actualizar validadores, consumidores y tests en el mismo cambio.
 
 ## BFF y datos externos
 
-- Rutas internas verificadas:
-  - `/api/panel?type=lider|general|cedears`
-  - `/api/stocks/[symbol]/history?range=1W|1M|3M|6M|1Y&market=bCBA`
-  - `/api/token` y `/api/panel?raw=1` solo debug local habilitado
-- `src/lib/server/iol.ts` maneja OAuth, timeouts, retry único ante `401/403`, `cache: 'no-store'` y redacción básica de credenciales en mensajes.
-- `src/lib/server/env.ts` normaliza base URL y paths de endpoints.
+Rutas internas actuales:
+
+- `/api/panel?type=lider|general|cedears`
+- `/api/favorites?items=bCBA:ALUA,bCBA:AAPL`
+- `/api/stocks/[symbol]/history?range=1W|1M|3M|6M|1Y&market=bCBA`
+- `/api/health`
+- `/api/debug/metrics`
+- `/api/token`
+
+Notas importantes:
+
+- `/api/panel?refresh=1` fuerza bypass de cache y puede gatillar cooldown de refresh.
+- `/api/panel?raw=1` sólo está habilitado como debug local cuando `ENABLE_TOKEN_DEBUG=1` y el host es `localhost` / `127.0.0.1` / `::1`.
+- `/api/token` también es debug local-only bajo esas mismas restricciones.
+- `/api/favorites` valida y deduplica items, aplica rate limiting y hace fan-out a quotes individuales con cache y concurrencia acotada.
+- `/api/health` expone `status`, `dataSource`, `version`, `uptimeMs` y checks de config/cache/rate limit.
+- `/api/debug/metrics` en desarrollo/test está abierto; en producción requiere `OBSERVABILITY_DEBUG_TOKEN` vía header `x-observability-token`, y si no está configurado devuelve `404`.
+
+Live/demo:
+
+- `MARKET_DATA_SOURCE=demo` usa `src/lib/server/demoMarketData.ts` y no requiere credenciales upstream.
+- `MARKET_DATA_SOURCE=live` usa `src/lib/server/iol.ts` y requiere configuración live completa.
+- Para despliegue público tipo portfolio, preferir `demo`.
+- Para revisión controlada de integración real, usar `live` y rate limiting distribuido.
+
+Integración server:
+
+- `src/lib/server/iol.ts` maneja OAuth, timeout, `cache: 'no-store'`, sanitización básica y retry único ante `401/403`.
+- `src/lib/server/env.ts` normaliza base URL, endpoints y variables operativas.
 - `src/lib/server/panelCache.ts` usa cache en memoria por panel con TTL de `30s`.
 - `src/lib/server/historyCache.ts` usa cache en memoria por `market:symbol:range` con TTL de `5m` y máximo `500` claves.
-- `src/lib/server/panelLimits.ts` aplica rate limit de `120` requests por `60s` y cooldown de refresh manual de `15s` por cliente/panel.
+- `src/lib/server/quoteCache.ts` cachea quotes de favoritos y soporta stale fallback.
+
+Rate limiting:
+
+- `src/lib/server/panelLimits.ts` aplica rate limit de `120` requests por `60s` y cooldown de refresh manual de `15s` por panel/cliente.
 - `src/lib/server/historyRateLimit.ts` aplica rate limit de `120` requests por `60s`.
-- Estos límites son in-memory y proceso-locales. No tratarlos como protección distribuida real.
-- Si cambia un contrato del BFF, actualizar validadores, tests de route handlers y consumidores cliente en el mismo cambio.
+- `src/lib/server/favoritesRateLimit.ts` aplica rate limit de `120` requests por `60s`.
+- `src/lib/server/rateLimit.ts` soporta `memory` y `redis-rest`, con fallback conservador y fail-closed `503 RATE_LIMIT_UNAVAILABLE`.
+- Estos límites siguen siendo proceso-locales si no hay storage distribuido configurado; no tratarlos como protección global real.
 
 ## Seguridad y credenciales
 
-- Nunca mover `API_USERNAME`, `API_PASSWORD` ni token OAuth al cliente.
-- No exponer token completo en respuestas, UI ni logs.
-- `ENABLE_TOKEN_DEBUG=1` solo habilita debug fuera de producción y desde `localhost`/`127.0.0.1`/`::1`.
-- Mantener `runtime = 'nodejs'` al tocar handlers con integración server-side; hoy está explícito en `panel` e `history`.
-- Respetar headers de seguridad definidos en `next.config.mjs`.
-- Si aparece una necesidad de observabilidad, evitar volcar payloads completos del proveedor cuando puedan contener datos sensibles.
+- Nunca mover `API_USERNAME`, `API_PASSWORD` ni tokens OAuth al cliente.
+- No exponer token completo en respuestas, UI, logs, snapshots ni docs.
+- No exponer `RATE_LIMIT_REDIS_REST_TOKEN`, `OBSERVABILITY_DEBUG_TOKEN` ni valores reales de `.env.local`.
+- `ENABLE_TOKEN_DEBUG=1` sólo habilita debug fuera de producción y desde `localhost` / `127.0.0.1` / `::1`.
+- `/api/debug/metrics` en producción no debe quedar abierto sin token.
+- Mantener `runtime = 'nodejs'` al tocar handlers con integración server-side; hoy está explícito en `panel`, `favorites`, `history`, `health` y `debug/metrics`.
+- Respetar headers y CSP definidos por `middleware.ts` y `next.config.mjs`.
+- Mantener `X-Request-Id` y sanitización de logs cuando se toque observabilidad.
+- Evitar volcar payloads completos del proveedor en errores, métricas o logs.
 
 ## UI y dashboard
 
-- El dashboard principal es cliente (`src/app/dashboard/components/Panel.tsx`) hidratado con datos SSR cuando existen.
-- `useMarketPanel` usa SWR con polling de `60s`, pausa cuando la pestaña está oculta y permite refresh manual con `?refresh=1`.
+- El dashboard principal es cliente (`src/app/dashboard/components/Panel.tsx`) e hidrata con datos SSR cuando existen.
+- `useMarketPanel` usa SWR con polling de `60s`, pausa por pestaña oculta y refresh manual con `?refresh=1`.
+- `useFavoritePanel` usa un patrón similar para `/api/favorites`.
 - `StockDetailsModal` se carga con `next/dynamic` y `ssr: false`; no romper esa carga diferida salvo motivo claro.
 - El histórico usa `lightweight-charts`; tratarlo como componente relativamente pesado.
-- Mantener estados explícitos de loading, error, empty, stale y success. No propagar estados inválidos al UI.
-- Favoritos, tema y orden viven del lado cliente; evitar mezclar esa lógica con server code.
+- Mantener estados explícitos de loading, error, empty, stale y success.
+- Favoritos, tema y orden viven del lado cliente; no mezclar esa lógica con server code.
+- En demo mode la UI muestra badge `Demo data`.
 
-## Testing
+## Testing y validación
 
 - Unit, component, hook y route tests corren con `npm run test` mediante Vitest.
 - E2E corren con Playwright sobre `http://localhost:3100` por default vía `scripts/run-e2e.mjs`.
 - Existe cobertura SSR específica con `npm run test:e2e:ssr`.
-- Antes de dar por válido un cambio, correr como mínimo:
+- CI corre `npm run validate` en GitHub Actions con Node `24.15.0`, `MARKET_DATA_SOURCE=demo` y `NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3100`.
+
+Antes de dar por válido un cambio de código, correr como mínimo:
 
 ```bash
 npm run type-check
 npm run build
 ```
 
-- Si el cambio toca lógica, contratos, hooks o handlers, preferir también `npm run test`.
-- Si toca flujo dashboard, modal, histórico o SSR inicial, preferir además el E2E relevante.
+Recomendaciones:
+
+- Si el cambio toca lógica, contratos, hooks, cachés o handlers, preferir también `npm run test`.
+- Si toca flujo dashboard, favoritos, modal, histórico o SSR inicial, preferir además el E2E relevante:
+  - `npm run test:e2e:ssr`
+  - `npm run test:e2e:app`
+- Si querés la validación más parecida a CI, usar `npm run validate`.
 
 ## Git safety
 
@@ -195,7 +281,7 @@ npm run build
 - No convertir esto en producto financiero real ni agregar copy de asesoramiento.
 - No llamar al proveedor externo desde client components.
 - No duplicar validaciones o tipos entre cliente y servidor si ya hay una fuente única.
-- No relajar validaciones para “hacer que pase”.
+- No relajar validaciones o controles de seguridad para “hacer que pase”.
 
 ## Criterio de terminado
 
@@ -203,7 +289,7 @@ Un trabajo queda terminado cuando:
 
 - el cambio respeta la separación cliente/BFF/server existente
 - los contratos externos quedan validados antes de llegar a UI
-- no se exponen credenciales ni tokens
+- no se exponen credenciales, tokens ni secretos operativos
 - se ejecutaron al menos `npm run type-check` y `npm run build` cuando hubo cambios de código
 - el resumen final cita archivos tocados, validación ejecutada y riesgos/notas abiertas
 
@@ -220,5 +306,5 @@ Responder en este formato:
 
 ## Notas abiertas verificadas
 
-- No encontré un script separado de “integration tests”; la cobertura intermedia actual vive en route tests/hook tests con Vitest y en E2E con Playwright.
-- `deps:update` existe pero modifica lockfile y dependencias; no usarlo salvo pedido explícito.
+- No existe un script separado de “integration tests”; la cobertura intermedia actual vive en route tests/hook tests con Vitest y en E2E con Playwright.
+- `next.config.test.ts` no es config de runtime: contiene tests de seguridad/CSP.
