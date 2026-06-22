@@ -3,6 +3,7 @@ import {
   type FavoritesErrorCode,
   type FavoritesResponse,
 } from '@/lib/favorites'
+import { fetchValidatedJson } from './fetchJsonClient'
 import { assertFavoritePanelSuccessResponse } from './favoritePanelValidation'
 
 export type FavoritePanelSuccessResponse = Extract<
@@ -71,24 +72,9 @@ export async function getFavoritePanelFetchError(
 export async function fetchFavoritePanel(
   url: string
 ): Promise<FavoritePanelSuccessResponse> {
-  const response = await fetch(url, {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
+  return fetchValidatedJson(url, {
+    assertSuccessResponse: assertFavoritePanelSuccessResponse,
+    getError: getFavoritePanelFetchError,
+    invalidJsonMessage: `Respuesta inválida del servidor al cargar favoritos: ${url}`,
   })
-
-  if (!response.ok) {
-    throw await getFavoritePanelFetchError(response)
-  }
-
-  let json: unknown
-
-  try {
-    json = await response.json()
-  } catch {
-    throw new Error(`Respuesta inválida del servidor al cargar favoritos: ${url}`)
-  }
-
-  assertFavoritePanelSuccessResponse(json)
-
-  return json
 }

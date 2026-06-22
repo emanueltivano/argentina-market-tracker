@@ -54,10 +54,14 @@ function quoteResponse(symbol: string) {
   }
 }
 
-async function loadFavoritesService(getQuoteBySymbol: ReturnType<typeof vi.fn>) {
+async function loadFavoritesService(
+  getQuoteBySymbol: ReturnType<typeof vi.fn>,
+  envOverrides: Record<string, string | undefined> = {}
+) {
   vi.resetModules()
   setRequiredEnv('test', {
     FAVORITES_QUOTE_CONCURRENCY: process.env.FAVORITES_QUOTE_CONCURRENCY,
+    ...envOverrides,
   })
   vi.doMock('server-only', () => ({}))
   vi.doMock('@/lib/server/iol', () => ({
@@ -146,6 +150,63 @@ describe('favoritesService', () => {
 
     expect(response.rows).toHaveLength(4)
     expect(getQuoteBySymbol).toHaveBeenCalledTimes(4)
+  })
+
+  it('uses the latest valid row fetch timestamp as updatedAt', async () => {
+    const getQuoteBySymbol = vi.fn(async (_market: string, symbol: string) =>
+      quoteResponse(symbol)
+    )
+    const { getFavoritesResponse } = await loadFavoritesService(getQuoteBySymbol)
+
+    const response = await getFavoritesResponse(
+      [{ market: 'bCBA', symbol: 'ALUA' }],
+      {
+        bypassCache: false,
+        requestId: 'req-12345678',
+      }
+    )
+
+    expect(response.rows).toHaveLength(1)
+    expect(response.updatedAt).toBe('2026-05-27T18:00:00.000Z')
+    expect(response.servedAt).toBe('2026-05-27T18:00:00.000Z')
+  })
+
+  it('uses a service timestamp instead of epoch for empty favorites', async () => {
+    const getQuoteBySymbol = vi.fn()
+    const { getFavoritesResponse } = await loadFavoritesService(getQuoteBySymbol)
+
+    const response = await getFavoritesResponse([], {
+      bypassCache: false,
+      requestId: 'req-12345678',
+    })
+
+    expect(response.rows).toEqual([])
+    expect(response.updatedAt).toBe('2026-05-27T18:00:00.000Z')
+    expect(response.updatedAt).toBe(response.servedAt)
+    expect(response.updatedAt).not.toBe(new Date(0).toISOString())
+    expect(getQuoteBySymbol).not.toHaveBeenCalled()
+  })
+
+  it('uses a service timestamp instead of epoch when all favorites are missing', async () => {
+    const getQuoteBySymbol = vi.fn()
+    const { getFavoritesResponse } = await loadFavoritesService(getQuoteBySymbol, {
+      MARKET_DATA_SOURCE: 'demo',
+    })
+
+    const response = await getFavoritesResponse(
+      [{ market: 'bCBA', symbol: 'DEMOX' }],
+      {
+        bypassCache: false,
+        requestId: 'req-12345678',
+      }
+    )
+
+    expect(response.rows).toEqual([])
+    expect(response.missingItems).toEqual(['bCBA:DEMOX'])
+    expect(response.updatedAt).toBe('2026-05-27T18:00:00.000Z')
+    expect(response.updatedAt).toBe(response.servedAt)
+    expect(response.updatedAt).not.toBe(new Date(0).toISOString())
+    expect(getQuoteBySymbol).not.toHaveBeenCalled()
   })
 
   it('keeps partial success when one lookup fails under the concurrency limiter', async () => {

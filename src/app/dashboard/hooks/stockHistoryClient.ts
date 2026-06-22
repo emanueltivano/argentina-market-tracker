@@ -7,6 +7,7 @@ import {
   type StockHistoryResponse,
   type StockHistorySuccessResponse,
 } from '@/lib/stockHistory'
+import { fetchValidatedJson } from './fetchJsonClient'
 
 type StockHistoryErrorResponse = Extract<StockHistoryResponse, { ok: false }>
 
@@ -119,25 +120,10 @@ export async function getStockHistoryFetchError(
 
 export const fetchStockHistory = async (
   url: string
-): Promise<StockHistorySuccessResponse> => {
-  const response = await fetch(url, {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
+): Promise<StockHistorySuccessResponse> =>
+  fetchValidatedJson(url, {
+    assertSuccessResponse: assertStockHistorySuccessResponse,
+    getError: getStockHistoryFetchError,
+    invalidJsonMessage: `Respuesta inválida del servidor al cargar el histórico: ${url}`,
+    parseBeforeHttpError: true,
   })
-
-  let json: unknown
-
-  try {
-    json = await response.json()
-  } catch {
-    throw new Error(`Respuesta inválida del servidor al cargar el histórico: ${url}`)
-  }
-
-  if (!response.ok) {
-    throw await getStockHistoryFetchError(response, json)
-  }
-
-  assertStockHistorySuccessResponse(json)
-
-  return json
-}

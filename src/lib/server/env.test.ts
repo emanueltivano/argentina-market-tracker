@@ -41,6 +41,31 @@ describe('server env', () => {
     expect(ENV.FAVORITES_QUOTE_CONCURRENCY).toBe(4)
   })
 
+  it('defaults market data source to demo when env is missing', async () => {
+    vi.resetModules()
+    process.env = {
+      NODE_ENV: 'test',
+    }
+    vi.doMock('server-only', () => ({}))
+    const { ENV, getRuntimeEnvSummary } = await import('./env')
+
+    expect(ENV.MARKET_DATA_SOURCE).toBe('demo')
+    expect(getRuntimeEnvSummary().marketDataSource).toBe('demo')
+  })
+
+  it('keeps live mode available when explicitly configured', async () => {
+    vi.resetModules()
+    process.env = {
+      NODE_ENV: 'test',
+      MARKET_DATA_SOURCE: 'live',
+    }
+    vi.doMock('server-only', () => ({}))
+    const { ENV, getRuntimeEnvSummary } = await import('./env')
+
+    expect(ENV.MARKET_DATA_SOURCE).toBe('live')
+    expect(getRuntimeEnvSummary().missingLiveConfig).toContain('API_URL')
+  })
+
   it('uses a configured favorites quote concurrency within range', async () => {
     vi.resetModules()
     process.env = {

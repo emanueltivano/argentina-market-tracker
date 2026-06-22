@@ -265,7 +265,8 @@ export async function getFavoritesResponse(
   const rows: PanelTitulo[] = []
   const missingItems: string[] = []
   const failedItems: string[] = []
-  let updatedAt = new Date(0).toISOString()
+  const servedAt = new Date().toISOString()
+  let updatedAt = servedAt
   let stale = false
 
   for (const result of results) {
@@ -318,7 +319,7 @@ export async function getFavoritesResponse(
     source: ENV.MARKET_DATA_SOURCE,
     requestId: options.requestId,
     updatedAt,
-    servedAt: new Date().toISOString(),
+    servedAt,
     stale,
   }
 }

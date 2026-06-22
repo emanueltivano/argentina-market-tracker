@@ -129,7 +129,7 @@ as the source of truth.
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `MARKET_DATA_SOURCE` | No | `demo` or `live`; defaults to `live` |
+| `MARKET_DATA_SOURCE` | No | `demo` or `live`; defaults to `demo` |
 | `API_URL` | Live mode only | External API base URL, no trailing slash |
 | `NEXT_PUBLIC_SITE_URL` | Recommended | Public origin for metadata/Open Graph |
 | `TOKEN_ENDPOINT` | Live mode only | Token endpoint path; defaults to `token` |

@@ -86,10 +86,17 @@ function getCachedPanelResponse(
 ): PanelSuccessResponse | null {
   const cached = panelCache.get(type)
 
-  if (!cached || Date.now() >= cached.expiresAt) {
-    panelCache.delete(type)
+  if (!cached) {
     incrementMetricCounter('panel.cache.event.total', 1, {
       event: 'miss',
+      panelType: type,
+    })
+    return null
+  }
+
+  if (Date.now() >= cached.expiresAt) {
+    incrementMetricCounter('panel.cache.event.total', 1, {
+      event: 'expired',
       panelType: type,
     })
     return null
@@ -98,6 +105,29 @@ function getCachedPanelResponse(
   incrementMetricCounter('panel.cache.event.total', 1, {
     event: 'hit',
     panelType: type,
+  })
+
+  return createPanelResponse(cached.data, cached.fetchedAt, 'memory-cache')
+}
+
+function getStalePanelResponse(
+  type: MarketDataPanelKey,
+  error: unknown
+): PanelSuccessResponse | null {
+  const cached = panelCache.get(type)
+
+  if (!cached) {
+    return null
+  }
+
+  logServerWarn('panel.cache.stale-fallback', {
+    panelType: type,
+    reason: error instanceof Error ? error.message : String(error ?? 'unknown'),
+  })
+  incrementMetricCounter('panel.cache.event.total', 1, {
+    event: 'stale-fallback',
+    panelType: type,
+    source: ENV.MARKET_DATA_SOURCE,
   })
 
   return createPanelResponse(cached.data, cached.fetchedAt, 'memory-cache')
@@ -158,11 +188,21 @@ function getOrCreateRefreshPanelResponse(
     return inFlightRefresh
   }
 
-  const promise = fetchPanelResponse(type).finally(() => {
-    if (inFlightPanelRefreshRequests.get(type) === promise) {
-      inFlightPanelRefreshRequests.delete(type)
-    }
-  })
+  const promise = fetchPanelResponse(type)
+    .catch((error: unknown) => {
+      const stale = getStalePanelResponse(type, error)
+
+      if (stale) {
+        return stale
+      }
+
+      throw error
+    })
+    .finally(() => {
+      if (inFlightPanelRefreshRequests.get(type) === promise) {
+        inFlightPanelRefreshRequests.delete(type)
+      }
+    })
 
   inFlightPanelRefreshRequests.set(type, promise)
   return promise
@@ -212,11 +252,21 @@ export function getOrCreatePanelResponse(
     return inFlightRefresh
   }
 
-  const promise = fetchPanelResponse(type).finally(() => {
-    if (inFlightPanelRequests.get(type) === promise) {
-      inFlightPanelRequests.delete(type)
-    }
-  })
+  const promise = fetchPanelResponse(type)
+    .catch((error: unknown) => {
+      const stale = getStalePanelResponse(type, error)
+
+      if (stale) {
+        return stale
+      }
+
+      throw error
+    })
+    .finally(() => {
+      if (inFlightPanelRequests.get(type) === promise) {
+        inFlightPanelRequests.delete(type)
+      }
+    })
 
   inFlightPanelRequests.set(type, promise)
   return promise

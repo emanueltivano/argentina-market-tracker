@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import useSWR from 'swr';
 import { type MarketDataPanelKey } from '@/lib/market';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
@@ -8,9 +8,9 @@ import {
   getMarketPanelFetchError,
   type MarketPanelSuccessResponse,
 } from './marketPanelClient';
+import { useRefreshableSWR } from './useRefreshableSWR';
 
 export { fetchMarketPanel, getMarketPanelFetchError };
-const AUTO_REFRESH_INTERVAL_MS = 60_000;
 
 export type MarketPanelViewStatus = 'loading' | 'error' | 'empty' | 'success';
 
@@ -20,10 +20,6 @@ type UseMarketPanelOptions = {
   initialErrorMessage?: string;
   initialPanelKey?: MarketDataPanelKey;
 };
-
-function unknownToError(err: unknown): Error {
-  return err instanceof Error ? err : new Error(String(err ?? 'unknown'));
-}
 
 function withRefreshParam(url: string): string {
   const separator = url.includes('?') ? '&' : '?';
@@ -37,37 +33,17 @@ export function useMarketPanel(
 ) {
   const activePanel = getMarketPanelOption(activePanelKey);
   const isEnabled = options.enabled ?? true;
-  const fetchUrl = isEnabled ? activePanel.fetchUrl : null;
+  const fetchUrl = isEnabled ? (activePanel.fetchUrl ?? null) : null;
 
   if (!fetchUrl && isEnabled) {
     throw new Error(`Panel de datos sin fetchUrl: ${activePanelKey}`);
   }
-  const refreshInFlightKeysRef = useRef(new Set<string>());
-  const lastAutoRefreshAtRef = useRef(0);
-  const [refreshingKeys, setRefreshingKeys] = useState<string[]>([]);
-  const [refreshError, setRefreshError] = useState<{
-    key: string;
-    error: Error;
-  } | null>(null);
   const initialData =
     options.initialPanelKey === activePanelKey ? options.initialData : undefined;
   const initialErrorMessage =
     options.initialPanelKey === activePanelKey
       ? options.initialErrorMessage
       : undefined;
-
-  const setRefreshInFlight = useCallback((key: string, isInFlight: boolean) => {
-    const nextKeys = new Set(refreshInFlightKeysRef.current);
-
-    if (isInFlight) {
-      nextKeys.add(key);
-    } else {
-      nextKeys.delete(key);
-    }
-
-    refreshInFlightKeysRef.current = nextKeys;
-    setRefreshingKeys([...nextKeys]);
-  }, []);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<
     MarketPanelSuccessResponse,
@@ -86,86 +62,16 @@ export function useMarketPanel(
     },
   );
 
-  const runRefresh = useCallback(async (bypassCache: boolean) => {
-    if (!fetchUrl || refreshInFlightKeysRef.current.has(fetchUrl)) return;
-
-    setRefreshInFlight(fetchUrl, true);
-    setRefreshError((currentError) =>
-      currentError?.key === fetchUrl ? null : currentError,
-    );
-
-    try {
-      if (bypassCache) {
-        await mutate(
-          () => fetchMarketPanel(withRefreshParam(fetchUrl)),
-          {
-            populateCache: true,
-            revalidate: false,
-          },
-        );
-      } else {
-        await mutate(() => fetchMarketPanel(fetchUrl), {
-          populateCache: true,
-          revalidate: false,
-        });
-      }
-    } catch (err: unknown) {
-      const nextError = unknownToError(err);
-
-      setRefreshError({
-        key: fetchUrl,
-        error: nextError,
-      });
-      throw nextError;
-    } finally {
-      setRefreshInFlight(fetchUrl, false);
-    }
-  }, [fetchUrl, mutate, setRefreshInFlight]);
-
-  const refresh = useCallback(() => runRefresh(true), [runRefresh]);
-  const autoRefresh = useCallback(async () => {
-    lastAutoRefreshAtRef.current = Date.now();
-    await runRefresh(false);
-  }, [runRefresh]);
-
-  useEffect(() => {
-    lastAutoRefreshAtRef.current = Date.now();
-  }, [fetchUrl]);
-
-  useEffect(() => {
-    if (!fetchUrl) {
-      return;
-    }
-
-    function tryAutoRefresh() {
-      if (document.hidden) {
-        return;
-      }
-
-      void autoRefresh().catch(() => undefined);
-    }
-
-    function handleVisibilityChange() {
-      if (
-        document.hidden ||
-        Date.now() - lastAutoRefreshAtRef.current < AUTO_REFRESH_INTERVAL_MS
-      ) {
-        return;
-      }
-
-      void autoRefresh().catch(() => undefined);
-    }
-
-    const intervalId = window.setInterval(() => {
-      tryAutoRefresh();
-    }, AUTO_REFRESH_INTERVAL_MS);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [autoRefresh, fetchUrl]);
+  const {
+    activeRefreshError,
+    isRefreshInFlight,
+    refresh,
+  } = useRefreshableSWR({
+    fetcher: fetchMarketPanel,
+    key: fetchUrl,
+    mutate,
+    withRefreshParam,
+  });
 
   const rows = useMemo(
     () => (data?.data ?? []).map(mapPanelTituloToStockProps),
@@ -173,8 +79,6 @@ export function useMarketPanel(
   );
   const hasData = data !== undefined;
   const hasRows = rows.length > 0;
-  const activeRefreshError =
-    fetchUrl && refreshError?.key === fetchUrl ? refreshError.error : null;
   const initialError =
     !hasData && !error && initialErrorMessage
       ? new Error(initialErrorMessage)
@@ -183,8 +87,7 @@ export function useMarketPanel(
   const hasError = !!displayError;
   const isActivePanelRefreshing =
     !!fetchUrl &&
-    (refreshingKeys.includes(fetchUrl) ||
-      (isValidating && hasData && !hasError));
+    (isRefreshInFlight || (isValidating && hasData && !hasError));
   const viewStatus: MarketPanelViewStatus = !fetchUrl
     ? 'empty'
     : hasError && !hasData

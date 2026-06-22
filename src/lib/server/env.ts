@@ -32,7 +32,7 @@ function normalizeBaseUrl(value: string): string {
 }
 
 function getMarketDataSource(): MarketDataSource {
-  const value = (process.env.MARKET_DATA_SOURCE ?? 'live').trim()
+  const value = (process.env.MARKET_DATA_SOURCE ?? 'demo').trim()
 
   if (value === 'demo' || value === 'live') {
     return value

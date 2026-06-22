@@ -385,7 +385,7 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps manual refresh in cooldown after an upstream refresh failure', async () => {
+  it('serves stale cache and keeps manual refresh in cooldown after an upstream refresh failure', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
 
@@ -397,14 +397,14 @@ describe('/api/panel route', () => {
 
     await GET(request('/api/panel?type=lider'))
 
-    const failedRefresh = await GET(request('/api/panel?type=lider&refresh=1'))
+    const staleRefresh = await GET(request('/api/panel?type=lider&refresh=1'))
 
-    expect(failedRefresh.status).toBe(502)
-    expect(await failedRefresh.json()).toMatchObject({
-      ok: false,
-      error: 'PANEL_ERROR',
-      details: 'upstream failed',
-    })
+    expect(staleRefresh.status).toBe(200)
+    expectPanelSuccess(
+      await staleRefresh.json(),
+      [{ simbolo: 'ALUA', descripcion: 'Aluar' }],
+      'memory-cache'
+    )
 
     const blockedRefresh = await GET(request('/api/panel?type=lider&refresh=1'))
     const body = await blockedRefresh.json()
@@ -416,6 +416,40 @@ describe('/api/panel route', () => {
       error: 'REFRESH_COOLDOWN',
     })
     expect(iolFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns stale panel cache when upstream fails after cache expiry', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockRejectedValueOnce(new Error('upstream failed'))
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    vi.setSystemTime(new Date('2026-05-04T16:00:31.000Z'))
+
+    const response = await GET(request('/api/panel?type=lider'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expectPanelSuccess(
+      body,
+      [{ simbolo: 'ALUA', descripcion: 'Aluar' }],
+      'memory-cache'
+    )
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+    expect(consoleWarn).toHaveBeenCalledWith(
+      '[panel.cache.stale-fallback]',
+      expect.objectContaining({
+        level: 'warn',
+        panelType: 'lider',
+        reason: 'upstream failed',
+      })
+    )
   })
 
   it('keeps normal cache reads working while manual refresh is in cooldown', async () => {

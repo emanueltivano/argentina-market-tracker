@@ -3,6 +3,7 @@ import {
   type PanelErrorCode,
   type PanelResponse as MarketPanelResponse,
 } from '@/lib/panel';
+import { fetchValidatedJson } from './fetchJsonClient';
 import { assertMarketPanelSuccessResponse } from './marketPanelValidation';
 
 export type MarketPanelSuccessResponse = Extract<
@@ -82,25 +83,9 @@ export async function getMarketPanelFetchError(
 
 export const fetchMarketPanel = async (
   url: string,
-): Promise<MarketPanelSuccessResponse> => {
-  const response = await fetch(url, {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
+): Promise<MarketPanelSuccessResponse> =>
+  fetchValidatedJson(url, {
+    assertSuccessResponse: assertMarketPanelSuccessResponse,
+    getError: getMarketPanelFetchError,
+    invalidJsonMessage: `Respuesta inválida del servidor al cargar el panel: ${url}`,
   });
-
-  if (!response.ok) {
-    throw await getMarketPanelFetchError(response);
-  }
-
-  let json: unknown;
-
-  try {
-    json = await response.json();
-  } catch {
-    throw new Error(`Respuesta inválida del servidor al cargar el panel: ${url}`);
-  }
-
-  assertMarketPanelSuccessResponse(json);
-
-  return json;
-};

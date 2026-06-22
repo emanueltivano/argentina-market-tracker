@@ -101,7 +101,6 @@ describe('rateLimit infrastructure', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(Response.json({ result: 1 }))
-      .mockResolvedValueOnce(Response.json({ result: 'OK' }))
       .mockResolvedValueOnce(Response.json({ result: 2 }))
     vi.stubGlobal('fetch', fetchMock)
     const { rateLimitTestExports } = await import('./rateLimit')
@@ -130,23 +129,30 @@ describe('rateLimit infrastructure', () => {
           authorization: 'Bearer secret-token',
           'content-type': 'application/json',
         }),
-        body: JSON.stringify(['INCR', 'bucket']),
+        body: expect.any(String),
       })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       'https://redis.example.test',
       expect.objectContaining({
-        body: JSON.stringify(['PEXPIRE', 'bucket', 120000]),
+        body: expect.any(String),
       })
     )
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
-      'https://redis.example.test',
-      expect.objectContaining({
-        body: JSON.stringify(['INCR', 'bucket']),
-      })
-    )
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual([
+      'EVAL',
+      expect.stringContaining('PEXPIRE'),
+      1,
+      'bucket',
+      120000,
+    ])
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual([
+      'EVAL',
+      expect.stringContaining('PEXPIRE'),
+      1,
+      'bucket',
+      120000,
+    ])
   })
 
   it('returns a controlled unavailable result when the store check throws', async () => {

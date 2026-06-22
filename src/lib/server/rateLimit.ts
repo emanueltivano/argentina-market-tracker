@@ -11,6 +11,13 @@ const RATE_LIMIT_HEADER_RESET = 'X-RateLimit-Reset'
 const RATE_LIMIT_NAMESPACE_PREFIX = 'ratelimit'
 const REDIS_KEY_TTL_MULTIPLIER = 2
 const RATE_LIMIT_UNAVAILABLE_RETRY_AFTER_SEC = 5
+const REDIS_FIXED_WINDOW_INCREMENT_SCRIPT = `
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+  redis.call("PEXPIRE", KEYS[1], ARGV[1])
+end
+return count
+`.trim()
 
 type ProxyTrustMode = 'none' | 'vercel'
 type RateLimitStoreMode = 'memory' | 'redis-rest'
@@ -369,21 +376,16 @@ function createRedisRestRateLimitStore(config: {
     async incrementFixedWindow(key, options) {
       const count = Number(
         await runRedisRestCommand<number | string>(config.url, config.token, [
-          'INCR',
+          'EVAL',
+          REDIS_FIXED_WINDOW_INCREMENT_SCRIPT,
+          1,
           key,
+          options.ttlMs,
         ])
       )
 
       if (!Number.isFinite(count)) {
-        throw new Error('Redis REST INCR returned a non-numeric value')
-      }
-
-      if (count === 1) {
-        await runRedisRestCommand(config.url, config.token, [
-          'PEXPIRE',
-          key,
-          options.ttlMs,
-        ])
+        throw new Error('Redis REST EVAL returned a non-numeric value')
       }
 
       return { count }
