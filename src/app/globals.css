@@ -516,28 +516,6 @@ html.dark {
     transform: translateY(-1px);
   }
 
-  .panel-refresh-button {
-    white-space: nowrap;
-  }
-
-  .panel-refresh-button.loading {
-    opacity: 0.75;
-    pointer-events: none;
-  }
-
-  .panel-refresh-button.loading::after {
-    content: '';
-    width: 14px;
-    height: 14px;
-    border: 2px solid white;
-    border-top-color: transparent;
-    border-radius: 9999px;
-    display: inline-block;
-    margin-left: 6px;
-    vertical-align: -2px;
-    animation: spin 0.8s linear infinite;
-  }
-
   .panel-title-skeleton {
     width: min(16rem, 70vw);
   }
@@ -548,12 +526,11 @@ html.dark {
   }
 
   .panel-menu-skeleton,
-  .panel-refresh-skeleton {
+  .panel-freshness-skeleton {
     pointer-events: none;
   }
 
   .panel-skeleton-pill,
-  .panel-skeleton-button,
   .panel-skeleton-icon {
     cursor: default;
   }
@@ -570,18 +547,12 @@ html.dark {
     border-radius: 9999px;
   }
 
-  .panel-refresh-time-skeleton {
-    width: 10.5rem;
+  .panel-freshness-time-skeleton {
+    width: 8.5rem;
     max-width: 40vw;
   }
 
-  .panel-skeleton-button .stock-skeleton-bar {
-    width: 4.75rem;
-    max-width: 4.75rem;
-  }
-
   .panel-menu-button:focus-visible,
-  .panel-refresh-button:focus-visible,
   .panel-about-link:focus-visible,
   .theme-toggle-button:focus-visible,
   .panel-menu-toggle:focus-visible,
@@ -753,7 +724,7 @@ html.dark {
 }
 
 .stock-table-stale-error {
-  margin: 0 0 0.5rem;
+  padding: 0.5rem 20px;
   color: var(--warning-text);
   font-size: 0.875rem;
 }
@@ -790,13 +761,11 @@ html.dark {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loader,
-  .panel-refresh-button.loading::after {
+  .loader {
     animation-duration: 1.5s;
   }
 
   .panel-menu-button,
-  .panel-refresh-button,
   .ui-button,
   .ui-icon-button,
   .theme-toggle-button,
@@ -817,7 +786,7 @@ html.dark {
 }
 
 /* =========================
-   Panel refresh
+   Panel toolbar
 ========================= */
 
 .panel-toolbar {
@@ -834,11 +803,31 @@ html.dark {
   margin-bottom: 0;
 }
 
+.panel-menu-status {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.panel-menu-status .panel-menu-root {
+  min-width: 0;
+}
+
+.panel-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .panel-actions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
 }
 
 .panel-demo-badge {
@@ -849,25 +838,53 @@ html.dark {
   text-transform: uppercase;
 }
 
-.panel-refresh {
+.panel-freshness-inline {
   @apply text-muted;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.875rem;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.82rem;
   white-space: nowrap;
 }
 
-.panel-refresh p {
+.panel-freshness-separator {
+  color: var(--border-strong);
+  font-weight: 900;
+}
+
+.dashboard-project-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.5rem;
+  color: var(--muted-text);
+  font-size: 0.82rem;
+}
+
+.dashboard-project-footer p {
   margin: 0;
+}
+
+.dashboard-project-link {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
   .panel-toolbar {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     gap: 0.75rem;
     margin-bottom: 0.875rem;
+  }
+
+  .panel-menu-status {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
   }
 
   .panel-menu-root {
@@ -883,34 +900,30 @@ html.dark {
   }
 
   .panel-menu-toggle {
+    display: flex;
     width: 100%;
     justify-content: center;
   }
 
-  .panel-refresh {
-    width: 100%;
-    justify-content: space-between;
+  .panel-status {
+    flex-wrap: wrap;
   }
 
-  .panel-refresh p {
-    min-width: 0;
-    white-space: normal;
-  }
-
-  .panel-refresh-button {
-    flex: 0 0 auto;
+  .panel-freshness-separator {
+    display: none;
   }
 
   .panel-actions {
-    flex-wrap: wrap;
-    row-gap: 0.75rem;
-    width: 100%;
-    justify-content: space-between;
+    justify-content: flex-end;
   }
 
   .panel-about-link,
   .theme-toggle-button {
     min-height: 2.35rem;
+  }
+
+  .dashboard-project-footer {
+    justify-content: space-between;
   }
 }
 
@@ -1799,14 +1812,8 @@ html.dark .theme-toggle-button:hover,
 html.dark .panel-menu-toggle:hover,
 html.dark .stock-details-close:hover,
 html.dark .panel-menu-button-active,
-html.dark .panel-menu-button-active:hover,
-html.dark .panel-refresh-button {
+html.dark .panel-menu-button-active:hover {
   color: #07111f;
-}
-
-html.dark .panel-refresh-button.loading::after {
-  border-color: #07111f;
-  border-top-color: transparent;
 }
 
 html.dark .stock-var-positive,
@@ -2023,16 +2030,10 @@ html.dark
 }
 
 @media (max-width: 520px) {
-  .panel-actions {
-    gap: 0.5rem;
-  }
-
-  .panel-refresh {
-    gap: 0.5rem;
+  .panel-freshness-inline {
     font-size: 0.78rem;
   }
 
-  .panel-refresh-button,
   .panel-about-link,
   .theme-toggle-button,
   .panel-menu-toggle {
@@ -2163,6 +2164,10 @@ html.dark .about-mode-note {
   line-height: 1.65;
 }
 
+.about-repository-link {
+  margin-top: 1rem;
+}
+
 .about-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2214,4 +2219,63 @@ html.dark .about-mode-note {
   .about-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================
+   Shared compact controls
+========================= */
+
+.panel-menu-toggle,
+.panel-theme-toggle,
+dialog.stock-details-dialog .stock-details-action {
+  box-sizing: border-box;
+  height: 2.5rem;
+  border: 1px solid rgb(28 54 190 / 32%);
+  border-radius: 0.375rem;
+  background-color: var(--surface-raised);
+  color: var(--text-color);
+  box-shadow:
+    0 8px 18px rgb(4 43 93 / 10%),
+    0 1px 0 rgb(255 255 255 / 85%) inset;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.panel-theme-toggle,
+dialog.stock-details-dialog .stock-details-action {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  flex: 0 0 2.5rem;
+  padding: 0;
+}
+
+.panel-theme-toggle > span {
+  display: inline-flex;
+}
+
+.panel-menu-toggle:hover,
+.panel-theme-toggle:hover,
+dialog.stock-details-dialog .stock-details-action:hover {
+  border-color: var(--main-color);
+  background-color: var(--accent-subtle-bg);
+  color: var(--main-color);
+  box-shadow: 0 8px 18px rgb(28 54 190 / 20%);
+}
+
+html.dark .panel-menu-toggle:hover,
+html.dark .panel-theme-toggle:hover,
+html.dark dialog.stock-details-dialog .stock-details-action:hover {
+  color: var(--main-light-color);
+}
+
+html.dark .panel-menu-toggle,
+html.dark .panel-theme-toggle,
+html.dark dialog.stock-details-dialog .stock-details-action {
+  box-shadow:
+    0 8px 18px rgb(0 0 0 / 22%),
+    0 1px 0 rgb(255 255 255 / 8%) inset;
 }

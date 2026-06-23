@@ -99,6 +99,31 @@ async function tabUntilFocus(target: HTMLElement, maxTabs = 20) {
   throw new Error(`Could not focus target after ${maxTabs} tabs`)
 }
 
+function mockAutoRefreshInterval() {
+  let intervalCallback: (() => void) | undefined
+
+  vi.spyOn(window, 'setInterval').mockImplementation((callback, delay) => {
+    if (delay === 60_000) {
+      intervalCallback = () => {
+        if (typeof callback === 'function') {
+          callback()
+        }
+      }
+    }
+
+    return 1 as unknown as ReturnType<typeof window.setInterval>
+  })
+  vi.spyOn(window, 'clearInterval').mockImplementation(() => undefined)
+
+  return async function triggerAutoRefresh() {
+    expect(intervalCallback).toBeDefined()
+
+    await act(async () => {
+      intervalCallback?.()
+    })
+  }
+}
+
 describe('Panel', () => {
   beforeEach(() => {
     currentSearchParams = new URLSearchParams()
@@ -168,12 +193,20 @@ describe('Panel', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('uses client refresh normally after hydrating with server data', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        Response.json(panelResponse([{ simbolo: 'YPFD', descripcion: 'YPF' }]))
-      )
+  it('renders project information outside the operational actions', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+
+    renderPanel()
+
+    const projectLink = screen.getByRole('link', { name: 'Datos y proyecto' })
+
+    expect(projectLink.getAttribute('href')).toBe('/about')
+    expect(projectLink.closest('.panel-actions')).toBeNull()
+    expect(projectLink.closest('.dashboard-project-footer')).not.toBeNull()
+  })
+
+  it('shows compact freshness metadata without exposing manual refresh', async () => {
+    const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
     renderPanel({
@@ -188,16 +221,15 @@ describe('Panel', () => {
         name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
       })
     ).not.toBeNull()
+    const freshness = screen.getByText(/Actualizado/)
+    const themeToggle = screen.getByRole('button', { name: 'Usar tema oscuro' })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
-
-    expect(
-      await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
-    ).not.toBeNull()
-    expect(fetchMock).toHaveBeenCalledWith('/api/panel?type=lider&refresh=1', {
-      cache: 'no-store',
-      headers: { accept: 'application/json' },
-    })
+    expect(freshness.closest('.panel-status')).not.toBeNull()
+    expect(themeToggle.closest('.panel-actions')).not.toBeNull()
+    expect(themeToggle.classList.contains('panel-theme-toggle')).toBe(true)
+    expect(themeToggle.classList.contains('ui-icon-button')).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Actualizar' })).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('renders an initial server error and can recover with a client fetch', async () => {
@@ -247,7 +279,7 @@ describe('Panel', () => {
     )
   })
 
-  it('renders an empty state with freshness controls', async () => {
+  it('renders an empty state with freshness metadata', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => Response.json(panelResponse([])))
@@ -256,11 +288,12 @@ describe('Panel', () => {
     renderPanel()
 
     expect(await screen.findByText('No hay datos disponibles.')).not.toBeNull()
-    expect(screen.getByText(/Última actualización:/)).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Actualizar' })).not.toBeNull()
+    expect(screen.getByText(/Actualizado/)).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Actualizar' })).toBeNull()
   })
 
-  it('keeps the empty state visible when manual refresh fails after empty data', async () => {
+  it('keeps the empty state visible when automatic refresh fails', async () => {
+    const triggerAutoRefresh = mockAutoRefreshInterval()
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(Response.json(panelResponse([])))
@@ -280,7 +313,7 @@ describe('Panel', () => {
 
     expect(await screen.findByText('No hay datos disponibles.')).not.toBeNull()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+    await triggerAutoRefresh()
 
     expect(
       await screen.findByText(
@@ -290,7 +323,8 @@ describe('Panel', () => {
     expect(screen.getByText('No hay datos disponibles.')).not.toBeNull()
   })
 
-  it('renders rows and refreshes manually with a cache bypass request', async () => {
+  it('shows passive updating state during automatic refresh', async () => {
+    const triggerAutoRefresh = mockAutoRefreshInterval()
     let resolveRefresh: (value: Response) => void
     const refreshResponse = new Promise<Response>((resolve) => {
       resolveRefresh = resolve
@@ -316,18 +350,11 @@ describe('Panel', () => {
       })
     ).not.toBeNull()
 
-    const idleButton = screen.getByRole('button', { name: 'Actualizar' })
-    expect(idleButton).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Actualizar' })).toBeNull()
 
-    await userEvent.click(idleButton)
+    await triggerAutoRefresh()
 
-    const loadingButton = await screen.findByRole('button', {
-      name: 'Actualizando...',
-    }) as HTMLButtonElement
-    expect(loadingButton.getAttribute('aria-busy')).toBe('true')
-    expect(loadingButton.disabled).toBe(true)
-
-    await userEvent.click(loadingButton)
+    expect(screen.getByText('Actualizando...')).not.toBeNull()
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     resolveRefresh!(
@@ -337,11 +364,10 @@ describe('Panel', () => {
     expect(
       await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
     ).not.toBeNull()
-    expect(
-      (screen.getByRole('button', { name: 'Actualizar' }) as HTMLButtonElement)
-        .disabled
-    ).toBe(false)
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/panel?type=lider&refresh=1', {
+    await waitFor(() => {
+      expect(screen.getByText(/Actualizado/)).not.toBeNull()
+    })
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/panel?type=lider', {
       cache: 'no-store',
       headers: { accept: 'application/json' },
     })
@@ -572,7 +598,8 @@ describe('Panel', () => {
     )
   })
 
-  it('keeps stale rows visible when manual refresh fails', async () => {
+  it('keeps stale rows visible when automatic refresh fails', async () => {
+    const triggerAutoRefresh = mockAutoRefreshInterval()
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -602,7 +629,7 @@ describe('Panel', () => {
       })
     ).not.toBeNull()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+    await triggerAutoRefresh()
 
     expect(
       await screen.findByText(
@@ -616,7 +643,8 @@ describe('Panel', () => {
     ).not.toBeNull()
   })
 
-  it('does not keep the new panel refresh button busy when the previous panel is refreshing', async () => {
+  it('does not show the new panel as updating when the previous panel is refreshing', async () => {
+    const triggerAutoRefresh = mockAutoRefreshInterval()
     const refreshResponse = new Promise<Response>(() => undefined)
     const fetchMock = vi
       .fn()
@@ -642,12 +670,9 @@ describe('Panel', () => {
       })
     ).not.toBeNull()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+    await triggerAutoRefresh()
 
-    const previousPanelRefreshButton = (await screen.findByRole('button', {
-      name: 'Actualizando...',
-    })) as HTMLButtonElement
-    expect(previousPanelRefreshButton.disabled).toBe(true)
+    expect(await screen.findByText('Actualizando...')).not.toBeNull()
 
     currentSearchParams = new URLSearchParams('panel=general')
     view.rerender(
@@ -660,12 +685,12 @@ describe('Panel', () => {
       await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
     ).not.toBeNull()
 
-    const refreshButton = screen.getByRole('button', { name: 'Actualizar' })
-    expect((refreshButton as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.queryByText('Actualizando...')).toBeNull()
+    expect(screen.getByText(/Actualizado/)).not.toBeNull()
   })
 
   it('auto-refreshes without bypassing the server cache', async () => {
-    let intervalCallback: (() => void) | undefined
+    const triggerAutoRefresh = mockAutoRefreshInterval()
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -680,19 +705,6 @@ describe('Panel', () => {
       )
 
     vi.stubGlobal('fetch', fetchMock)
-    vi.spyOn(window, 'setInterval').mockImplementation((callback, delay) => {
-      if (delay === 60_000) {
-        intervalCallback = () => {
-          if (typeof callback === 'function') {
-            callback()
-          }
-        }
-      }
-
-      return 1 as unknown as ReturnType<typeof window.setInterval>
-    })
-    vi.spyOn(window, 'clearInterval').mockImplementation(() => undefined)
-
     renderPanel()
 
     expect(
@@ -701,11 +713,7 @@ describe('Panel', () => {
       })
     ).not.toBeNull()
 
-    await act(async () => {
-      intervalCallback?.()
-    })
-
-    expect(intervalCallback).toBeDefined()
+    await triggerAutoRefresh()
 
     expect(
       await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })
@@ -717,6 +725,7 @@ describe('Panel', () => {
   })
 
   it('keeps an open stock details modal synced after refresh', async () => {
+    const triggerAutoRefresh = mockAutoRefreshInterval()
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -755,13 +764,14 @@ describe('Panel', () => {
     let dialog = await screen.findByRole('dialog', { name: 'GGAL' })
     expect(dialog.textContent).toContain('$ 100,00')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+    await triggerAutoRefresh()
 
     dialog = await screen.findByRole('dialog', { name: 'GGAL' })
     expect(dialog.textContent).toContain('$ 125,00')
   })
 
   it('closes the stock details modal when the selected ticker disappears', async () => {
+    const triggerAutoRefresh = mockAutoRefreshInterval()
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -787,7 +797,7 @@ describe('Panel', () => {
 
     expect(await screen.findByRole('dialog', { name: 'GGAL' })).not.toBeNull()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Actualizar' }))
+    await triggerAutoRefresh()
 
     expect(await screen.findByRole('button', { name: 'Abrir detalle de YPFD, YPF' })).not.toBeNull()
     expect(screen.queryByRole('dialog', { name: 'GGAL' })).toBeNull()

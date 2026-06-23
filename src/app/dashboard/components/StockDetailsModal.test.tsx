@@ -130,7 +130,10 @@ describe('StockDetailsModal', () => {
     const link = screen.getByRole('link', {
       name: 'Ver página completa de GGAL',
     })
+    const closeButton = screen.getByRole('button', { name: 'Cerrar detalle' })
 
     expect(link.getAttribute('href')).toBe('/stocks/GGAL')
+    expect(link.classList.contains('stock-details-action')).toBe(true)
+    expect(closeButton.classList.contains('stock-details-action')).toBe(true)
   })
 })

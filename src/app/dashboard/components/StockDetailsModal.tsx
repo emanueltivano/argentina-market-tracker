@@ -109,7 +109,7 @@ export default function StockDetailsModal({
           <div className="stock-details-actions">
             <Link
               href={stockPageHref}
-              className="ui-icon-button ui-icon-button-raised stock-details-expand"
+              className="ui-icon-button ui-icon-button-raised stock-details-action stock-details-expand"
               aria-label={`Ver página completa de ${stock.ticker}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +124,7 @@ export default function StockDetailsModal({
             <button
               ref={closeButtonRef}
               type="button"
-              className="ui-icon-button ui-icon-button-raised stock-details-close"
+              className="ui-icon-button ui-icon-button-raised stock-details-action stock-details-close"
               onClick={onClose}
               aria-label="Cerrar detalle"
             >

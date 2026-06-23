@@ -15,7 +15,7 @@ type PanelContentProps = {
   initialTheme?: Theme;
   isDemoMode?: boolean;
   onChange: (key: MarketPanelKey) => void;
-  actions?: ReactNode;
+  status?: ReactNode;
   children: ReactNode;
 };
 
@@ -25,7 +25,7 @@ export default function PanelContent({
   initialTheme,
   isDemoMode = false,
   onChange,
-  actions,
+  status,
   children,
 }: PanelContentProps) {
   const titleId = useId();
@@ -35,33 +35,42 @@ export default function PanelContent({
       <Title id={titleId}>{title}</Title>
 
       <div className="panel-toolbar">
-        <PanelMenu
-          activePanelKey={activePanelKey}
-          onChange={onChange}
-          options={MARKET_PANEL_OPTIONS}
-        />
+        <div className="panel-menu-status">
+          <PanelMenu
+            activePanelKey={activePanelKey}
+            onChange={onChange}
+            options={MARKET_PANEL_OPTIONS}
+          />
+
+          <div className="panel-status">
+            {isDemoMode && (
+              <span
+                className="ui-pill ui-pill-warning panel-demo-badge"
+                aria-label="Demo data badge"
+              >
+                Demo data
+              </span>
+            )}
+            {status}
+          </div>
+        </div>
 
         <div className="panel-actions">
-          {isDemoMode && (
-            <span
-              className="ui-pill ui-pill-warning panel-demo-badge"
-              aria-label="Demo data badge"
-            >
-              Demo data
-            </span>
-          )}
-          <Link
-            className="ui-button ui-button-secondary panel-about-link"
-            href="/about"
-          >
-            About
-          </Link>
           <ThemeToggle initialTheme={initialTheme} />
-          {actions}
         </div>
       </div>
 
       <div className="stock-table-container">{children}</div>
+
+      <footer className="dashboard-project-footer">
+        <p>Información sobre los datos y las decisiones técnicas del proyecto.</p>
+        <Link
+          className="ui-button ui-button-secondary dashboard-project-link"
+          href="/about"
+        >
+          Datos y proyecto
+        </Link>
+      </footer>
     </section>
   );
 }

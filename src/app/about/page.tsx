@@ -3,74 +3,75 @@ import Link from 'next/link';
 import { ENV } from '@/lib/server/env';
 
 export const metadata: Metadata = {
-  title: 'About',
+  title: 'Datos y proyecto',
   description:
-    'Technical overview of Argentina Market Tracker: architecture, data contracts, caching, rate limiting, testing and tradeoffs.',
+    'Información sobre los datos, el objetivo y la arquitectura de Argentina Market Tracker.',
 };
 
 const architectureItems = [
   {
-    title: 'Secure BFF',
-    text: 'The browser never calls the external provider directly. Next API routes keep credentials and OAuth token handling on the server.',
+    title: 'BFF seguro',
+    text: 'El navegador consume rutas internas de Next.js. Las credenciales y la integración con el proveedor externo permanecen en el servidor.',
   },
   {
-    title: 'Validated contracts',
-    text: 'External payloads are normalized before they reach React, so the UI renders typed, predictable market rows and history points.',
+    title: 'Contratos validados',
+    text: 'Los payloads externos se validan y normalizan antes de llegar a React para mantener datos tipados y estados predecibles.',
   },
   {
-    title: 'Operational safeguards',
-    text: 'Short in-memory cache, request deduplication, timeout, retry and rate limiting reduce pressure on the upstream API.',
+    title: 'Resiliencia',
+    text: 'Caché de corta duración, deduplicación, timeouts, reintentos y rate limiting reducen presión sobre el servicio externo.',
   },
   {
-    title: 'Portfolio-ready QA',
-    text: 'Vitest covers contracts, hooks, API routes and UI behavior. Playwright covers the dashboard flow with mocked market data.',
+    title: 'Verificación',
+    text: 'Vitest cubre contratos, hooks, rutas y componentes. Playwright verifica los flujos principales y el arranque con SSR.',
   },
 ];
 
 const tradeoffs = [
-  'The cache and rate limit are in-memory by design, so they are per serverless instance and not globally shared.',
-  'The app avoids CDN/browser caching for market data and keeps freshness controlled by the API layer.',
-  'Historical prices are fetched on demand instead of stored in a database, which keeps the project deployable without paid infrastructure.',
+  'La caché y el rate limiting pueden operar en memoria y, en ese caso, son locales a cada instancia.',
+  'Los precios históricos se consultan bajo demanda y no se almacenan en una base de datos propia.',
+  'El modo demo prioriza una revisión pública estable; el modo live depende de la disponibilidad del proveedor externo.',
 ];
 
 export default function AboutPage() {
   const isDemoMode = ENV.MARKET_DATA_SOURCE === 'demo';
+  const modeLabel = isDemoMode ? 'Modo demo activo' : 'Modo live activo';
 
   return (
     <main className="about-page">
       <div className="about-shell">
         <header className="about-hero">
           <Link className="about-back-link" href="/">
-            Back to dashboard
+            Volver al dashboard
           </Link>
-          <p className="about-eyebrow">Technical case study</p>
+          <p className="about-eyebrow">Datos y proyecto</p>
           <h1>Argentina Market Tracker</h1>
           <p>
-            A fullstack market dashboard built to demonstrate production-minded
-            frontend work: data contracts, secure server boundaries, resilient
-            UI states and a testable architecture.
+            Dashboard de mercado argentino creado como proyecto de portfolio para
+            mostrar una arquitectura full-stack con límites seguros, datos
+            validados y estados de interfaz resilientes.
           </p>
-          {isDemoMode && (
-            <p className="about-mode-note">
-              Public demo mode is active. The dashboard is rendering deterministic
-              fixture data, not live market quotes.
-            </p>
-          )}
+          <p className="about-mode-note">
+            <strong>{modeLabel}.</strong>{' '}
+            {isDemoMode
+              ? 'El dashboard usa datos determinísticos de muestra, no cotizaciones en tiempo real.'
+              : 'El dashboard obtiene datos del proveedor de mercado configurado mediante el BFF interno.'}
+          </p>
         </header>
 
-        <section className="about-section" aria-labelledby="why-heading">
-          <h2 id="why-heading">Why It Exists</h2>
+        <section className="about-section" aria-labelledby="scope-heading">
+          <h2 id="scope-heading">Qué muestra</h2>
           <p>
-            Financial dashboards are useful portfolio projects because they
-            expose real product problems: protected APIs, changing external
-            payloads, stale data, loading states, mobile density, formatting and
-            trust. This project keeps those concerns visible while still
-            supporting a deterministic demo mode for public review.
+            Permite explorar paneles de acciones argentinas y CEDEARs, administrar
+            favoritos, ordenar cotizaciones y consultar el detalle e histórico de
+            cada activo. En modo live, los datos provienen de la integración de
+            mercado configurada en el servidor; el browser nunca accede al
+            proveedor directamente.
           </p>
         </section>
 
         <section className="about-section" aria-labelledby="architecture-heading">
-          <h2 id="architecture-heading">Architecture</h2>
+          <h2 id="architecture-heading">Resumen técnico</h2>
           <div className="about-grid">
             {architectureItems.map((item) => (
               <article key={item.title} className="about-card">
@@ -81,27 +82,31 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="about-section" aria-labelledby="data-heading">
-          <h2 id="data-heading">Data Flow</h2>
-          <ol className="about-steps">
-            <li>React requests market panels through SWR.</li>
-            <li>Next API routes validate the requested panel or symbol.</li>
-            <li>
-              The server-side data layer resolves either deterministic demo
-              fixtures or the live IOL-backed upstream.
-            </li>
-            <li>Responses are normalized into stable TypeScript contracts.</li>
-            <li>The dashboard renders loading, empty, error, stale and success states.</li>
-          </ol>
-        </section>
-
         <section className="about-section" aria-labelledby="tradeoffs-heading">
-          <h2 id="tradeoffs-heading">Tradeoffs</h2>
+          <h2 id="tradeoffs-heading">Alcance y decisiones</h2>
           <ul className="about-list">
             {tradeoffs.map((tradeoff) => (
               <li key={tradeoff}>{tradeoff}</li>
             ))}
           </ul>
+        </section>
+
+        <section className="about-section" aria-labelledby="disclaimer-heading">
+          <h2 id="disclaimer-heading">Uso responsable</h2>
+          <p>
+            Este sitio es una demostración técnica. No es un broker, una plataforma
+            de trading ni ofrece asesoramiento financiero. La información puede
+            estar demorada, ser sintética o contener limitaciones propias de la
+            fuente configurada.
+          </p>
+          <a
+            className="ui-button ui-button-secondary about-repository-link"
+            href="https://github.com/emanueltivano/argentina-market-tracker"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Ver repositorio en GitHub
+          </a>
         </section>
       </div>
     </main>

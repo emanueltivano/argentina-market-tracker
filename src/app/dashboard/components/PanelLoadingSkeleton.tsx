@@ -37,19 +37,23 @@ export default function PanelLoadingSkeleton() {
       </div>
 
       <div className="panel-toolbar" aria-hidden="true">
-        <div className="panel-menu panel-menu-skeleton">
-          {Array.from({ length: 4 }, (_, index) => (
-            <span key={index} className="panel-menu-button panel-skeleton-pill">
-              <SkeletonBar />
-            </span>
-          ))}
+        <div className="panel-menu-status">
+          <div className="panel-menu panel-menu-skeleton">
+            {Array.from({ length: 4 }, (_, index) => (
+              <span key={index} className="panel-menu-button panel-skeleton-pill">
+                <SkeletonBar />
+              </span>
+            ))}
+          </div>
+          <div className="panel-status">
+            <PanelFreshnessSkeleton />
+          </div>
         </div>
 
         <div className="panel-actions">
           <span className="theme-toggle-button panel-skeleton-icon">
             <SkeletonBar />
           </span>
-          <PanelFreshnessSkeleton />
         </div>
       </div>
 
@@ -80,11 +84,11 @@ export default function PanelLoadingSkeleton() {
 
 export function PanelFreshnessSkeleton() {
   return (
-    <div className="panel-refresh panel-refresh-skeleton" aria-hidden="true">
-      <SkeletonBar className="panel-refresh-time-skeleton" />
-      <span className="panel-refresh-button panel-skeleton-button">
-        <SkeletonBar />
-      </span>
+    <div
+      className="panel-freshness-inline panel-freshness-skeleton"
+      aria-hidden="true"
+    >
+      <SkeletonBar className="panel-freshness-time-skeleton" />
     </div>
   );
 }

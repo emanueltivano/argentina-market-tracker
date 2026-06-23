@@ -312,7 +312,8 @@ test.describe('dashboard', () => {
         name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
       })
     ).toBeVisible()
-    await expect(page.getByText(/Última actualización:/)).toBeVisible()
+    await expect(page.getByText(/Actualizado/)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Actualizar' })).toHaveCount(0)
   })
 
   test('switches panels and requests the selected panel type', async ({ page }) => {
@@ -341,33 +342,55 @@ test.describe('dashboard', () => {
       .toEqual(expect.arrayContaining(['lider', 'general', 'cedears']))
   })
 
-  test('refreshes manually with cache bypass and updates the rows', async ({
+  test('keeps freshness beside the panel menu without manual refresh', async ({
     page,
-  }) => {
+  }, testInfo) => {
     const requests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 
-    await mockPanelApi(page, { requests, delayRefreshMs: 300 })
+    await mockPanelApi(page, { requests })
     await page.goto('/')
     await expectPanelRequest(requests)
     expectNoBrowserErrors(diagnostics)
 
-    await expect(
-      page.getByRole('button', {
-        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
-      })
-    ).toBeVisible()
+    const menuStatus = page.locator('.panel-menu-status')
+    const actions = page.locator('.panel-actions')
 
-    await page.getByRole('button', { name: 'Actualizar' }).click()
-
-    await expect
-      .poll(() => requests.some((request) => request.refresh === '1'))
-      .toBe(true)
+    await expect(menuStatus.getByText(/Actualizado/)).toBeVisible()
     await expect(
-      page.getByRole('button', {
-        name: 'Abrir detalle de GGALR, Grupo Financiero Galicia',
-      })
+      actions.getByRole('button', { name: 'Usar tema oscuro' })
     ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Actualizar' })).toHaveCount(0)
+    expect(requests.some((request) => request.refresh === '1')).toBe(false)
+
+    if (testInfo.project.name === 'mobile-chrome') {
+      for (const width of [375, 400]) {
+        await page.setViewportSize({ width, height: 800 })
+
+        const menuToggle = page.locator('.panel-menu-toggle')
+        const themeToggle = page.locator('.panel-theme-toggle')
+        const freshness = page.locator('.panel-freshness-inline')
+        const [menuBox, themeBox, freshnessBox] = await Promise.all([
+          menuToggle.boundingBox(),
+          themeToggle.boundingBox(),
+          freshness.boundingBox(),
+        ])
+
+        expect(menuBox).not.toBeNull()
+        expect(themeBox).not.toBeNull()
+        expect(freshnessBox).not.toBeNull()
+        expect(Math.abs(menuBox!.y - themeBox!.y)).toBeLessThanOrEqual(1)
+        expect(Math.abs(menuBox!.height - themeBox!.height)).toBeLessThanOrEqual(
+          1
+        )
+        expect(themeBox!.width).toBe(40)
+        expect(themeBox!.height).toBe(40)
+        expect(freshnessBox!.y).toBeGreaterThanOrEqual(
+          menuBox!.y + menuBox!.height
+        )
+        expect(freshnessBox!.x + freshnessBox!.width).toBeLessThanOrEqual(width)
+      }
+    }
   })
 
   test('toggles favorites without breaking the modal flow', async ({ page }) => {
@@ -445,7 +468,7 @@ test.describe('dashboard', () => {
     await expect(opener).toBeFocused()
   })
 
-  test('renders API errors and keeps manual refresh available', async ({ page }) => {
+  test('renders API errors without exposing manual refresh', async ({ page }) => {
     const requests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 
@@ -467,7 +490,8 @@ test.describe('dashboard', () => {
     await expect(errorMessage).toHaveText(
       'Error cargando datos: No se pudo cargar el panel de mercado.'
     )
-    await expect(page.getByRole('button', { name: 'Actualizar' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Actualizar' })).toHaveCount(0)
+    await expect(page.getByText('Actualización pendiente')).toBeVisible()
   })
 
   test('opens and closes the stock details modal while restoring focus', async ({

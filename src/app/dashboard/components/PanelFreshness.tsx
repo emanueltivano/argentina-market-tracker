@@ -1,55 +1,61 @@
 const updatedAtFormatter = new Intl.DateTimeFormat('es-AR', {
   hour: '2-digit',
   minute: '2-digit',
-  second: '2-digit',
 });
 
-function formatUpdatedAt(value: string | undefined): string {
+const updatedAtTitleFormatter = new Intl.DateTimeFormat('es-AR', {
+  dateStyle: 'medium',
+  timeStyle: 'medium',
+});
+
+function getUpdatedAt(value: string | undefined) {
   if (!value) {
-    return 'Última actualización no disponible';
+    return null;
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return 'Última actualización no disponible';
+    return null;
   }
 
-  return `Última actualización: ${updatedAtFormatter.format(date)}`;
+  return {
+    label: `Actualizado ${updatedAtFormatter.format(date)}`,
+    title: `Última actualización: ${updatedAtTitleFormatter.format(date)}`,
+  };
 }
 
 type PanelFreshnessProps = {
   fetchedAt: string | undefined;
   isRefreshing: boolean;
-  onRefresh: () => Promise<void>;
 };
 
 export default function PanelFreshness({
   fetchedAt,
   isRefreshing,
-  onRefresh,
 }: PanelFreshnessProps) {
-  const handleRefresh = () => {
-    if (isRefreshing) return;
-
-    void onRefresh().catch(() => undefined);
-  };
+  const updatedAt = getUpdatedAt(fetchedAt);
+  const label = isRefreshing
+    ? 'Actualizando...'
+    : (updatedAt?.label ?? 'Actualización pendiente');
+  const accessibleLabel = isRefreshing
+    ? updatedAt
+      ? `Actualizando datos. ${updatedAt.title}`
+      : 'Actualizando datos'
+    : (updatedAt?.title ?? 'Actualización pendiente');
 
   return (
-    <div className="panel-refresh">
-      <p aria-live="polite">{formatUpdatedAt(fetchedAt)}</p>
-
-      <button
-        type="button"
-        className={`ui-button ui-button-primary panel-refresh-button${
-          isRefreshing ? ' loading' : ''
-        }`}
-        onClick={handleRefresh}
-        disabled={isRefreshing}
-        aria-busy={isRefreshing}
-      >
-        {isRefreshing ? 'Actualizando...' : 'Actualizar'}
-      </button>
-    </div>
+    <p
+      className="panel-freshness-inline"
+      aria-label={accessibleLabel}
+      aria-live="polite"
+      aria-busy={isRefreshing}
+      title={updatedAt?.title}
+    >
+      <span className="panel-freshness-separator" aria-hidden="true">
+        ·
+      </span>
+      <span>{label}</span>
+    </p>
   );
 }

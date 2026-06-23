@@ -88,7 +88,6 @@ export default function Panel({
     rows,
     error,
     fetchedAt,
-    refresh,
     isRefreshing,
     hasStaleError,
     viewStatus,
@@ -148,14 +147,13 @@ export default function Panel({
       initialTheme={initialTheme}
       isDemoMode={isDemoMode}
       onChange={handlePanelContentChange}
-      actions={
+      status={
         effectiveViewStatus === 'loading' ? (
           <PanelFreshnessSkeleton />
         ) : (
           <PanelFreshness
             fetchedAt={fetchedAt}
             isRefreshing={isRefreshing}
-            onRefresh={refresh}
           />
         )
       }

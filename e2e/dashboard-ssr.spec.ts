@@ -34,7 +34,8 @@ test.describe('dashboard SSR boot', () => {
 
     await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
     await expect(page.getByLabel('Demo data badge')).toBeVisible()
-    await expect(page.getByText(/Última actualización:/)).toBeVisible()
+    await expect(page.getByText(/Actualizado/)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Actualizar' })).toHaveCount(0)
     await expect(page.getByRole('button', {
       name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
     })).toBeVisible()
