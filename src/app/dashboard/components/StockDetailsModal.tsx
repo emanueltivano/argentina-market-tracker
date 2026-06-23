@@ -1,71 +1,17 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { type MarketPanelKey } from '@/lib/market';
-import { type StockData } from '../lib/stockData';
-import StockFavoriteButton from './StockFavoriteButton';
-import LightweightStockChart from './LightweightStockChart';
-import {
-  formatMoney,
-  formatInteger,
-  formatSignedPercent,
-} from '@/lib/formatters';
-import {
-  DEFAULT_STOCK_HISTORY_RANGE,
-  STOCK_HISTORY_RANGES,
-  type StockHistoryPoint,
-  type StockHistoryRange,
-} from '@/lib/stockHistory';
-import { useStockHistory } from '../hooks/useStockHistory';
-import { getMarketPanelOption } from '../lib/marketPanelOptions';
-import { getVariationSeverityClass } from './stockVariationSeverity';
+import { useCallback, useEffect, useId, useRef } from 'react'
+import Link from 'next/link'
+import { type MarketPanelKey } from '@/lib/market'
+import { type StockData } from '../lib/stockData'
+import StockFavoriteButton from './StockFavoriteButton'
+import { getMarketPanelOption } from '../lib/marketPanelOptions'
+import StockDetailsContent from './StockDetailsContent'
 
 type StockDetailsModalProps = {
-  stock: StockData;
-  onClose: () => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: (stock: StockData) => void;
-  panelKey?: MarketPanelKey;
-};
-
-type StockDetailRow = {
-  label: string;
-  value: string;
-  className?: string;
-  valueClassName?: string;
-};
-
-const VAR_CLASS_BY_TYPE: Record<StockData['varType'], string> = {
-  positive: 'stock-var-positive',
-  negative: 'stock-var-negative',
-  neutral: 'stock-var-neutral',
-};
-
-const HISTORY_RANGE_LABEL: Record<StockHistoryRange, string> = {
-  '1W': 'Última semana',
-  '1M': 'Último mes',
-  '3M': 'Últimos 3 meses',
-  '6M': 'Últimos 6 meses',
-  '1Y': 'Último año',
-};
-
-function getHistoryPeriodVariation(points: StockHistoryPoint[]) {
-  const first = points[0];
-  const last = points.at(-1);
-
-  if (!first || !last || first.close === 0) {
-    return null;
-  }
-
-  return ((last.close - first.close) / first.close) * 100;
-}
-
-function getHistoryVariationClass(value: number | null): string {
-  if (value === null || value === 0) {
-    return 'stock-history-performance-neutral';
-  }
-
-  return value > 0
-    ? 'stock-history-performance-positive'
-    : 'stock-history-performance-negative';
+  stock: StockData
+  onClose: () => void
+  isFavorite?: boolean
+  onToggleFavorite?: (stock: StockData) => void
+  panelKey?: MarketPanelKey
 }
 
 export default function StockDetailsModal({
@@ -75,118 +21,45 @@ export default function StockDetailsModal({
   onToggleFavorite,
   panelKey,
 }: StockDetailsModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const titleId = useId();
-  const descriptionId = useId();
-  const [historyRange, setHistoryRange] = useState<StockHistoryRange>(
-    DEFAULT_STOCK_HISTORY_RANGE
-  );
-  const {
-    points: historyPoints,
-    meta: historyMeta,
-    error: historyError,
-    isLoading: isHistoryLoading,
-    isRefreshing: isHistoryRefreshing,
-    viewStatus: historyStatus,
-  } = useStockHistory(stock.ticker, historyRange);
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const openerRef = useRef<HTMLElement | null>(null)
+  const titleId = useId()
+  const descriptionId = useId()
 
   useEffect(() => {
-    const dialog = dialogRef.current;
-    const activeElement = document.activeElement;
+    const dialog = dialogRef.current
+    const activeElement = document.activeElement
 
     if (!dialog) {
-      return;
+      return
     }
 
     openerRef.current =
-      activeElement instanceof HTMLElement ? activeElement : null;
+      activeElement instanceof HTMLElement ? activeElement : null
 
     if (!dialog.open) {
-      dialog.showModal();
+      dialog.showModal()
     }
 
-    closeButtonRef.current?.focus();
+    closeButtonRef.current?.focus()
 
     return () => {
       if (dialog.open) {
-        dialog.close();
+        dialog.close()
       }
 
       if (openerRef.current?.isConnected) {
-        openerRef.current.focus();
+        openerRef.current.focus()
       }
-    };
-  }, []);
+    }
+  }, [])
 
-  const varClass = VAR_CLASS_BY_TYPE[stock.varType];
-  const severityClass = getVariationSeverityClass(stock.var, stock.varType);
-  const historyVariation = getHistoryPeriodVariation(historyPoints);
-  const historyVariationClass = getHistoryVariationClass(historyVariation);
-  const panelLabel = panelKey ? getMarketPanelOption(panelKey).label : null;
-  const historyMetaMessage =
-    historyStatus === 'success' && historyMeta
-      ? historyMeta.stale
-        ? 'Mostrando histórico cacheado por una falla temporal del upstream.'
-        : historyMeta.discardedPoints > 0
-          ? `Se descartaron ${historyMeta.discardedPoints} de ${historyMeta.totalPoints} puntos inválidos del upstream.`
-          : historyMeta.source === 'demo'
-            ? 'Serie histórica de demo determinística.'
-            : null
-      : null;
+  const panelLabel = panelKey ? getMarketPanelOption(panelKey).label : null
+  const stockPageHref = `/stocks/${encodeURIComponent(stock.ticker)}`
   const handleToggleFavorite = useCallback(() => {
-    onToggleFavorite?.(stock);
-  }, [onToggleFavorite, stock]);
-
-  const primaryDetailRows: StockDetailRow[] = [
-    { label: 'Último precio', value: formatMoney(stock.price) },
-    {
-      label: 'Variación diaria',
-      value: formatSignedPercent(stock.var),
-      valueClassName: `stock-var ${varClass} ${severityClass}`.trim(),
-    },
-    {
-      label: 'Apertura',
-      value: formatMoney(stock.open),
-      className: 'stock-details-market-cell',
-    },
-    {
-      label: 'Último cierre',
-      value: formatMoney(stock.close),
-      className: 'stock-details-market-cell',
-    },
-    {
-      label: 'Volumen',
-      value: formatInteger(stock.volume),
-      className: 'stock-details-market-cell',
-    },
-  ];
-
-  const secondaryDetailRows: StockDetailRow[] = [
-    {
-      label: 'Cantidad compra',
-      value: formatInteger(stock.buyQty),
-      className: 'stock-details-quote-cell',
-    },
-    {
-      label: 'Precio compra',
-      value: formatMoney(stock.buyPrice),
-      className: 'stock-details-quote-cell',
-    },
-    {
-      label: 'Precio venta',
-      value: formatMoney(stock.sellPrice),
-      className: 'stock-details-quote-cell',
-    },
-    {
-      label: 'Cantidad venta',
-      value: formatInteger(stock.sellQty),
-      className: 'stock-details-quote-cell',
-    },
-    { label: 'Mínimo', value: formatMoney(stock.min) },
-    { label: 'Máximo', value: formatMoney(stock.max) },
-  ];
+    onToggleFavorite?.(stock)
+  }, [onToggleFavorite, stock])
 
   return (
     <dialog
@@ -197,12 +70,12 @@ export default function StockDetailsModal({
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       onCancel={(event) => {
-        event.preventDefault();
-        onClose();
+        event.preventDefault()
+        onClose()
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
-          onClose();
+          onClose()
         }
       }}
     >
@@ -233,114 +106,38 @@ export default function StockDetailsModal({
             </div>
           </div>
 
-          <button
-            ref={closeButtonRef}
-            type="button"
-            className="stock-details-close"
-            onClick={onClose}
-            aria-label="Cerrar detalle"
-          >
-            Cerrar
-          </button>
+          <div className="stock-details-actions">
+            <Link
+              href={stockPageHref}
+              className="stock-details-expand"
+              aria-label={`Ver página completa de ${stock.ticker}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M4 8v-2a2 2 0 0 1 2 -2h2" />
+                <path d="M4 16v2a2 2 0 0 0 2 2h2" />
+                <path d="M16 4h2a2 2 0 0 1 2 2v2" />
+                <path d="M16 20h2a2 2 0 0 0 2 -2v-2" />
+              </svg>
+            </Link>
+
+            <button
+              ref={closeButtonRef}
+              type="button"
+              className="stock-details-close"
+              onClick={onClose}
+              aria-label="Cerrar detalle"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M18 6l-12 12" /><path d="M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </header>
 
-        <section className="stock-history-section" aria-label="Histórico">
-          <div className="stock-history-header">
-            <div className="stock-history-heading">
-              <div>
-                <h3 className="stock-history-title">Histórico</h3>
-                <p className="stock-history-subtitle">
-                  {HISTORY_RANGE_LABEL[historyRange]}
-                </p>
-                {historyMetaMessage && (
-                  <p className="stock-history-subtitle stock-history-subtitle-meta">
-                    {historyMetaMessage}
-                  </p>
-                )}
-              </div>
-
-              {historyStatus === 'success' && historyVariation !== null && (
-                <span
-                  className={`stock-history-performance ${historyVariationClass}`}
-                >
-                  {formatSignedPercent(historyVariation)}
-                </span>
-              )}
-            </div>
-
-            <div className="stock-history-range-group" aria-label="Rango">
-              {STOCK_HISTORY_RANGES.map((range) => (
-                <button
-                  key={range}
-                  type="button"
-                  className={
-                    range === historyRange
-                      ? 'stock-history-range-button stock-history-range-button-active'
-                      : 'stock-history-range-button'
-                  }
-                  onClick={() => setHistoryRange(range)}
-                  aria-pressed={range === historyRange}
-                  title={HISTORY_RANGE_LABEL[range]}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {isHistoryLoading && (
-            <div className="stock-history-state" role="status">
-              Cargando histórico...
-            </div>
-          )}
-
-          {historyStatus === 'error' && (
-            <div className="stock-history-state stock-history-state-error" role="alert">
-              {historyError?.message ?? 'No se pudo cargar el histórico.'}
-            </div>
-          )}
-
-          {historyStatus === 'empty' && (
-            <div className="stock-history-state">
-              <strong>Sin histórico disponible</strong>
-              <span>No hay datos históricos para este rango.</span>
-            </div>
-          )}
-
-          {historyStatus === 'success' && (
-            <div
-              className={
-                isHistoryRefreshing
-                  ? 'stock-history-chart-wrap stock-history-chart-wrap-refreshing'
-                  : 'stock-history-chart-wrap'
-              }
-            >
-              <LightweightStockChart
-                points={historyPoints}
-                symbol={stock.ticker}
-              />
-            </div>
-          )}
-        </section>
-
-        <dl className="stock-details-grid stock-details-grid-primary">
-          {primaryDetailRows.map(({ label, value, className, valueClassName }) => (
-            <div key={label} className={className}>
-              <dt>{label}</dt>
-              <dd className={valueClassName}>{value}</dd>
-            </div>
-          ))}
-        </dl>
-
-        <dl className="stock-details-grid stock-details-grid-secondary">
-          {secondaryDetailRows.map(({ label, value, className, valueClassName }) => (
-            <div key={label} className={className}>
-              <dt>{label}</dt>
-              <dd className={valueClassName}>{value}</dd>
-            </div>
-          ))}
-        </dl>
+        <StockDetailsContent stock={stock} />
       </div>
     </dialog>
-  );
+  )
 }
