@@ -121,7 +121,10 @@ export default function StockDetailPageClient({
     return (
       <main className="stock-detail-page">
         <div className="stock-detail-shell stock-detail-state">
-          <Link href="/" className="stock-detail-back-link">
+          <Link
+            href="/"
+            className="ui-button ui-button-ghost stock-detail-back-link"
+          >
             Volver al dashboard
           </Link>
           <h1>Activo inválido</h1>
@@ -135,7 +138,10 @@ export default function StockDetailPageClient({
     return (
       <main className="stock-detail-page">
         <div className="stock-detail-shell stock-detail-state" role="status">
-          <Link href="/" className="stock-detail-back-link">
+          <Link
+            href="/"
+            className="ui-button ui-button-ghost stock-detail-back-link"
+          >
             Volver al dashboard
           </Link>
           <h1>{normalizedSymbol}</h1>
@@ -149,7 +155,10 @@ export default function StockDetailPageClient({
     return (
       <main className="stock-detail-page">
         <div className="stock-detail-shell stock-detail-state" role="alert">
-          <Link href="/" className="stock-detail-back-link">
+          <Link
+            href="/"
+            className="ui-button ui-button-ghost stock-detail-back-link"
+          >
             Volver al dashboard
           </Link>
           <h1>No se pudo cargar {normalizedSymbol}</h1>
@@ -166,7 +175,10 @@ export default function StockDetailPageClient({
     return (
       <main className="stock-detail-page">
         <div className="stock-detail-shell stock-detail-state">
-          <Link href="/" className="stock-detail-back-link">
+          <Link
+            href="/"
+            className="ui-button ui-button-ghost stock-detail-back-link"
+          >
             Volver al dashboard
           </Link>
           <h1>{normalizedSymbol}</h1>
@@ -185,13 +197,18 @@ export default function StockDetailPageClient({
   return (
     <main className="stock-detail-page">
       <div className="stock-detail-shell">
-        <Link href="/" className="stock-detail-back-link">
+        <Link
+          href="/"
+          className="ui-button ui-button-ghost stock-detail-back-link"
+        >
           Volver al dashboard
         </Link>
 
         <header className="stock-detail-page-header">
           <div className="stock-detail-page-heading">
-            <span className="stock-details-panel-label">{panelLabel}</span>
+            <span className="ui-pill ui-pill-muted stock-details-panel-label">
+              {panelLabel}
+            </span>
             <h1>{stock.ticker}</h1>
             <p>{stock.description}</p>
           </div>

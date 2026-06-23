@@ -43,11 +43,17 @@ export default function PanelContent({
 
         <div className="panel-actions">
           {isDemoMode && (
-            <span className="panel-demo-badge" aria-label="Demo data badge">
+            <span
+              className="ui-pill ui-pill-warning panel-demo-badge"
+              aria-label="Demo data badge"
+            >
               Demo data
             </span>
           )}
-          <Link className="panel-about-link" href="/about">
+          <Link
+            className="ui-button ui-button-secondary panel-about-link"
+            href="/about"
+          >
             About
           </Link>
           <ThemeToggle initialTheme={initialTheme} />

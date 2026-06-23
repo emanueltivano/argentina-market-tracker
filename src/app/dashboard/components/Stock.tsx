@@ -97,7 +97,10 @@ function Stock(props: StockProps) {
         >
           {stock.ticker}
           {isStale && (
-            <span id={staleLabelId} className="stock-stale-badge">
+            <span
+              id={staleLabelId}
+              className="ui-pill ui-pill-warning stock-stale-badge"
+            >
               Local
             </span>
           )}

@@ -286,6 +286,112 @@ html.dark {
 ========================= */
 
 @layer components {
+  .ui-button {
+    @apply rounded-md border px-3 py-1.5 text-[13px] font-semibold shadow-sm;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .ui-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .ui-button-primary {
+    border-color: var(--main-color);
+    background-color: var(--main-color);
+    color: white;
+  }
+
+  .ui-button-primary:hover:not(:disabled) {
+    border-color: var(--main-light-color);
+    background-color: var(--main-light-color);
+    color: white;
+    box-shadow: 0 4px 12px rgb(45 83 255 / 25%);
+  }
+
+  .ui-button-secondary {
+    border-color: var(--main-color);
+    background-color: var(--surface);
+    color: var(--text-color);
+  }
+
+  .ui-button-secondary:hover {
+    background-color: var(--main-color);
+    color: white;
+  }
+
+  .ui-button-ghost {
+    border-color: var(--border-strong);
+    background-color: var(--surface-raised);
+    color: var(--main-color);
+  }
+
+  .ui-button-ghost:hover {
+    border-color: var(--main-color);
+    color: var(--main-color);
+  }
+
+  .ui-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .ui-icon-button-raised {
+    border-color: rgb(28 54 190 / 32%);
+    border-radius: 0.375rem;
+    background-color: var(--surface-raised);
+    box-shadow:
+      0 8px 18px rgb(4 43 93 / 10%),
+      0 1px 0 rgb(255 255 255 / 85%) inset;
+  }
+
+  .ui-icon-button-raised:hover {
+    border-color: var(--main-color);
+    box-shadow: 0 8px 18px rgb(28 54 190 / 20%);
+    color: var(--main-color) !important;
+  }
+
+  .ui-pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .ui-pill-warning {
+    border-color: var(--warning-border);
+    background: var(--warning-surface-bg);
+    color: var(--warning-text);
+  }
+
+  .ui-pill-muted {
+    border-color: var(--accent-subtle-border);
+    background-color: var(--accent-subtle-bg);
+    color: var(--main-color);
+  }
+
   .page-title {
     @apply mb-4 text-[28px] font-extrabold tracking-tight md:text-3xl;
     color: var(--text-color);
@@ -304,11 +410,9 @@ html.dark {
   }
 
   .panel-menu-button,
-  .panel-refresh-button,
   .panel-about-link,
   .theme-toggle-button,
-  .panel-menu-toggle,
-  .stock-details-close {
+  .panel-menu-toggle {
     @apply rounded-md border px-3 py-1.5 text-[13px] font-semibold shadow-sm;
     border-color: var(--main-color);
     background-color: var(--surface);
@@ -413,20 +517,7 @@ html.dark {
   }
 
   .panel-refresh-button {
-    background-color: var(--main-color);
-    color: white;
-  }
-
-  .panel-refresh-button:hover:not(:disabled) {
-    border-color: var(--main-light-color);
-    background-color: var(--main-light-color);
-    color: white;
-    box-shadow: 0 4px 12px rgb(45 83 255 / 25%);
-  }
-
-  .panel-refresh-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
+    white-space: nowrap;
   }
 
   .panel-refresh-button.loading {
@@ -494,6 +585,8 @@ html.dark {
   .panel-about-link:focus-visible,
   .theme-toggle-button:focus-visible,
   .panel-menu-toggle:focus-visible,
+  .ui-button:focus-visible,
+  .ui-icon-button:focus-visible,
   .stock-details-expand:focus-visible,
   .stock-details-close:focus-visible,
   .stock-favorite-button:focus-visible,
@@ -704,6 +797,8 @@ html.dark {
 
   .panel-menu-button,
   .panel-refresh-button,
+  .ui-button,
+  .ui-icon-button,
   .theme-toggle-button,
   .panel-menu-toggle,
   .stock-details-close,
@@ -747,19 +842,11 @@ html.dark {
 }
 
 .panel-demo-badge {
-  display: inline-flex;
-  align-items: center;
   min-height: 2.1rem;
   padding: 0.35rem 0.7rem;
-  border: 1px solid var(--warning-border);
-  border-radius: 9999px;
-  background: var(--warning-surface-bg);
-  color: var(--warning-text);
   font-size: 0.76rem;
-  font-weight: 900;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .panel-refresh {
@@ -860,18 +947,12 @@ html.dark {
 }
 
 .stock-stale-badge {
-  display: inline-flex;
-  align-items: center;
   min-height: 1.2rem;
   padding: 0.08rem 0.42rem;
-  border: 1px solid var(--warning-border-strong);
-  border-radius: 9999px;
-  background-color: var(--warning-badge-bg);
-  color: var(--warning-text);
+  border-color: var(--warning-border-strong);
+  background: var(--warning-badge-bg);
   font-size: 0.62rem;
-  font-weight: 900;
   letter-spacing: 0.04em;
-  line-height: 1;
   text-transform: uppercase;
 }
 
@@ -1126,18 +1207,10 @@ dialog.stock-details-dialog .stock-details-title-row {
 }
 
 .stock-details-panel-label {
-  display: inline-flex;
-  align-items: center;
   min-height: 1.45rem;
   padding: 0.18rem 0.48rem;
-  border: 1px solid var(--accent-subtle-border);
-  border-radius: 9999px;
-  background-color: var(--accent-subtle-bg);
-  color: var(--main-color);
   font-size: 0.7rem;
   font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
 }
 
 dialog.stock-details-dialog .stock-details-description {
@@ -1180,25 +1253,10 @@ dialog.stock-details-dialog .stock-details-actions {
 dialog.stock-details-dialog .stock-details-expand,
 dialog.stock-details-dialog .stock-details-close {
   flex: 0 0 auto;
-  display: inline-flex;
   min-height: 2.25rem;
-  align-items: center;
-  justify-content: center;
   padding: 0.45rem 0.8rem;
   margin: 2px;
-  border-color: rgb(28 54 190 / 32%);
-  background-color: var(--surface-raised);
-  box-shadow:
-    0 8px 18px rgb(4 43 93 / 10%),
-    0 1px 0 rgb(255 255 255 / 85%) inset;
   font-size: 0.875rem;
-}
-
-dialog.stock-details-dialog .stock-details-expand:hover,
-dialog.stock-details-dialog .stock-details-close:hover {
-  border-color: var(--main-color);
-  box-shadow: 0 8px 18px rgb(28 54 190 / 20%);
-  color: var(--main-color) !important;
 }
 
 .stock-detail-page {
@@ -1217,29 +1275,12 @@ dialog.stock-details-dialog .stock-details-close:hover {
 }
 
 .stock-detail-back-link {
-  display: inline-flex;
   min-height: 2.25rem;
-  align-items: center;
-  justify-content: center;
   margin-bottom: 1rem;
   padding: 0.45rem 0.8rem;
-  border: 1px solid var(--border-strong);
   border-radius: 9999px;
-  background-color: var(--surface-raised);
-  color: var(--main-color);
   font-size: 0.875rem;
   font-weight: 800;
-  text-decoration: none;
-}
-
-.stock-detail-back-link:hover {
-  border-color: var(--main-color);
-  color: var(--main-color);
-}
-
-.stock-detail-back-link:focus-visible {
-  outline: 2px solid var(--main-light-color);
-  outline-offset: 2px;
 }
 
 .stock-detail-page-header {

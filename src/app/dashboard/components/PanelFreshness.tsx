@@ -41,7 +41,9 @@ export default function PanelFreshness({
 
       <button
         type="button"
-        className={`panel-refresh-button${isRefreshing ? ' loading' : ''}`}
+        className={`ui-button ui-button-primary panel-refresh-button${
+          isRefreshing ? ' loading' : ''
+        }`}
         onClick={handleRefresh}
         disabled={isRefreshing}
         aria-busy={isRefreshing}
