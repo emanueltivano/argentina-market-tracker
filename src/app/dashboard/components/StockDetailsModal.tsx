@@ -16,6 +16,7 @@ import {
 } from '@/lib/stockHistory';
 import { useStockHistory } from '../hooks/useStockHistory';
 import { getMarketPanelOption } from '../lib/marketPanelOptions';
+import { getVariationSeverityClass } from './stockVariationSeverity';
 
 type StockDetailsModalProps = {
   stock: StockData;
@@ -120,8 +121,7 @@ export default function StockDetailsModal({
   }, []);
 
   const varClass = VAR_CLASS_BY_TYPE[stock.varType];
-  const strengthClass =
-    stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
+  const severityClass = getVariationSeverityClass(stock.var, stock.varType);
   const historyVariation = getHistoryPeriodVariation(historyPoints);
   const historyVariationClass = getHistoryVariationClass(historyVariation);
   const panelLabel = panelKey ? getMarketPanelOption(panelKey).label : null;
@@ -144,7 +144,7 @@ export default function StockDetailsModal({
     {
       label: 'Variación diaria',
       value: formatSignedPercent(stock.var),
-      valueClassName: `stock-var ${varClass} ${strengthClass}`.trim(),
+      valueClassName: `stock-var ${varClass} ${severityClass}`.trim(),
     },
     {
       label: 'Apertura',

@@ -8,6 +8,7 @@ import {
 } from '@/lib/formatters';
 import StockFavoriteButton from './StockFavoriteButton';
 import { type StockData } from '../lib/stockData';
+import { getVariationSeverityClass } from './stockVariationSeverity';
 
 const VARIATION_LABEL_BY_TYPE: Record<StockData['varType'], string> = {
   positive: 'positiva',
@@ -51,8 +52,7 @@ function Stock(props: StockProps) {
   } = props;
 
   const varClass = VAR_CLASS_BY_TYPE[stock.varType];
-  const strengthClass =
-    stock.var !== null && Math.abs(stock.var) >= 3 ? 'stock-var-strong' : '';
+  const severityClass = getVariationSeverityClass(stock.var, stock.varType);
   const staleLabelId = useId();
 
   const handleSelect = useCallback(() => {
@@ -110,7 +110,7 @@ function Stock(props: StockProps) {
         className="stock-cell stock-cell-center"
         aria-label={getVariationAriaLabel(stock.var, stock.varType)}
       >
-        <span className={`stock-var ${varClass} ${strengthClass}`}>
+        <span className={`stock-var ${varClass} ${severityClass}`}>
           {formatSignedPercent(stock.var)}
         </span>
       </td>
