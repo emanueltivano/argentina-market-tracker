@@ -17,18 +17,18 @@
   --positive-color: #00a86b;
   --positive-light-color: #16c784;
   --positive-soft-bg: rgb(22 199 132 / 18%);
-  --positive-medium-bg: var(--positive-light-color);
-  --positive-strong-bg: var(--positive-color);
+  --positive-medium-bg: rgb(22 199 132 / 78%);
+  --positive-strong-bg: #008f5a;
   --positive-soft-text: #047857;
   --positive-medium-text: #ffffff;
   --positive-strong-text: #ffffff;
 
   --negative-color: #d93025;
   --negative-light-color: #ea3943;
-  --negative-soft-bg: var(--negative-light-color);
-  --negative-medium-bg: var(--negative-color);
+  --negative-soft-bg: rgb(234 57 67 / 16%);
+  --negative-medium-bg: rgb(234 57 67 / 82%);
   --negative-strong-bg: #b91c1c;
-  --negative-soft-text: #ffffff;
+  --negative-soft-text: #b91c1c;
   --negative-medium-text: #ffffff;
   --negative-strong-text: #ffffff;
 
@@ -158,40 +158,40 @@ html.dark {
 
     --positive-color: #34d399;
     --positive-light-color: #10b981;
-    --positive-soft-bg: rgb(52 211 153 / 18%);
-    --positive-medium-bg: rgb(16 185 129 / 30%);
-    --positive-strong-bg: rgb(5 150 105 / 48%);
-    --positive-soft-text: #a7f3d0;
-    --positive-medium-text: #d1fae5;
-    --positive-strong-text: #ecfdf5;
+    --positive-soft-bg: rgb(52 211 153 / 24%);
+    --positive-medium-bg: rgb(16 185 129 / 42%);
+    --positive-strong-bg: rgb(5 150 105 / 68%);
+    --positive-soft-text: #bbf7d0;
+    --positive-medium-text: #dcfce7;
+    --positive-strong-text: #f0fdf4;
 
     --negative-color: #f43f5e;
     --negative-light-color: #fb7185;
-    --negative-soft-bg: var(--negative-light-color);
-    --negative-medium-bg: var(--negative-color);
-    --negative-strong-bg: #be123c;
-    --negative-soft-text: #07111f;
-    --negative-medium-text: #07111f;
+    --negative-soft-bg: rgb(251 113 133 / 24%);
+    --negative-medium-bg: rgb(244 63 94 / 44%);
+    --negative-strong-bg: rgb(225 29 72 / 70%);
+    --negative-soft-text: #ffe4e6;
+    --negative-medium-text: #fff1f2;
     --negative-strong-text: #ffffff;
 
-    --surface: #111827;
+    --surface: #0f172a;
     --surface-raised: #172033;
-    --surface-hover: rgb(142 162 255 / 14%);
-    --surface-selected: rgb(142 162 255 / 18%);
-    --surface-muted: #0f172a;
+    --surface-hover: rgb(142 162 255 / 12%);
+    --surface-selected: rgb(142 162 255 / 16%);
+    --surface-muted: #111827;
     --surface-subtle: #0b1220;
 
     --buy-bg: rgb(6 95 70 / 34%);
     --sell-bg: rgb(91 30 58 / 54%);
 
-    --border-color: rgb(71 85 105 / 70%);
-    --border-strong: rgb(100 116 139 / 78%);
+    --border-color: rgb(100 116 139 / 34%);
+    --border-strong: rgb(148 163 184 / 42%);
     --muted-text: #94a3b8;
     --warning-color: #fbbf24;
     --warning-text: #fbbf24;
     --table-shadow: 0 18px 46px rgb(0 0 0 / 30%);
     --nav-bg: linear-gradient(to bottom, #172033, #111827);
-    --modal-border: rgb(100 116 139 / 70%);
+    --modal-border: rgb(100 116 139 / 56%);
     --modal-header-bg:
       linear-gradient(135deg, rgb(30 41 59 / 96%), rgb(17 24 39 / 98%)),
       var(--surface);
@@ -200,14 +200,14 @@ html.dark {
       0 0 0 1px rgb(255 255 255 / 6%) inset;
     --chart-bg: #111827;
     --chart-text: #cbd5e1;
-    --chart-grid-v: rgba(148, 163, 184, 0.16);
-    --chart-grid-h: rgba(148, 163, 184, 0.2);
-    --chart-border: rgba(148, 163, 184, 0.24);
+    --chart-grid-v: rgba(148, 163, 184, 0.14);
+    --chart-grid-h: rgba(148, 163, 184, 0.18);
+    --chart-border: rgba(148, 163, 184, 0.22);
     --chart-crosshair-v: rgba(226, 232, 240, 0.34);
     --chart-crosshair-h: rgba(226, 232, 240, 0.26);
     --chart-label-bg: #475569;
     --chart-positive: #34d399;
-    --chart-negative: #fb7185;
+    --chart-negative: #f43f5e;
     --chart-neutral: #8ea2ff;
     color-scheme: dark;
   }
@@ -1134,6 +1134,14 @@ dialog.stock-details-dialog .stock-details-favorite-button {
   font-size: 1.5rem;
 }
 
+dialog.stock-details-dialog .stock-details-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+dialog.stock-details-dialog .stock-details-expand,
 dialog.stock-details-dialog .stock-details-close {
   flex: 0 0 auto;
   display: inline-flex;
@@ -1141,6 +1149,7 @@ dialog.stock-details-dialog .stock-details-close {
   align-items: center;
   justify-content: center;
   padding: 0.45rem 0.8rem;
+  margin: 2px;
   border-color: rgb(28 54 190 / 32%);
   background-color: var(--surface-raised);
   box-shadow:
@@ -1149,139 +1158,167 @@ dialog.stock-details-dialog .stock-details-close {
   font-size: 0.875rem;
 }
 
+dialog.stock-details-dialog .stock-details-expand:hover,
 dialog.stock-details-dialog .stock-details-close:hover {
   border-color: var(--main-color);
   box-shadow: 0 8px 18px rgb(28 54 190 / 20%);
   color: var(--main-color) !important;
 }
 
+dialog.stock-details-dialog .stock-details-expand:focus,
 dialog.stock-details-dialog .stock-details-close:focus {
   outline: 2px solid var(--main-light-color);
   outline-offset: 2px;
 }
 
-dialog.stock-details-dialog .stock-details-grid {
-  display: grid;
-  grid-auto-rows: minmax(4.7rem, auto);
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin: 0;
-  padding: 1.125rem;
-  background-color: var(--surface-muted);
+.stock-detail-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1.25rem;
+  background:
+    radial-gradient(circle at 20% 0%, rgb(28 54 190 / 8%), transparent 32rem),
+    linear-gradient(to bottom, var(--body-bg-start), var(--body-bg-end));
+  color: var(--text-color);
 }
 
-dialog.stock-details-dialog .stock-details-grid > div {
-  grid-column: span 2;
+.stock-detail-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.stock-detail-back-link {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 9999px;
+  background-color: var(--surface-raised);
+  color: var(--main-color);
+  font-size: 0.875rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.stock-detail-back-link:hover {
+  border-color: var(--main-color);
+  color: var(--main-color);
+}
+
+.stock-detail-back-link:focus-visible {
+  outline: 2px solid var(--main-light-color);
+  outline-offset: 2px;
+}
+
+.stock-detail-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 28rem);
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+  padding: 1.2rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgb(4 43 93 / 7%);
+}
+
+.stock-detail-page-heading {
+  min-width: 0;
+}
+
+.stock-detail-page-heading h1,
+.stock-detail-state h1 {
+  margin: 0.45rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 3.3rem;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.stock-detail-page-heading p,
+.stock-detail-state p {
+  max-width: 44rem;
+  margin: 0.55rem 0 0;
+  color: var(--muted-text);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.stock-detail-page .stock-details-panel-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.45rem;
+  padding: 0.18rem 0.48rem;
+  border: 1px solid rgb(28 54 190 / 18%);
+  border-radius: 9999px;
+  background-color: rgb(238 242 255 / 78%);
+  color: var(--main-color);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.stock-detail-page-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.stock-detail-page-summary > div {
   display: flex;
   min-width: 0;
-  flex-direction: column;
+  align-items: center;
   justify-content: space-between;
+  gap: 1rem;
   padding: 0.8rem 0.9rem;
   border: 1px solid var(--border-strong);
   border-radius: 0.625rem;
   background-color: var(--surface-raised);
-  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
 }
 
-dialog.stock-details-dialog .stock-details-grid > .stock-details-quote-cell {
-  grid-column: span 1;
-}
-
-dialog.stock-details-dialog .stock-details-grid-primary {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  padding-top: 0.875rem;
-}
-
-dialog.stock-details-dialog .stock-details-grid-primary > div {
-  grid-column: span 3;
-}
-
-dialog.stock-details-dialog
-  .stock-details-grid-primary
-  > .stock-details-market-cell {
-  grid-column: span 2;
-}
-
-dialog.stock-details-dialog .stock-details-grid > div > dt {
-  min-height: 1.05rem;
+.stock-detail-page-summary span {
   color: var(--muted-text);
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
   line-height: 1.15;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  text-wrap: balance;
 }
 
-dialog.stock-details-dialog
-  .stock-details-grid
-  > .stock-details-quote-cell
-  > dt {
-  min-height: 1.65rem;
-}
-
-dialog.stock-details-dialog .stock-details-grid > div > dd {
-  margin: 0.25rem 0 0;
-  font-size: 0.95rem;
-  font-weight: 800;
-  line-height: 1.2;
+.stock-detail-page-summary strong {
   color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: right;
 }
 
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var {
+.stock-detail-page-summary .stock-var {
   display: inline-flex;
-  margin-top: 0.25rem;
-  color: var(--text-color);
   min-width: auto;
   padding: 0.35rem 0.7rem;
-  font-size: 0.86rem;
-  font-weight: 800;
+  font-size: 0.88rem;
   text-shadow: none;
 }
 
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive,
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative {
-  color: var(--text-color);
+.stock-detail-state {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.875rem;
+  background-color: var(--surface);
+  box-shadow: 0 12px 32px rgb(4 43 93 / 7%);
 }
 
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive {
-  border: 1px solid rgb(16 185 129 / 28%);
-  background-color: rgb(220 252 231 / 88%);
-  color: #047857;
-}
-
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-medium {
-  border-color: rgb(5 150 105 / 30%);
-  background-color: rgb(187 247 208 / 92%);
-  color: #065f46;
-}
-
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-strong {
-  border-color: rgb(4 120 87 / 36%);
-  background-color: rgb(167 243 208 / 100%);
-  color: #064e3b;
-}
-
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative {
-  border: 1px solid rgb(248 113 113 / 30%);
-  background-color: rgb(254 226 226 / 88%);
-  color: #b91c1c;
-}
-
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative.stock-var-medium {
-  border-color: rgb(220 38 38 / 28%);
-  background-color: rgb(254 202 202 / 92%);
-  color: #991b1b;
-}
-
-dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative.stock-var-strong {
-  border-color: rgb(185 28 28 / 36%);
-  background-color: rgb(254 202 202 / 100%);
-  color: #7f1d1d;
-}
-
-dialog.stock-details-dialog .stock-history-section {
-  margin: 1.125rem 1.125rem 0.625rem;
+.stock-details-content .stock-history-section {
+  margin: 1.125rem 0 0.625rem;
   padding: 1rem;
   border: 1px solid var(--border-strong);
   border-radius: 0.75rem;
@@ -1291,7 +1328,11 @@ dialog.stock-details-dialog .stock-history-section {
     0 12px 32px rgb(4 43 93 / 6%);
 }
 
-dialog.stock-details-dialog .stock-history-header {
+dialog.stock-details-dialog .stock-details-content .stock-history-section {
+  margin: 1.125rem 1.125rem 0.625rem;
+}
+
+.stock-details-content .stock-history-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1299,7 +1340,7 @@ dialog.stock-details-dialog .stock-history-header {
   margin-bottom: 0.75rem;
 }
 
-dialog.stock-details-dialog .stock-history-heading {
+.stock-details-content .stock-history-heading {
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
@@ -1308,7 +1349,7 @@ dialog.stock-details-dialog .stock-history-heading {
   gap: 1rem;
 }
 
-dialog.stock-details-dialog .stock-history-title {
+.stock-details-content .stock-history-title {
   margin: 0;
   color: var(--text-color);
   font-size: 1rem;
@@ -1316,7 +1357,7 @@ dialog.stock-details-dialog .stock-history-title {
   line-height: 1.2;
 }
 
-dialog.stock-details-dialog .stock-history-subtitle {
+.stock-details-content .stock-history-subtitle {
   margin: 0.2rem 0 0;
   color: var(--muted-text);
   font-size: 0.78rem;
@@ -1324,7 +1365,7 @@ dialog.stock-details-dialog .stock-history-subtitle {
   line-height: 1.25;
 }
 
-dialog.stock-details-dialog .stock-history-subtitle-meta {
+.stock-details-content .stock-history-subtitle-meta {
   max-width: 28rem;
   margin-top: 0.35rem;
   color: var(--warning-text);
@@ -1332,7 +1373,7 @@ dialog.stock-details-dialog .stock-history-subtitle-meta {
   font-weight: 800;
 }
 
-dialog.stock-details-dialog .stock-history-performance {
+.stock-details-content .stock-history-performance {
   flex: 0 0 auto;
   align-self: center;
   font-size: 0.98rem;
@@ -1342,19 +1383,19 @@ dialog.stock-details-dialog .stock-history-performance {
   white-space: nowrap;
 }
 
-dialog.stock-details-dialog .stock-history-performance-positive {
+.stock-details-content .stock-history-performance-positive {
   color: var(--positive-color);
 }
 
-dialog.stock-details-dialog .stock-history-performance-negative {
+.stock-details-content .stock-history-performance-negative {
   color: var(--negative-color);
 }
 
-dialog.stock-details-dialog .stock-history-performance-neutral {
+.stock-details-content .stock-history-performance-neutral {
   color: var(--muted-text);
 }
 
-dialog.stock-details-dialog .stock-history-range-group {
+.stock-details-content .stock-history-range-group {
   display: inline-flex;
   flex: 0 0 auto;
   flex-wrap: nowrap;
@@ -1367,7 +1408,7 @@ dialog.stock-details-dialog .stock-history-range-group {
   box-shadow: 0 1px 1px rgb(15 23 42 / 3%) inset;
 }
 
-dialog.stock-details-dialog .stock-history-range-button {
+.stock-details-content .stock-history-range-button {
   min-width: 2.3rem;
   padding: 0.4rem 0.55rem;
   border: 0;
@@ -1378,18 +1419,14 @@ dialog.stock-details-dialog .stock-history-range-button {
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
-  transition:
-    background-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease;
 }
 
-dialog.stock-details-dialog .stock-history-range-button:hover {
+.stock-details-content .stock-history-range-button:hover {
   background-color: rgb(255 255 255 / 68%);
   color: var(--text-color);
 }
 
-dialog.stock-details-dialog .stock-history-range-button-active {
+.stock-details-content .stock-history-range-button-active {
   background-color: var(--surface);
   color: var(--main-color);
   font-weight: 900;
@@ -1398,20 +1435,20 @@ dialog.stock-details-dialog .stock-history-range-button-active {
     0 0 0 1px rgb(28 54 190 / 18%);
 }
 
-dialog.stock-details-dialog .stock-history-range-button:focus-visible {
+.stock-details-content .stock-history-range-button:focus-visible {
   outline: 2px solid var(--main-light-color);
   outline-offset: 2px;
 }
 
-dialog.stock-details-dialog .stock-history-state,
-dialog.stock-details-dialog .stock-history-chart {
+.stock-details-content .stock-history-state,
+.stock-details-content .stock-history-chart {
   min-height: 18.75rem;
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   background-color: var(--surface-raised);
 }
 
-dialog.stock-details-dialog .stock-history-state {
+.stock-details-content .stock-history-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1424,27 +1461,27 @@ dialog.stock-details-dialog .stock-history-state {
   text-align: center;
 }
 
-dialog.stock-details-dialog .stock-history-state strong {
+.stock-details-content .stock-history-state strong {
   color: var(--text-color);
   font-size: 0.98rem;
   font-weight: 900;
 }
 
-dialog.stock-details-dialog .stock-history-state span {
+.stock-details-content .stock-history-state span {
   max-width: 20rem;
   font-size: 0.82rem;
   line-height: 1.35;
 }
 
-dialog.stock-details-dialog .stock-history-state-error {
+.stock-details-content .stock-history-state-error {
   color: var(--negative-color);
 }
 
-dialog.stock-details-dialog .stock-history-chart-wrap-refreshing {
+.stock-details-content .stock-history-chart-wrap-refreshing {
   opacity: 0.72;
 }
 
-dialog.stock-details-dialog .stock-history-chart {
+.stock-details-content .stock-history-chart {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -1453,11 +1490,11 @@ dialog.stock-details-dialog .stock-history-chart {
   overflow: hidden;
 }
 
-dialog.stock-details-dialog .stock-history-chart-empty {
+.stock-details-content .stock-history-chart-empty {
   justify-content: center;
 }
 
-dialog.stock-details-dialog .stock-history-chart-empty-state {
+.stock-details-content .stock-history-chart-empty-state {
   display: flex;
   min-height: 100%;
   align-items: center;
@@ -1468,7 +1505,7 @@ dialog.stock-details-dialog .stock-history-chart-empty-state {
   text-align: center;
 }
 
-dialog.stock-details-dialog .stock-history-lightweight-chart {
+.stock-details-content .stock-history-lightweight-chart {
   min-width: 0;
   height: 236px;
   border-radius: 0.625rem;
@@ -1476,7 +1513,7 @@ dialog.stock-details-dialog .stock-history-lightweight-chart {
   overflow: hidden;
 }
 
-dialog.stock-details-dialog .stock-history-chart-footer {
+.stock-details-content .stock-history-chart-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1490,20 +1527,213 @@ dialog.stock-details-dialog .stock-history-chart-footer {
   line-height: 1.2;
 }
 
-dialog.stock-details-dialog .stock-history-chart-footer-item {
+.stock-details-content .stock-history-chart-footer-item {
   display: inline-flex;
   flex-direction: column;
   gap: 0.2rem;
 }
 
-dialog.stock-details-dialog .stock-history-chart-footer-item-end {
+.stock-details-content .stock-history-chart-footer-item-end {
   align-items: flex-end;
 }
 
-dialog.stock-details-dialog .stock-history-chart-footer strong {
+.stock-details-content .stock-history-chart-footer strong {
   color: var(--text-color);
   font-size: 0.84rem;
   font-weight: 900;
+}
+
+.stock-details-content .stock-details-grid {
+  display: grid;
+  grid-auto-rows: minmax(4.7rem, auto);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1.125rem 0;
+  background-color: transparent;
+}
+
+dialog.stock-details-dialog .stock-details-content .stock-details-grid {
+  padding: 1.125rem;
+  background-color: var(--surface-muted);
+}
+
+.stock-details-content .stock-details-grid > div {
+  grid-column: span 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.625rem;
+  background-color: var(--surface-raised);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.stock-details-content .stock-details-grid > .stock-details-quote-cell {
+  grid-column: span 1;
+}
+
+.stock-details-content .stock-details-grid-primary {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding-top: 0.875rem;
+}
+
+.stock-details-content .stock-details-grid-primary > div {
+  grid-column: span 3;
+}
+
+.stock-details-content
+  .stock-details-grid-primary
+  > .stock-details-market-cell {
+  grid-column: span 2;
+}
+
+.stock-details-content .stock-details-grid > div > dt {
+  min-height: 1.05rem;
+  color: var(--muted-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-wrap: balance;
+}
+
+.stock-details-content .stock-details-grid > .stock-details-quote-cell > dt {
+  min-height: 1.65rem;
+}
+
+.stock-details-content .stock-details-grid > div > dd {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-color);
+}
+
+.stock-details-content .stock-details-grid > div > dd.stock-var {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  color: var(--text-color);
+  min-width: auto;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-shadow: none;
+}
+
+.stock-details-content .stock-details-grid > div > dd.stock-var-positive,
+.stock-details-content .stock-details-grid > div > dd.stock-var-negative {
+  color: var(--text-color);
+}
+
+.stock-details-content .stock-details-grid > div > dd.stock-var-positive {
+  border: 1px solid rgb(16 185 129 / 28%);
+  background-color: var(--positive-soft-bg);
+  color: var(--positive-soft-text);
+}
+
+.stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-positive.stock-var-medium {
+  border-color: rgb(5 150 105 / 34%);
+  background-color: var(--positive-medium-bg);
+  color: var(--positive-medium-text);
+}
+
+.stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-positive.stock-var-strong {
+  border-color: rgb(4 120 87 / 42%);
+  background-color: var(--positive-strong-bg);
+  color: var(--positive-strong-text);
+}
+
+.stock-details-content .stock-details-grid > div > dd.stock-var-negative {
+  border: 1px solid rgb(248 113 113 / 30%);
+  background-color: var(--negative-soft-bg);
+  color: var(--negative-soft-text);
+}
+
+.stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-negative.stock-var-medium {
+  border-color: rgb(220 38 38 / 28%);
+  background-color: var(--negative-medium-bg);
+  color: var(--negative-medium-text);
+}
+
+.stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-negative.stock-var-strong {
+  border-color: rgb(185 28 28 / 36%);
+  background-color: var(--negative-strong-bg);
+  color: var(--negative-strong-text);
+}
+
+@media (max-width: 768px) {
+  dialog.stock-details-dialog .stock-details-header {
+    align-items: flex-start;
+  }
+
+  dialog.stock-details-dialog .stock-details-actions {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+
+  dialog.stock-details-dialog .stock-details-expand,
+  dialog.stock-details-dialog .stock-details-close {
+    min-height: 2.1rem;
+    padding-inline: 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  .stock-detail-page {
+    padding: 0.875rem;
+  }
+
+  .stock-detail-page-header {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+
+  .stock-detail-page-heading h1,
+  .stock-detail-state h1 {
+    font-size: 2.1rem;
+  }
+
+  .stock-details-content .stock-history-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .stock-details-content .stock-history-heading {
+    align-items: flex-start;
+  }
+
+  .stock-details-content .stock-history-range-group {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .stock-details-content .stock-details-grid,
+  .stock-details-content .stock-details-grid-primary {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-details-content .stock-details-grid > div,
+  .stock-details-content .stock-details-grid > .stock-details-quote-cell,
+  .stock-details-content
+    .stock-details-grid-primary
+    > .stock-details-market-cell {
+    grid-column: span 1;
+  }
 }
 
 html.dark .panel-menu-button:hover .panel-menu-button-icon,
@@ -1564,50 +1794,78 @@ html.dark dialog.stock-details-dialog .stock-details-panel-label {
   background-color: rgb(142 162 255 / 16%);
 }
 
+html.dark .stock-detail-page .stock-details-panel-label {
+  border-color: rgb(142 162 255 / 28%);
+  background-color: rgb(142 162 255 / 16%);
+  color: #c7d2fe;
+}
+
 html.dark dialog.stock-details-dialog .stock-details-close {
   box-shadow:
     0 8px 18px rgb(0 0 0 / 24%),
     0 1px 0 rgb(255 255 255 / 8%) inset;
 }
 
-html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive {
-  border-color: rgb(52 211 153 / 32%);
-  background-color: rgb(6 95 70 / 22%);
-  color: #a7f3d0;
-}
-
-html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-medium {
-  border-color: rgb(16 185 129 / 42%);
-  background-color: rgb(6 95 70 / 34%);
-  color: #d1fae5;
-}
-
-html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-strong {
-  border-color: rgb(52 211 153 / 52%);
-  background-color: rgb(5 150 105 / 48%);
-  color: #ecfdf5;
-}
-
-html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative {
-  border-color: rgb(251 113 133 / 34%);
-  background-color: rgb(159 18 57 / 20%);
-  color: #fda4af;
-}
-
-html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative.stock-var-medium {
-  border-color: rgb(244 63 94 / 42%);
-  background-color: rgb(159 18 57 / 34%);
-  color: #fb7185;
-}
-
-html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative.stock-var-strong {
-  border-color: rgb(251 113 133 / 52%);
-  background-color: rgb(136 19 55 / 52%);
-  color: #fecdd3;
+html.dark dialog.stock-details-dialog .stock-details-expand {
+  box-shadow:
+    0 8px 18px rgb(0 0 0 / 20%),
+    0 1px 0 rgb(255 255 255 / 8%) inset;
 }
 
 html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
   background-color: rgb(51 65 85 / 70%);
+}
+
+html.dark .stock-details-content .stock-details-grid > div > dd.stock-var-positive {
+  border-color: rgb(52 211 153 / 32%);
+  background-color: var(--positive-soft-bg);
+  color: var(--positive-soft-text);
+}
+
+html.dark
+  .stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-positive.stock-var-medium {
+  border-color: rgb(16 185 129 / 42%);
+  background-color: var(--positive-medium-bg);
+  color: var(--positive-medium-text);
+}
+
+html.dark
+  .stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-positive.stock-var-strong {
+  border-color: rgb(52 211 153 / 52%);
+  background-color: var(--positive-strong-bg);
+  color: var(--positive-strong-text);
+}
+
+html.dark .stock-details-content .stock-details-grid > div > dd.stock-var-negative {
+  border-color: rgb(251 113 133 / 34%);
+  background-color: var(--negative-soft-bg);
+  color: var(--negative-soft-text);
+}
+
+html.dark
+  .stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-negative.stock-var-medium {
+  border-color: rgb(244 63 94 / 42%);
+  background-color: var(--negative-medium-bg);
+  color: var(--negative-medium-text);
+}
+
+html.dark
+  .stock-details-content
+  .stock-details-grid
+  > div
+  > dd.stock-var-negative.stock-var-strong {
+  border-color: rgb(251 113 133 / 52%);
+  background-color: var(--negative-strong-bg);
+  color: var(--negative-strong-text);
 }
 
 /* =========================

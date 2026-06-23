@@ -121,4 +121,16 @@ describe('StockDetailsModal', () => {
       screen.getByText('No hay datos históricos para este rango.')
     ).not.toBeNull()
   })
+
+  it('shows a full page action for the selected stock', async () => {
+    render(<ModalHarness />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir' }))
+
+    const link = screen.getByRole('link', {
+      name: 'Ver página completa de GGAL',
+    })
+
+    expect(link.getAttribute('href')).toBe('/stocks/GGAL')
+  })
 })
