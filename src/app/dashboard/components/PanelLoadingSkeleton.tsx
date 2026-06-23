@@ -69,7 +69,7 @@ export default function PanelLoadingSkeleton() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody>
             <StockTableLoadingState />
           </tbody>
         </table>

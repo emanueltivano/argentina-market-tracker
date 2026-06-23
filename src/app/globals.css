@@ -458,6 +458,7 @@ html.dark {
   .panel-about-link:focus-visible,
   .theme-toggle-button:focus-visible,
   .panel-menu-toggle:focus-visible,
+  .stock-details-expand:focus-visible,
   .stock-details-close:focus-visible,
   .stock-favorite-button:focus-visible,
   .stock-ticker-button:focus-visible {
@@ -1089,7 +1090,7 @@ dialog.stock-details-dialog .stock-details-title-row {
   gap: 0.35rem 0.65rem;
 }
 
-dialog.stock-details-dialog .stock-details-panel-label {
+.stock-details-panel-label {
   display: inline-flex;
   align-items: center;
   min-height: 1.45rem;
@@ -1163,12 +1164,6 @@ dialog.stock-details-dialog .stock-details-close:hover {
   border-color: var(--main-color);
   box-shadow: 0 8px 18px rgb(28 54 190 / 20%);
   color: var(--main-color) !important;
-}
-
-dialog.stock-details-dialog .stock-details-expand:focus,
-dialog.stock-details-dialog .stock-details-close:focus {
-  outline: 2px solid var(--main-light-color);
-  outline-offset: 2px;
 }
 
 .stock-detail-page {
@@ -1250,21 +1245,6 @@ dialog.stock-details-dialog .stock-details-close:focus {
   overflow-wrap: anywhere;
 }
 
-.stock-detail-page .stock-details-panel-label {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.45rem;
-  padding: 0.18rem 0.48rem;
-  border: 1px solid rgb(28 54 190 / 18%);
-  border-radius: 9999px;
-  background-color: rgb(238 242 255 / 78%);
-  color: var(--main-color);
-  font-size: 0.7rem;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 .stock-detail-page-summary {
   display: grid;
   grid-template-columns: 1fr;
@@ -1328,7 +1308,7 @@ dialog.stock-details-dialog .stock-details-close:focus {
     0 12px 32px rgb(4 43 93 / 6%);
 }
 
-dialog.stock-details-dialog .stock-details-content .stock-history-section {
+.stock-details-content-modal .stock-history-section {
   margin: 1.125rem 1.125rem 0.625rem;
 }
 
@@ -1553,7 +1533,7 @@ dialog.stock-details-dialog .stock-details-content .stock-history-section {
   background-color: transparent;
 }
 
-dialog.stock-details-dialog .stock-details-content .stock-details-grid {
+.stock-details-content-modal .stock-details-grid {
   padding: 1.125rem;
   background-color: var(--surface-muted);
 }
@@ -1789,12 +1769,7 @@ html.dark dialog.stock-details-dialog::backdrop {
   background-color: rgb(2 6 23 / 68%);
 }
 
-html.dark dialog.stock-details-dialog .stock-details-panel-label {
-  border-color: rgb(142 162 255 / 28%);
-  background-color: rgb(142 162 255 / 16%);
-}
-
-html.dark .stock-detail-page .stock-details-panel-label {
+html.dark .stock-details-panel-label {
   border-color: rgb(142 162 255 / 28%);
   background-color: rgb(142 162 255 / 16%);
   color: #c7d2fe;
@@ -1812,7 +1787,7 @@ html.dark dialog.stock-details-dialog .stock-details-expand {
     0 1px 0 rgb(255 255 255 / 8%) inset;
 }
 
-html.dark dialog.stock-details-dialog .stock-history-range-button:hover {
+html.dark .stock-details-content-modal .stock-history-range-button:hover {
   background-color: rgb(51 65 85 / 70%);
 }
 
@@ -1910,46 +1885,46 @@ html.dark
     max-height: calc(100dvh - 1rem);
   }
 
-  dialog.stock-details-dialog .stock-details-grid {
+  .stock-details-content-modal .stock-details-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
     padding: 1rem 0.875rem;
   }
 
-  dialog.stock-details-dialog .stock-details-grid-primary {
+  .stock-details-content-modal .stock-details-grid-primary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  dialog.stock-details-dialog .stock-history-section {
+  .stock-details-content-modal .stock-history-section {
     margin: 1rem 0.875rem 0.625rem;
     padding: 0.875rem;
   }
 
-  dialog.stock-details-dialog .stock-history-header {
+  .stock-details-content-modal .stock-history-header {
     align-items: flex-start;
     flex-direction: column;
     gap: 0.75rem;
   }
 
-  dialog.stock-details-dialog .stock-history-heading {
+  .stock-details-content-modal .stock-history-heading {
     width: 100%;
     align-items: center;
   }
 
-  dialog.stock-details-dialog .stock-history-range-group {
+  .stock-details-content-modal .stock-history-range-group {
     justify-content: flex-start;
     overflow-x: auto;
     max-width: 100%;
   }
 
-  dialog.stock-details-dialog .stock-history-chart {
+  .stock-details-content-modal .stock-history-chart {
     min-height: 18rem;
     padding: 0.5rem 0.75rem 0.7rem;
   }
 
-  dialog.stock-details-dialog .stock-details-grid > div,
-  dialog.stock-details-dialog .stock-details-grid > .stock-details-quote-cell,
-  dialog.stock-details-dialog
+  .stock-details-content-modal .stock-details-grid > div,
+  .stock-details-content-modal .stock-details-grid > .stock-details-quote-cell,
+  .stock-details-content-modal
     .stock-details-grid-primary
     > .stock-details-market-cell {
     grid-column: auto;
@@ -2001,8 +1976,8 @@ html.dark
     font-size: 13px;
   }
 
-  dialog.stock-details-dialog .stock-details-grid,
-  dialog.stock-details-dialog .stock-details-grid-primary {
+  .stock-details-content-modal .stock-details-grid,
+  .stock-details-content-modal .stock-details-grid-primary {
     grid-template-columns: 1fr;
   }
 }

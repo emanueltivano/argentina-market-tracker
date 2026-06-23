@@ -43,7 +43,7 @@ export function StockTable({
         sort={sort}
         onSortChange={onSortChange}
       />
-      <tbody className='divide-y divide-gray-200'>{children}</tbody>
+      <tbody>{children}</tbody>
     </table>
   );
 }
