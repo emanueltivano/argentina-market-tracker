@@ -34,35 +34,68 @@ function renderStock(overrides: Partial<StockData>) {
 }
 
 describe('Stock', () => {
-  it('renders a soft class for mild negative variation', () => {
+  it('renders a soft class for mild positive variation', () => {
+    const variation = renderStock({ var: 1.2, varType: 'positive' });
+
+    expect(variation?.className).toContain('stock-var-positive');
+    expect(variation?.className).toContain('stock-var-soft');
+    expect(variation?.className).toContain('stock-var-positive-soft');
+    expect(variation?.className).not.toContain('stock-var-medium');
+    expect(variation?.className).not.toContain('stock-var-strong');
+  });
+
+  it('renders a medium class for mid positive variation', () => {
+    const variation = renderStock({ var: 3.4, varType: 'positive' });
+
+    expect(variation?.className).toContain('stock-var-positive');
+    expect(variation?.className).toContain('stock-var-medium');
+    expect(variation?.className).toContain('stock-var-positive-medium');
+    expect(variation?.className).not.toContain('stock-var-strong');
+  });
+
+  it('renders a strong class for sharp positive variation', () => {
+    const variation = renderStock({ var: 5.1, varType: 'positive' });
+
+    expect(variation?.className).toContain('stock-var-positive');
+    expect(variation?.className).toContain('stock-var-strong');
+    expect(variation?.className).toContain('stock-var-positive-strong');
+  });
+
+  it('keeps a soft class for mild negative variation', () => {
     const variation = renderStock({ var: -1.2, varType: 'negative' });
 
     expect(variation?.className).toContain('stock-var-negative');
     expect(variation?.className).toContain('stock-var-soft');
+    expect(variation?.className).toContain('stock-var-negative-soft');
     expect(variation?.className).not.toContain('stock-var-medium');
     expect(variation?.className).not.toContain('stock-var-strong');
   });
 
-  it('renders a medium class for mid negative variation', () => {
+  it('keeps a medium class for mid negative variation', () => {
     const variation = renderStock({ var: -3.4, varType: 'negative' });
 
     expect(variation?.className).toContain('stock-var-negative');
     expect(variation?.className).toContain('stock-var-medium');
+    expect(variation?.className).toContain('stock-var-negative-medium');
     expect(variation?.className).not.toContain('stock-var-strong');
   });
 
-  it('renders a strong class for sharp negative variation', () => {
+  it('keeps a strong class for sharp negative variation', () => {
     const variation = renderStock({ var: -5.1, varType: 'negative' });
 
     expect(variation?.className).toContain('stock-var-negative');
     expect(variation?.className).toContain('stock-var-strong');
+    expect(variation?.className).toContain('stock-var-negative-strong');
   });
 
-  it('keeps positive variation severity unchanged', () => {
-    const variation = renderStock({ var: 3.4, varType: 'positive' });
+  it('does not add directional severity to neutral variation', () => {
+    const variation = renderStock({ var: 0, varType: 'neutral' });
 
-    expect(variation?.className).toContain('stock-var-positive');
-    expect(variation?.className).toContain('stock-var-strong');
+    expect(variation?.className).toContain('stock-var-neutral');
+    expect(variation?.className).not.toContain('stock-var-positive');
+    expect(variation?.className).not.toContain('stock-var-negative');
+    expect(variation?.className).not.toContain('stock-var-soft');
     expect(variation?.className).not.toContain('stock-var-medium');
+    expect(variation?.className).not.toContain('stock-var-strong');
   });
 });

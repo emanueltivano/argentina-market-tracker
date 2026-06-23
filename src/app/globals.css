@@ -16,6 +16,12 @@
 
   --positive-color: #00a86b;
   --positive-light-color: #16c784;
+  --positive-soft-bg: rgb(22 199 132 / 18%);
+  --positive-medium-bg: var(--positive-light-color);
+  --positive-strong-bg: var(--positive-color);
+  --positive-soft-text: #047857;
+  --positive-medium-text: #ffffff;
+  --positive-strong-text: #ffffff;
 
   --negative-color: #d93025;
   --negative-light-color: #ea3943;
@@ -80,14 +86,20 @@ html.dark {
 
   --positive-color: #34d399;
   --positive-light-color: #10b981;
+  --positive-soft-bg: rgb(52 211 153 / 24%);
+  --positive-medium-bg: rgb(16 185 129 / 42%);
+  --positive-strong-bg: rgb(5 150 105 / 68%);
+  --positive-soft-text: #bbf7d0;
+  --positive-medium-text: #dcfce7;
+  --positive-strong-text: #f0fdf4;
 
   --negative-color: #f43f5e;
   --negative-light-color: #fb7185;
-  --negative-soft-bg: var(--negative-light-color);
-  --negative-medium-bg: var(--negative-color);
-  --negative-strong-bg: #be123c;
-  --negative-soft-text: #07111f;
-  --negative-medium-text: #07111f;
+  --negative-soft-bg: rgb(251 113 133 / 24%);
+  --negative-medium-bg: rgb(244 63 94 / 44%);
+  --negative-strong-bg: rgb(225 29 72 / 70%);
+  --negative-soft-text: #ffe4e6;
+  --negative-medium-text: #fff1f2;
   --negative-strong-text: #ffffff;
 
   --surface: #0f172a;
@@ -146,6 +158,12 @@ html.dark {
 
     --positive-color: #34d399;
     --positive-light-color: #10b981;
+    --positive-soft-bg: rgb(52 211 153 / 18%);
+    --positive-medium-bg: rgb(16 185 129 / 30%);
+    --positive-strong-bg: rgb(5 150 105 / 48%);
+    --positive-soft-text: #a7f3d0;
+    --positive-medium-text: #d1fae5;
+    --positive-strong-text: #ecfdf5;
 
     --negative-color: #f43f5e;
     --negative-light-color: #fb7185;
@@ -851,7 +869,8 @@ html.dark {
 }
 
 .stock-var-positive {
-  background-color: var(--positive-light-color);
+  background-color: var(--positive-soft-bg);
+  color: var(--positive-soft-text);
 }
 
 .stock-var-negative {
@@ -866,7 +885,13 @@ html.dark {
 }
 
 .stock-var-positive.stock-var-strong {
-  background-color: var(--positive-color);
+  background-color: var(--positive-strong-bg);
+  color: var(--positive-strong-text);
+}
+
+.stock-var-positive.stock-var-medium {
+  background-color: var(--positive-medium-bg);
+  color: var(--positive-medium-text);
 }
 
 .stock-var-negative.stock-var-strong {
@@ -1225,6 +1250,18 @@ dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive {
   color: #047857;
 }
 
+dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-medium {
+  border-color: rgb(5 150 105 / 30%);
+  background-color: rgb(187 247 208 / 92%);
+  color: #065f46;
+}
+
+dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-strong {
+  border-color: rgb(4 120 87 / 36%);
+  background-color: rgb(167 243 208 / 100%);
+  color: #064e3b;
+}
+
 dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative {
   border: 1px solid rgb(248 113 113 / 30%);
   background-color: rgb(254 226 226 / 88%);
@@ -1491,10 +1528,6 @@ html.dark .stock-var-negative {
   text-shadow: none;
 }
 
-html.dark .stock-var-positive {
-  color: #07111f;
-}
-
 html.dark .stock-favorite-button:hover {
   border-color: rgb(251 191 36 / 44%);
   background-color: rgb(251 191 36 / 13%);
@@ -1539,8 +1572,20 @@ html.dark dialog.stock-details-dialog .stock-details-close {
 
 html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive {
   border-color: rgb(52 211 153 / 32%);
-  background-color: rgb(6 95 70 / 30%);
-  color: #86efac;
+  background-color: rgb(6 95 70 / 22%);
+  color: #a7f3d0;
+}
+
+html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-medium {
+  border-color: rgb(16 185 129 / 42%);
+  background-color: rgb(6 95 70 / 34%);
+  color: #d1fae5;
+}
+
+html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-positive.stock-var-strong {
+  border-color: rgb(52 211 153 / 52%);
+  background-color: rgb(5 150 105 / 48%);
+  color: #ecfdf5;
 }
 
 html.dark dialog.stock-details-dialog .stock-details-grid > div > dd.stock-var-negative {

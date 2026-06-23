@@ -9,18 +9,8 @@ export function getVariationSeverityClass(
   }
 
   const absoluteValue = Math.abs(value);
+  const severity =
+    absoluteValue >= 5 ? 'strong' : absoluteValue >= 3 ? 'medium' : 'soft';
 
-  if (type === 'positive') {
-    return absoluteValue >= 3 ? 'stock-var-strong' : 'stock-var-soft';
-  }
-
-  if (absoluteValue >= 5) {
-    return 'stock-var-strong';
-  }
-
-  if (absoluteValue >= 3) {
-    return 'stock-var-medium';
-  }
-
-  return 'stock-var-soft';
+  return `stock-var-${severity} stock-var-${type}-${severity}`;
 }
