@@ -5,6 +5,7 @@
 ========================= */
 
 :root {
+  /* Reserved for future theme mapping and selected-state styles. */
   --bg: 248 250 252;
   --fg: 17 24 39;
   --body-bg-start: #f8fafc;
@@ -17,8 +18,8 @@
   --positive-color: #00a86b;
   --positive-light-color: #16c784;
   --positive-soft-bg: rgb(22 199 132 / 18%);
-  --positive-medium-bg: rgb(22 199 132 / 78%);
-  --positive-strong-bg: #008f5a;
+  --positive-medium-bg: #047857;
+  --positive-strong-bg: #065f46;
   --positive-soft-text: #047857;
   --positive-medium-text: #ffffff;
   --positive-strong-text: #ffffff;
@@ -26,8 +27,8 @@
   --negative-color: #d93025;
   --negative-light-color: #ea3943;
   --negative-soft-bg: rgb(234 57 67 / 16%);
-  --negative-medium-bg: rgb(234 57 67 / 82%);
-  --negative-strong-bg: #b91c1c;
+  --negative-medium-bg: #dc2626;
+  --negative-strong-bg: #991b1b;
   --negative-soft-text: #b91c1c;
   --negative-medium-text: #ffffff;
   --negative-strong-text: #ffffff;
@@ -39,14 +40,26 @@
   --surface-muted: #f8fafc;
   --surface-subtle: #fafafa;
 
-  --buy-bg: #e6f9f4;
-  --sell-bg: #fde7eb;
+  --buy-bg: #f0fbf8;
+  --sell-bg: #fff1f3;
 
   --border-color: #e5e7eb;
   --border-strong: #dbeafe;
+  --accent-subtle-border: rgb(28 54 190 / 18%);
+  --accent-subtle-bg: rgb(238 242 255 / 78%);
   --muted-text: #6b7280;
   --warning-color: #b45309;
   --warning-text: #b45309;
+  --warning-border: rgb(180 83 9 / 20%);
+  --warning-border-strong: rgb(180 83 9 / 24%);
+  --warning-surface-bg: linear-gradient(135deg, rgb(255 247 237 / 95%), rgb(254 243 199 / 90%));
+  --warning-badge-bg: rgb(255 247 237 / 92%);
+  --favorite-color: #b45309;
+  --favorite-active-color: #d97706;
+  --favorite-border-hover: rgb(245 158 11 / 40%);
+  --favorite-bg-hover: rgb(245 158 11 / 10%);
+  --skeleton-bg-start: rgb(226 232 240 / 85%);
+  --skeleton-bg-highlight: rgb(241 245 249 / 95%);
   --table-shadow: 0 10px 30px rgb(15 23 42 / 6%);
   --nav-bg: linear-gradient(to bottom, #eef2ff, #e0e7ff);
   --modal-border: rgb(219 234 254 / 90%);
@@ -75,6 +88,7 @@ html.light {
 }
 
 html.dark {
+  /* Reserved for future theme mapping and selected-state styles. */
   --bg: 11 18 32;
   --fg: 226 232 240;
   --body-bg-start: #07111f;
@@ -109,15 +123,27 @@ html.dark {
   --surface-muted: #111827;
   --surface-subtle: #0b1220;
 
-  --buy-bg: rgb(6 95 70 / 34%);
-  --sell-bg: rgb(91 30 58 / 54%);
+  --buy-bg: rgb(6 95 70 / 22%);
+  --sell-bg: rgb(91 30 58 / 32%);
 
   --border-color: rgb(100 116 139 / 34%);
   --border-strong: rgb(148 163 184 / 42%);
+  --accent-subtle-border: rgb(142 162 255 / 28%);
+  --accent-subtle-bg: rgb(142 162 255 / 16%);
 
   --muted-text: #94a3b8;
   --warning-color: #fbbf24;
   --warning-text: #fbbf24;
+  --warning-border: rgb(251 191 36 / 28%);
+  --warning-border-strong: rgb(251 191 36 / 28%);
+  --warning-surface-bg: linear-gradient(135deg, rgb(120 53 15 / 36%), rgb(113 63 18 / 42%));
+  --warning-badge-bg: rgb(120 53 15 / 38%);
+  --favorite-color: #fbbf24;
+  --favorite-active-color: #fbbf24;
+  --favorite-border-hover: rgb(251 191 36 / 44%);
+  --favorite-bg-hover: rgb(251 191 36 / 13%);
+  --skeleton-bg-start: rgb(30 41 59 / 85%);
+  --skeleton-bg-highlight: rgb(51 65 85 / 95%);
 
   --table-shadow: 0 18px 46px rgb(0 0 0 / 30%);
   --nav-bg: linear-gradient(to bottom, #172033, #111827);
@@ -147,6 +173,7 @@ html.dark {
 
 @media (prefers-color-scheme: dark) {
   html:not(.light):not(.dark) {
+    /* Reserved for future theme mapping and selected-state styles. */
     --bg: 11 18 32;
     --fg: 226 232 240;
     --body-bg-start: #07111f;
@@ -181,14 +208,26 @@ html.dark {
     --surface-muted: #111827;
     --surface-subtle: #0b1220;
 
-    --buy-bg: rgb(6 95 70 / 34%);
-    --sell-bg: rgb(91 30 58 / 54%);
+    --buy-bg: rgb(6 95 70 / 22%);
+    --sell-bg: rgb(91 30 58 / 32%);
 
     --border-color: rgb(100 116 139 / 34%);
     --border-strong: rgb(148 163 184 / 42%);
+    --accent-subtle-border: rgb(142 162 255 / 28%);
+    --accent-subtle-bg: rgb(142 162 255 / 16%);
     --muted-text: #94a3b8;
     --warning-color: #fbbf24;
     --warning-text: #fbbf24;
+    --warning-border: rgb(251 191 36 / 28%);
+    --warning-border-strong: rgb(251 191 36 / 28%);
+    --warning-surface-bg: linear-gradient(135deg, rgb(120 53 15 / 36%), rgb(113 63 18 / 42%));
+    --warning-badge-bg: rgb(120 53 15 / 38%);
+    --favorite-color: #fbbf24;
+    --favorite-active-color: #fbbf24;
+    --favorite-border-hover: rgb(251 191 36 / 44%);
+    --favorite-bg-hover: rgb(251 191 36 / 13%);
+    --skeleton-bg-start: rgb(30 41 59 / 85%);
+    --skeleton-bg-highlight: rgb(51 65 85 / 95%);
     --table-shadow: 0 18px 46px rgb(0 0 0 / 30%);
     --nav-bg: linear-gradient(to bottom, #172033, #111827);
     --modal-border: rgb(100 116 139 / 56%);
@@ -716,10 +755,10 @@ html.dark {
   align-items: center;
   min-height: 2.1rem;
   padding: 0.35rem 0.7rem;
-  border: 1px solid rgb(180 83 9 / 20%);
+  border: 1px solid var(--warning-border);
   border-radius: 9999px;
-  background: linear-gradient(135deg, rgb(255 247 237 / 95%), rgb(254 243 199 / 90%));
-  color: #9a3412;
+  background: var(--warning-surface-bg);
+  color: var(--warning-text);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.03em;
@@ -829,9 +868,9 @@ html.dark {
   align-items: center;
   min-height: 1.2rem;
   padding: 0.08rem 0.42rem;
-  border: 1px solid rgb(180 83 9 / 24%);
+  border: 1px solid var(--warning-border-strong);
   border-radius: 9999px;
-  background-color: rgb(255 247 237 / 92%);
+  background-color: var(--warning-badge-bg);
   color: var(--warning-text);
   font-size: 0.62rem;
   font-weight: 900;
@@ -957,17 +996,17 @@ html.dark {
 }
 
 .stock-favorite-button:hover {
-  border-color: rgb(245 158 11 / 40%);
-  background-color: rgb(245 158 11 / 10%);
-  color: #b45309;
+  border-color: var(--favorite-border-hover);
+  background-color: var(--favorite-bg-hover);
+  color: var(--favorite-color);
 }
 
 .stock-favorite-button-active {
-  color: #d97706;
+  color: var(--favorite-active-color);
 }
 
 .stock-favorite-button-active:hover {
-  color: #b45309;
+  color: var(--favorite-color);
 }
 
 .stock-row-skeleton {
@@ -982,9 +1021,9 @@ html.dark {
   border-radius: 9999px;
   background: linear-gradient(
     90deg,
-    rgb(226 232 240 / 85%),
-    rgb(241 245 249 / 95%),
-    rgb(226 232 240 / 85%)
+    var(--skeleton-bg-start),
+    var(--skeleton-bg-highlight),
+    var(--skeleton-bg-start)
   );
   background-size: 200% 100%;
   animation: skeleton-pulse 1.2s ease-in-out infinite;
@@ -1095,9 +1134,9 @@ dialog.stock-details-dialog .stock-details-title-row {
   align-items: center;
   min-height: 1.45rem;
   padding: 0.18rem 0.48rem;
-  border: 1px solid rgb(28 54 190 / 18%);
+  border: 1px solid var(--accent-subtle-border);
   border-radius: 9999px;
-  background-color: rgb(238 242 255 / 78%);
+  background-color: var(--accent-subtle-bg);
   color: var(--main-color);
   font-size: 0.7rem;
   font-weight: 800;
@@ -1412,7 +1451,7 @@ dialog.stock-details-dialog .stock-details-close:hover {
   font-weight: 900;
   box-shadow:
     0 1px 3px rgb(15 23 42 / 13%),
-    0 0 0 1px rgb(28 54 190 / 18%);
+    0 0 0 1px var(--accent-subtle-border);
 }
 
 .stock-details-content .stock-history-range-button:focus-visible {
@@ -1739,28 +1778,28 @@ html.dark .stock-var-negative {
 }
 
 html.dark .stock-favorite-button:hover {
-  border-color: rgb(251 191 36 / 44%);
-  background-color: rgb(251 191 36 / 13%);
-  color: #fbbf24;
+  border-color: var(--favorite-border-hover);
+  background-color: var(--favorite-bg-hover);
+  color: var(--favorite-color);
 }
 
 html.dark .stock-favorite-button-active,
 html.dark .stock-favorite-button-active:hover {
-  color: #fbbf24;
+  color: var(--favorite-active-color);
 }
 
 html.dark .stock-stale-badge {
-  border-color: rgb(251 191 36 / 28%);
-  background-color: rgb(120 53 15 / 38%);
-  color: #fcd34d;
+  border-color: var(--warning-border-strong);
+  background-color: var(--warning-badge-bg);
+  color: var(--warning-text);
 }
 
 html.dark .stock-skeleton-bar {
   background: linear-gradient(
     90deg,
-    rgb(30 41 59 / 85%),
-    rgb(51 65 85 / 95%),
-    rgb(30 41 59 / 85%)
+    var(--skeleton-bg-start),
+    var(--skeleton-bg-highlight),
+    var(--skeleton-bg-start)
   );
   background-size: 200% 100%;
 }
@@ -1770,8 +1809,8 @@ html.dark dialog.stock-details-dialog::backdrop {
 }
 
 html.dark .stock-details-panel-label {
-  border-color: rgb(142 162 255 / 28%);
-  background-color: rgb(142 162 255 / 16%);
+  border-color: var(--accent-subtle-border);
+  background-color: var(--accent-subtle-bg);
   color: #c7d2fe;
 }
 
@@ -2050,10 +2089,10 @@ html.dark
   max-width: 44rem;
   margin-top: 1rem;
   padding: 0.8rem 1rem;
-  border: 1px solid rgb(180 83 9 / 20%);
+  border: 1px solid var(--warning-border);
   border-radius: 0.75rem;
-  background: linear-gradient(135deg, rgb(255 247 237 / 88%), rgb(254 243 199 / 84%));
-  color: #9a3412;
+  background: var(--warning-surface-bg);
+  color: var(--warning-text);
   font-size: 0.95rem;
   font-weight: 700;
   line-height: 1.5;
@@ -2061,9 +2100,9 @@ html.dark
 
 html.dark .panel-demo-badge,
 html.dark .about-mode-note {
-  border-color: rgb(251 191 36 / 28%);
-  background: linear-gradient(135deg, rgb(120 53 15 / 36%), rgb(113 63 18 / 42%));
-  color: #fcd34d;
+  border-color: var(--warning-border);
+  background: var(--warning-surface-bg);
+  color: var(--warning-text);
 }
 
 .about-section {
