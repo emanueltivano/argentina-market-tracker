@@ -14,6 +14,7 @@ export interface PanelTitulo {
   minimo?: number
   ultimoCierre?: number
   volumen?: number
+  fechaHora?: string
 }
 
 export interface PanelSuccessResponse {
@@ -126,7 +127,7 @@ function extractArrayPayload(data: unknown): unknown[] | null {
 
 type NumericPanelField = Exclude<
   keyof PanelTitulo,
-  'simbolo' | 'descripcion' | 'puntas'
+  'simbolo' | 'descripcion' | 'puntas' | 'fechaHora'
 >
 
 type PuntaField = keyof NonNullable<PanelTitulo['puntas']>
@@ -157,6 +158,10 @@ export function isPanelTitulo(value: unknown): value is PanelTitulo {
     if (!isOptionalFiniteNumber(value[field])) {
       return false
     }
+  }
+
+  if (value.fechaHora !== undefined && !isNonEmptyString(value.fechaHora)) {
+    return false
   }
 
   const puntas = value.puntas
@@ -261,6 +266,10 @@ function parsePanelTitulo(value: unknown): NormalizePanelTituloResult {
   setFiniteNumber(item, 'ultimoCierre', value.ultimoCierre)
   setFiniteNumber(item, 'volumen', value.volumen)
 
+  if (isNonEmptyString(value.fechaHora)) {
+    item.fechaHora = value.fechaHora
+  }
+
   return {
     ok: true,
     data: item,
@@ -328,43 +337,55 @@ export function normalizeQuoteData(
   data: unknown,
   options: QuoteNormalizationOptions
 ): PanelTitulo {
-  if (!isRecord(data)) {
+  const candidates = Array.isArray(data) ? data : [data]
+  const quoteData = candidates.find(isRecord)
+
+  if (!quoteData) {
     throw new Error('Invalid upstream quote payload structure')
   }
 
   const descripcion =
-    typeof data.descripcion === 'string' && data.descripcion.trim().length > 0
-      ? data.descripcion
-      : typeof data.descripcionTitulo === 'string' &&
-          data.descripcionTitulo.trim().length > 0
-        ? data.descripcionTitulo
-        : null
-
-  if (!descripcion) {
-    throw new Error('Upstream quote payload contains no valid item')
-  }
+    typeof quoteData.descripcion === 'string' &&
+    quoteData.descripcion.trim().length > 0
+      ? quoteData.descripcion
+      : typeof quoteData.descripcionTitulo === 'string' &&
+          quoteData.descripcionTitulo.trim().length > 0
+        ? quoteData.descripcionTitulo
+        : options.symbol
 
   const item: PanelTitulo = {
     simbolo: options.symbol,
     descripcion,
   }
-  const puntas = normalizeQuotePuntas(data.puntas)
+  const puntas = normalizeQuotePuntas(quoteData.puntas)
 
   if (puntas) {
     item.puntas = puntas
   }
 
-  setFiniteNumber(item, 'ultimoPrecio', data.ultimoPrecio)
+  setFiniteNumber(item, 'ultimoPrecio', quoteData.ultimoPrecio)
   setFiniteNumber(
     item,
     'variacionPorcentual',
-    data.variacionPorcentual ?? data.variacion
+    quoteData.variacionPorcentual ?? quoteData.variacion
   )
-  setFiniteNumber(item, 'apertura', data.apertura)
-  setFiniteNumber(item, 'maximo', data.maximo)
-  setFiniteNumber(item, 'minimo', data.minimo)
-  setFiniteNumber(item, 'ultimoCierre', data.ultimoCierre ?? data.cierreAnterior)
-  setFiniteNumber(item, 'volumen', data.volumen ?? data.volumenNominal)
+  setFiniteNumber(item, 'apertura', quoteData.apertura)
+  setFiniteNumber(item, 'maximo', quoteData.maximo)
+  setFiniteNumber(item, 'minimo', quoteData.minimo)
+  setFiniteNumber(
+    item,
+    'ultimoCierre',
+    quoteData.ultimoCierre ?? quoteData.cierreAnterior
+  )
+  setFiniteNumber(
+    item,
+    'volumen',
+    quoteData.volumen ?? quoteData.volumenNominal
+  )
+
+  if (isNonEmptyString(quoteData.fechaHora)) {
+    item.fechaHora = quoteData.fechaHora
+  }
 
   return item
 }

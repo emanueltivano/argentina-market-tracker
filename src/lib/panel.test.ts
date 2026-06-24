@@ -218,6 +218,7 @@ describe('normalizePanelData', () => {
           minimo: 920,
           cierreAnterior: 938.5,
           volumenNominal: 407493,
+          fechaHora: '2026-06-24T00:06:03.521Z',
           descripcionTitulo: 'Aluar',
           puntas: [
             {
@@ -242,6 +243,7 @@ describe('normalizePanelData', () => {
       minimo: 920,
       ultimoCierre: 938.5,
       volumen: 407493,
+      fechaHora: '2026-06-24T00:06:03.521Z',
       puntas: {
         cantidadCompra: 18,
         precioCompra: 907.5,
@@ -251,16 +253,34 @@ describe('normalizePanelData', () => {
     })
   })
 
-  it('throws when an individual quote payload is missing a usable description', () => {
-    expect(() =>
+  it('supports the IOL array shape and falls back to the symbol as description', () => {
+    expect(
       normalizeQuoteData(
-        {
-          ultimoPrecio: 100,
-        },
+        [
+          {
+            ultimoPrecio: 100,
+            apertura: 98,
+            maximo: 102,
+            minimo: 97,
+            cierreAnterior: 99,
+            volumenNominal: 0,
+            fechaHora: '2026-06-24T00:06:03.521Z',
+          },
+        ],
         {
           symbol: 'GGAL',
         }
       )
-    ).toThrow('Upstream quote payload contains no valid item')
+    ).toEqual({
+      simbolo: 'GGAL',
+      descripcion: 'GGAL',
+      ultimoPrecio: 100,
+      apertura: 98,
+      maximo: 102,
+      minimo: 97,
+      ultimoCierre: 99,
+      volumen: 0,
+      fechaHora: '2026-06-24T00:06:03.521Z',
+    })
   })
 })

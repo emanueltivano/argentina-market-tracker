@@ -16,7 +16,9 @@ import {
 import { getMarketPanelOption } from '@/app/dashboard/lib/marketPanelOptions'
 import { type StockData } from '@/app/dashboard/lib/stockData'
 import StockDetailsContent from '@/app/dashboard/components/StockDetailsContent'
+import StockFavoriteButton from '@/app/dashboard/components/StockFavoriteButton'
 import { getVariationSeverityClass } from '@/app/dashboard/components/stockVariationSeverity'
+import { useFavoriteStocks } from '@/app/dashboard/hooks/useFavoriteStocks'
 
 type StockDetailPageClientProps = {
   symbol: string
@@ -99,6 +101,7 @@ function findStockInPanels(
 export default function StockDetailPageClient({
   symbol,
 }: StockDetailPageClientProps) {
+  const { isFavorite, toggleFavoriteStock } = useFavoriteStocks()
   const normalizedSymbol = normalizeSymbol(symbol)
   const liderPanel = usePanelData('lider')
   const generalPanel = usePanelData('general')
@@ -193,6 +196,7 @@ export default function StockDetailPageClient({
   const severityClass = getVariationSeverityClass(stock.var, stock.varType)
   const updatedAt = formatTimestamp(fetchedAt ?? servedAt)
   const panelLabel = getMarketPanelOption(panelKey).label
+  const stockIsFavorite = isFavorite(stock.ticker)
 
   return (
     <main className="stock-detail-page">
@@ -206,30 +210,44 @@ export default function StockDetailPageClient({
 
         <header className="stock-detail-page-header">
           <div className="stock-detail-page-heading">
-            <span className="ui-pill ui-pill-muted stock-details-panel-label">
-              {panelLabel}
-            </span>
-            <h1>{stock.ticker}</h1>
-            <p>{stock.description}</p>
+            <div className="stock-detail-ticker-row">
+              <h1>{stock.ticker}</h1>
+              <StockFavoriteButton
+                ticker={stock.ticker}
+                isFavorite={stockIsFavorite}
+                className="stock-detail-favorite-button"
+                onToggleFavorite={() =>
+                  toggleFavoriteStock(stock, { sourcePanel: panelKey })
+                }
+              />
+            </div>
+
+            <div className="stock-detail-title-row">
+              <p>{stock.description}</p>
+              <span className="ui-pill ui-pill-muted stock-details-panel-label">
+                {panelLabel}
+              </span>
+            </div>
+
+            {updatedAt && (
+              <p className="stock-detail-updated-at">
+                <span>Actualizado: </span>
+                <strong>{updatedAt}</strong>
+              </p>
+            )}
           </div>
 
           <div className="stock-detail-page-summary" aria-label="Resumen">
-            <div>
-              <span>Precio actual</span>
-              <strong>{formatMoney(stock.price)}</strong>
-            </div>
-            <div>
-              <span>Variación diaria</span>
-              <strong className={`stock-var ${varClass} ${severityClass}`}>
+            <div className="stock-detail-summary-values">
+              <strong className="stock-detail-price">
+                {formatMoney(stock.price)}
+              </strong>
+              <strong
+                className={`stock-var stock-detail-change ${varClass} ${severityClass}`}
+              >
                 {formatSignedPercent(stock.var)}
               </strong>
             </div>
-            {updatedAt && (
-              <div>
-                <span>Actualizado</span>
-                <strong>{updatedAt}</strong>
-              </div>
-            )}
           </div>
         </header>
 
