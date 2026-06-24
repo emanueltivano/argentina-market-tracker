@@ -13,4 +13,5 @@ export interface StockData {
   max: number | null;
   close: number | null;
   volume: number | null;
+  quoteDate?: string | null;
 }

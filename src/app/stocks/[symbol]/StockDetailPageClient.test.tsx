@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { FAVORITE_STOCKS_STORAGE_KEY } from '@/app/dashboard/hooks/useFavoriteStocks'
 import StockDetailPageClient from './StockDetailPageClient'
 
 type MockSWRState = {
@@ -82,6 +84,7 @@ function setPanelResponses(
 describe('StockDetailPageClient', () => {
   beforeEach(() => {
     swrResponses.clear()
+    window.localStorage.clear()
   })
 
   afterEach(() => {
@@ -92,10 +95,34 @@ describe('StockDetailPageClient', () => {
   it('renders the dedicated stock page with basic stock information', () => {
     setPanelResponses({ data: panelResponse() })
 
-    render(<StockDetailPageClient symbol="GGAL" />)
+    const { container } = render(<StockDetailPageClient symbol="GGAL" />)
 
     expect(screen.getByRole('heading', { name: 'GGAL' })).toBeDefined()
     expect(screen.getByText('Grupo Financiero Galicia')).toBeDefined()
+    const titleRow = container.querySelector('.stock-detail-title-row')
+    const tickerRow = container.querySelector('.stock-detail-ticker-row')
+    const heading = container.querySelector('.stock-detail-page-heading')
+    const summary = container.querySelector('.stock-detail-page-summary')
+
+    expect(tickerRow?.querySelector('h1')?.textContent).toBe('GGAL')
+    expect(
+      tickerRow?.querySelector(
+        'button[aria-label="Agregar GGAL a favoritos"]'
+      )
+    ).not.toBeNull()
+    expect(titleRow?.textContent).toContain('Grupo Financiero Galicia')
+    expect(titleRow?.textContent).toContain('Panel Líder')
+    expect(heading?.textContent).toContain('Actualizado:')
+    expect(heading?.querySelector('.stock-detail-updated-at')).not.toBeNull()
+    expect(summary?.querySelector('.stock-detail-price')?.textContent).toBe(
+      '$ 123,45'
+    )
+    expect(summary?.querySelector('.stock-detail-change')?.textContent).toBe(
+      '+ 5,25%'
+    )
+    expect(
+      summary?.querySelector('.stock-detail-summary-values')
+    ).not.toBeNull()
     expect(screen.getAllByText('$ 123,45').length).toBeGreaterThan(0)
     const variationClassName = screen.getAllByText('+ 5,25%')[0]?.className
     expect(variationClassName).toContain('stock-var-positive')
@@ -103,6 +130,30 @@ describe('StockDetailPageClient', () => {
     expect(
       screen.getByRole('link', { name: 'Volver al dashboard' }).getAttribute('href')
     ).toBe('/')
+  })
+
+  it('toggles the stock using the existing favorites persistence', async () => {
+    setPanelResponses({ data: panelResponse() })
+    const user = userEvent.setup()
+
+    render(<StockDetailPageClient symbol="GGAL" />)
+
+    const addButton = await screen.findByRole('button', {
+      name: 'Agregar GGAL a favoritos',
+    })
+
+    expect(addButton.getAttribute('aria-pressed')).toBe('false')
+
+    await user.click(addButton)
+
+    const removeButton = await screen.findByRole('button', {
+      name: 'Quitar GGAL de favoritos',
+    })
+
+    expect(removeButton.getAttribute('aria-pressed')).toBe('true')
+    expect(window.localStorage.getItem(FAVORITE_STOCKS_STORAGE_KEY)).toContain(
+      '"symbol":"GGAL"'
+    )
   })
 
   it('renders an empty state when the stock is not found', () => {

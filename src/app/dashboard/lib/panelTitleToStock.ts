@@ -31,5 +31,6 @@ export function mapPanelTituloToStockProps(item: PanelTitulo): StockData {
     max: numberOrNull(item.maximo),
     close: numberOrNull(item.ultimoCierre),
     volume: numberOrNull(item.volumen),
+    quoteDate: item.fechaHora ?? null,
   }
 }

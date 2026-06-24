@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { type StockData } from '../lib/stockData'
 import LightweightStockChart from './LightweightStockChart'
+import AdvancedStockDetailChart from './AdvancedStockDetailChart'
 import {
   formatMoney,
   formatInteger,
@@ -11,10 +12,14 @@ import {
 import {
   DEFAULT_STOCK_HISTORY_RANGE,
   STOCK_HISTORY_RANGES,
-  type StockHistoryPoint,
   type StockHistoryRange,
 } from '@/lib/stockHistory'
 import { useStockHistory } from '../hooks/useStockHistory'
+import {
+  calculatePeriodMetrics,
+  mergeTodayQuoteIntoHistory,
+  normalizeHistoryPoints,
+} from '../lib/advancedStockChart'
 import { getVariationSeverityClass } from './stockVariationSeverity'
 
 type StockDetailsContentProps = {
@@ -41,17 +46,6 @@ const HISTORY_RANGE_LABEL: Record<StockHistoryRange, string> = {
   '3M': 'Últimos 3 meses',
   '6M': 'Últimos 6 meses',
   '1Y': 'Último año',
-}
-
-function getHistoryPeriodVariation(points: StockHistoryPoint[]) {
-  const first = points[0]
-  const last = points.at(-1)
-
-  if (!first || !last || first.close === 0) {
-    return null
-  }
-
-  return ((last.close - first.close) / first.close) * 100
 }
 
 function getHistoryVariationClass(value: number | null): string {
@@ -82,8 +76,30 @@ export default function StockDetailsContent({
 
   const varClass = VAR_CLASS_BY_TYPE[stock.varType]
   const severityClass = getVariationSeverityClass(stock.var, stock.varType)
-  const historyVariation = getHistoryPeriodVariation(historyPoints)
+  const chartHistoryPoints = useMemo(
+    () =>
+      variant === 'page'
+        ? mergeTodayQuoteIntoHistory(historyPoints, stock)
+        : historyPoints,
+    [historyPoints, stock, variant]
+  )
+  const normalizedHistoryPoints = useMemo(
+    () => normalizeHistoryPoints(chartHistoryPoints),
+    [chartHistoryPoints]
+  )
+  const periodMetrics = useMemo(
+    () => calculatePeriodMetrics(normalizedHistoryPoints),
+    [normalizedHistoryPoints]
+  )
+  const historyVariation = periodMetrics?.periodVariation ?? null
   const historyVariationClass = getHistoryVariationClass(historyVariation)
+  const historyDataStatus = historyMeta
+    ? historyMeta.stale
+      ? 'Stale'
+      : historyMeta.source === 'demo'
+        ? 'Demo'
+        : 'Live'
+    : null
   const historyMetaMessage =
     historyStatus === 'success' && historyMeta
       ? historyMeta.stale
@@ -95,7 +111,7 @@ export default function StockDetailsContent({
             : null
       : null
 
-  const primaryDetailRows: StockDetailRow[] = [
+  const modalPrimaryDetailRows: StockDetailRow[] = [
     { label: 'Último precio', value: formatMoney(stock.price) },
     {
       label: 'Variación diaria',
@@ -119,7 +135,7 @@ export default function StockDetailsContent({
     },
   ]
 
-  const secondaryDetailRows: StockDetailRow[] = [
+  const modalSecondaryDetailRows: StockDetailRow[] = [
     {
       label: 'Cantidad compra',
       value: formatInteger(stock.buyQty),
@@ -217,28 +233,147 @@ export default function StockDetailsContent({
                 : 'stock-history-chart-wrap'
             }
           >
-            <LightweightStockChart points={historyPoints} symbol={stock.ticker} />
+            {variant === 'page' ? (
+              <AdvancedStockDetailChart
+                points={chartHistoryPoints}
+                symbol={stock.ticker}
+              />
+            ) : (
+              <LightweightStockChart
+                points={historyPoints}
+                symbol={stock.ticker}
+              />
+            )}
           </div>
         )}
       </section>
 
-      <dl className="stock-details-grid stock-details-grid-primary">
-        {primaryDetailRows.map(({ label, value, className, valueClassName }) => (
-          <div key={label} className={className}>
-            <dt>{label}</dt>
-            <dd className={valueClassName}>{value}</dd>
-          </div>
-        ))}
-      </dl>
+      {variant === 'page' && (
+        <>
+          {periodMetrics && historyStatus === 'success' && (
+            <section
+              className="stock-detail-period-metrics"
+              aria-label="Métricas del período"
+            >
+              <div className="stock-detail-period-metric">
+                <span>Precio actual</span>
+                <strong>{formatMoney(periodMetrics.currentPrice)}</strong>
+              </div>
+              <div className="stock-detail-period-metric">
+                <span>Variación del período</span>
+                <strong className={historyVariationClass}>
+                  {historyVariation === null
+                    ? '-'
+                    : formatSignedPercent(historyVariation)}
+                </strong>
+              </div>
+              <div className="stock-detail-period-metric">
+                <span>Máximo del período</span>
+                <strong>{formatMoney(periodMetrics.periodHigh)}</strong>
+              </div>
+              <div className="stock-detail-period-metric">
+                <span>Mínimo del período</span>
+                <strong>{formatMoney(periodMetrics.periodLow)}</strong>
+              </div>
+            </section>
+          )}
 
-      <dl className="stock-details-grid stock-details-grid-secondary">
-        {secondaryDetailRows.map(({ label, value, className, valueClassName }) => (
-          <div key={label} className={className}>
-            <dt>{label}</dt>
-            <dd className={valueClassName}>{value}</dd>
-          </div>
-        ))}
-      </dl>
+          <section
+            className="stock-detail-quote-section"
+            aria-labelledby="stock-detail-quote-title"
+          >
+            <div className="stock-detail-section-header">
+              <h2 id="stock-detail-quote-title">Datos de cotización</h2>
+            </div>
+
+            <dl className="stock-detail-secondary-grid">
+              <div className="stock-detail-secondary-metric">
+                <dt>Apertura</dt>
+                <dd>{formatMoney(stock.open)}</dd>
+              </div>
+              <div className="stock-detail-secondary-metric">
+                <dt>Último cierre</dt>
+                <dd>{formatMoney(stock.close)}</dd>
+              </div>
+              <div className="stock-detail-secondary-metric">
+                <dt>Mínimo diario</dt>
+                <dd>{formatMoney(stock.min)}</dd>
+              </div>
+              <div className="stock-detail-secondary-metric">
+                <dt>Máximo diario</dt>
+                <dd>{formatMoney(stock.max)}</dd>
+              </div>
+              <div className="stock-detail-secondary-metric">
+                <dt>Variación diaria</dt>
+                <dd
+                  className={`stock-var stock-detail-secondary-variation ${varClass} ${severityClass}`.trim()}
+                >
+                  {formatSignedPercent(stock.var)}
+                </dd>
+              </div>
+              <div className="stock-detail-secondary-metric">
+                <dt>Volumen</dt>
+                <dd>{formatInteger(stock.volume)}</dd>
+              </div>
+              <div className="stock-detail-secondary-metric">
+                <dt>Estado de datos</dt>
+                <dd>{historyDataStatus ?? '-'}</dd>
+              </div>
+            </dl>
+
+            <section
+              className="stock-detail-market-depth-section"
+              aria-labelledby="stock-detail-market-depth-title"
+            >
+              <h3 id="stock-detail-market-depth-title">Puntas</h3>
+              <dl className="stock-detail-secondary-grid">
+                <div className="stock-detail-secondary-metric">
+                  <dt>Cantidad de compra</dt>
+                  <dd>{formatInteger(stock.buyQty)}</dd>
+                </div>
+                <div className="stock-detail-secondary-metric">
+                  <dt>Precio de compra</dt>
+                  <dd>{formatMoney(stock.buyPrice)}</dd>
+                </div>
+                <div className="stock-detail-secondary-metric">
+                  <dt>Precio de venta</dt>
+                  <dd>{formatMoney(stock.sellPrice)}</dd>
+                </div>
+                <div className="stock-detail-secondary-metric">
+                  <dt>Cantidad de venta</dt>
+                  <dd>{formatInteger(stock.sellQty)}</dd>
+                </div>
+              </dl>
+            </section>
+          </section>
+        </>
+      )}
+
+      {variant === 'modal' && (
+        <>
+          <dl className="stock-details-grid stock-details-grid-primary">
+            {modalPrimaryDetailRows.map(
+              ({ label, value, className, valueClassName }) => (
+                <div key={label} className={className}>
+                  <dt>{label}</dt>
+                  <dd className={valueClassName}>{value}</dd>
+                </div>
+              )
+            )}
+          </dl>
+
+          <dl className="stock-details-grid stock-details-grid-secondary">
+            {modalSecondaryDetailRows.map(
+              ({ label, value, className, valueClassName }) => (
+                <div key={label} className={className}>
+                  <dt>{label}</dt>
+                  <dd className={valueClassName}>{value}</dd>
+                </div>
+              )
+            )}
+          </dl>
+        </>
+      )}
     </div>
   )
 }
