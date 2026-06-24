@@ -19,7 +19,6 @@ import StockDetailsContent from '@/app/dashboard/components/StockDetailsContent'
 import StockFavoriteButton from '@/app/dashboard/components/StockFavoriteButton'
 import { getVariationSeverityClass } from '@/app/dashboard/components/stockVariationSeverity'
 import { useFavoriteStocks } from '@/app/dashboard/hooks/useFavoriteStocks'
-import path from 'path/win32'
 
 type StockDetailPageClientProps = {
   symbol: string
@@ -135,7 +134,7 @@ export default function StockDetailPageClient({
               <path d="M5 12l6 6" />
               <path d="M5 12l6 -6" />
             </svg>
-            Volver
+            Volver al dashboard
           </Link>
           <h1>Activo inválido</h1>
           <p>La URL no incluye un símbolo válido para consultar.</p>
@@ -158,7 +157,7 @@ export default function StockDetailPageClient({
               <path d="M5 12l6 6" />
               <path d="M5 12l6 -6" />
             </svg>
-            Volver
+            Volver al dashboard
           </Link>
           <h1>{normalizedSymbol}</h1>
           <p>Cargando detalle del activo...</p>
@@ -181,7 +180,7 @@ export default function StockDetailPageClient({
               <path d="M5 12l6 6" />
               <path d="M5 12l6 -6" />
             </svg>
-            Volver
+            Volver al dashboard
           </Link>
           <h1>No se pudo cargar {normalizedSymbol}</h1>
           <p>
@@ -207,7 +206,7 @@ export default function StockDetailPageClient({
               <path d="M5 12l6 6" />
               <path d="M5 12l6 -6" />
             </svg>
-            Volver
+            Volver al dashboard
           </Link>
           <h1>{normalizedSymbol}</h1>
           <p>No encontramos datos disponibles para este activo.</p>
@@ -236,7 +235,7 @@ export default function StockDetailPageClient({
             <path d="M5 12l6 6" />
             <path d="M5 12l6 -6" />
           </svg>
-          Volver
+          Volver al dashboard
         </Link>
 
         <header className="stock-detail-page-header">

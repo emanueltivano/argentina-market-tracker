@@ -192,9 +192,9 @@ export default function StockDetailsContent({
         <div className="stock-history-header">
           <div className="stock-history-heading">
             <div>
-              <h3 id="stock-history-title" className="stock-history-title">
+              <h2 id="stock-history-title" className="stock-history-title">
                 Histórico
-              </h3>
+              </h2>
               <p className="stock-history-subtitle">
                 {HISTORY_RANGE_LABEL[historyRange]}:{' '}
                 {historyStatus === 'success' && historyVariation !== null ? (
@@ -235,7 +235,7 @@ export default function StockDetailsContent({
         {historyStatus === 'empty' && (
           <div className="stock-history-state">
             <strong>Sin histórico disponible</strong>
-            <span>No hay datos históricos para este período.</span>
+            <span>No hay datos históricos para este rango.</span>
           </div>
         )}
 
