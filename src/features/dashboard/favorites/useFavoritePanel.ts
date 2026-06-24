@@ -41,7 +41,10 @@ export function useFavoritePanel(items: FavoriteStockIdentity[]) {
   })
 
   const rows = useMemo(
-    () => (data?.rows ?? []).map(mapPanelTituloToStockProps),
+    () =>
+      (data?.rows ?? []).map((item) =>
+        mapPanelTituloToStockProps(item, data?.updatedAt ?? data?.servedAt)
+      ),
     [data]
   )
   const hasData = data !== undefined

@@ -1,0 +1,220 @@
+import {
+  DEFAULT_STOCK_HISTORY_MARKET,
+  isStockHistoryMarket,
+  type StockHistoryMarket,
+} from '@/lib/stockHistory'
+
+export interface StockQuoteDepthLevel {
+  buyQuantity: number | null
+  buyPrice: number | null
+  sellPrice: number | null
+  sellQuantity: number | null
+}
+
+export interface StockQuoteDetail {
+  symbol: string
+  market: string
+  description: string
+  price: number
+  variation: number | null
+  open: number | null
+  high: number | null
+  low: number | null
+  timestamp: string | null
+  previousClose: number | null
+  amountTraded: number | null
+  volume: number | null
+  averagePrice: number | null
+  currency: string | null
+  openInterest: number | null
+  operationCount: number | null
+  settlement: string | null
+  minimumSheet: number | null
+  lot: number | null
+  minimumQuantity: number | null
+  depth: StockQuoteDepthLevel[]
+}
+
+export interface StockQuoteSuccessResponse {
+  ok: true
+  data: StockQuoteDetail
+  fetchedAt: string
+  servedAt: string
+  source: 'demo' | 'live'
+  market: StockHistoryMarket
+  symbol: string
+}
+
+export const STOCK_QUOTE_ERROR_CODES = [
+  'QUOTE_ERROR',
+  'QUOTE_NOT_FOUND',
+  'INVALID_SYMBOL',
+  'INVALID_MARKET',
+  'METHOD_NOT_ALLOWED',
+] as const
+
+export type StockQuoteErrorCode = (typeof STOCK_QUOTE_ERROR_CODES)[number]
+
+export interface StockQuoteErrorResponse {
+  ok: false
+  error: StockQuoteErrorCode
+  requestId?: string
+  details?: string
+}
+
+export type StockQuoteResponse =
+  | StockQuoteSuccessResponse
+  | StockQuoteErrorResponse
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim()
+    ? value.trim()
+    : null
+}
+
+function normalizeDepthLevel(value: unknown): StockQuoteDepthLevel | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  return {
+    buyQuantity: finiteNumber(value.cantidadCompra),
+    buyPrice: finiteNumber(value.precioCompra),
+    sellPrice: finiteNumber(value.precioVenta),
+    sellQuantity: finiteNumber(value.cantidadVenta),
+  }
+}
+
+export function normalizeStockQuoteDetail(
+  value: unknown,
+  fallbackSymbol = ''
+): StockQuoteDetail {
+  if (!isRecord(value)) {
+    throw new Error('Invalid upstream quote detail payload structure')
+  }
+
+  const price = finiteNumber(value.ultimoPrecio)
+  const symbol = optionalString(value.simbolo) ?? fallbackSymbol.trim().toUpperCase()
+
+  if (price === null || price <= 0 || !symbol) {
+    throw new Error('Upstream quote detail payload contains no valid quote')
+  }
+
+  const depth = Array.isArray(value.puntas)
+    ? value.puntas
+        .map(normalizeDepthLevel)
+        .filter((level): level is StockQuoteDepthLevel => level !== null)
+    : []
+
+  return {
+    symbol,
+    market: optionalString(value.mercado) ?? '',
+    description: optionalString(value.descripcionTitulo) ?? symbol,
+    price,
+    variation: finiteNumber(value.variacion),
+    open: finiteNumber(value.apertura),
+    high: finiteNumber(value.maximo),
+    low: finiteNumber(value.minimo),
+    timestamp: optionalString(value.fechaHora),
+    previousClose: finiteNumber(value.cierreAnterior),
+    amountTraded: finiteNumber(value.montoOperado),
+    volume: finiteNumber(value.volumenNominal),
+    averagePrice: finiteNumber(value.precioPromedio),
+    currency: optionalString(value.moneda),
+    openInterest: finiteNumber(value.interesesAbiertos),
+    operationCount: finiteNumber(value.cantidadOperaciones),
+    settlement: optionalString(value.plazo),
+    minimumSheet: finiteNumber(value.laminaMinima),
+    lot: finiteNumber(value.lote),
+    minimumQuantity: finiteNumber(value.cantidadMinima),
+    depth,
+  }
+}
+
+export function buildStockQuoteApiPath(
+  symbol: string,
+  market: StockHistoryMarket = DEFAULT_STOCK_HISTORY_MARKET
+): string {
+  const params = new URLSearchParams({ market })
+
+  return `/api/stocks/${encodeURIComponent(symbol)}/quote?${params.toString()}`
+}
+
+export function isStockQuoteDepthLevel(
+  value: unknown
+): value is StockQuoteDepthLevel {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return ['buyQuantity', 'buyPrice', 'sellPrice', 'sellQuantity'].every(
+    (field) => value[field] === null || finiteNumber(value[field]) !== null
+  )
+}
+
+export function isStockQuoteDetail(value: unknown): value is StockQuoteDetail {
+  const price = isRecord(value) ? finiteNumber(value.price) : null
+
+  return (
+    isRecord(value) &&
+    typeof value.symbol === 'string' &&
+    typeof value.market === 'string' &&
+    typeof value.description === 'string' &&
+    price !== null &&
+    price > 0 &&
+    [
+      'variation',
+      'open',
+      'high',
+      'low',
+      'previousClose',
+      'amountTraded',
+      'volume',
+      'averagePrice',
+      'openInterest',
+      'operationCount',
+      'minimumSheet',
+      'lot',
+      'minimumQuantity',
+    ].every((field) => value[field] === null || finiteNumber(value[field]) !== null) &&
+    (value.timestamp === null || typeof value.timestamp === 'string') &&
+    (value.currency === null || typeof value.currency === 'string') &&
+    (value.settlement === null || typeof value.settlement === 'string') &&
+    Array.isArray(value.depth) &&
+    value.depth.every(isStockQuoteDepthLevel)
+  )
+}
+
+export function isStockQuoteSuccessResponse(
+  value: unknown
+): value is StockQuoteSuccessResponse {
+  return (
+    isRecord(value) &&
+    value.ok === true &&
+    isStockQuoteDetail(value.data) &&
+    typeof value.fetchedAt === 'string' &&
+    typeof value.servedAt === 'string' &&
+    (value.source === 'demo' || value.source === 'live') &&
+    isStockHistoryMarket(
+      typeof value.market === 'string' ? value.market : null
+    ) &&
+    typeof value.symbol === 'string'
+  )
+}
+
+export function isStockQuoteErrorCode(
+  value: unknown
+): value is StockQuoteErrorCode {
+  return (
+    typeof value === 'string' &&
+    STOCK_QUOTE_ERROR_CODES.includes(value as StockQuoteErrorCode)
+  )
+}

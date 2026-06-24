@@ -7,6 +7,7 @@ import {
   type StockHistoryPoint,
   type StockHistoryRange,
 } from '@/lib/stockHistory'
+import type { StockQuoteDetail } from '@/lib/stockQuote'
 
 type DemoSymbolProfile = {
   close: number
@@ -186,6 +187,52 @@ export function getDemoQuoteBySymbol(symbol: string): PanelTitulo | null {
   return null
 }
 
+export function getDemoQuoteDetailBySymbol(
+  symbol: string,
+  market: StockHistoryMarket
+): StockQuoteDetail | null {
+  const quote = getDemoQuoteBySymbol(symbol)
+
+  if (!quote || typeof quote.ultimoPrecio !== 'number') {
+    return null
+  }
+
+  const depth = quote.puntas
+    ? [
+        {
+          buyQuantity: quote.puntas.cantidadCompra ?? null,
+          buyPrice: quote.puntas.precioCompra ?? null,
+          sellPrice: quote.puntas.precioVenta ?? null,
+          sellQuantity: quote.puntas.cantidadVenta ?? null,
+        },
+      ]
+    : []
+
+  return {
+    symbol: quote.simbolo,
+    market,
+    description: quote.descripcion,
+    price: quote.ultimoPrecio,
+    variation: quote.variacionPorcentual ?? null,
+    open: quote.apertura ?? null,
+    high: quote.maximo ?? null,
+    low: quote.minimo ?? null,
+    timestamp: new Date().toISOString(),
+    previousClose: quote.ultimoCierre ?? null,
+    amountTraded: null,
+    volume: quote.volumen ?? null,
+    averagePrice: null,
+    currency: 'peso_Argentino',
+    openInterest: null,
+    operationCount: null,
+    settlement: null,
+    minimumSheet: null,
+    lot: null,
+    minimumQuantity: null,
+    depth,
+  }
+}
+
 export function getDemoHistoryData(
   symbol: string,
   _market: StockHistoryMarket,
@@ -220,14 +267,34 @@ export function getDemoHistoryData(
           (0.68 + progress * 0.42 + Math.abs(Math.cos((index + seed) / 4.1)) * 0.33)
       )
     )
+    const dailyVariation =
+      previousClose === 0 ? 0 : ((close - previousClose) / previousClose) * 100
+    const averagePrice = roundPrice((open + high + low + close) / 4)
 
     points.push({
       date: toIsoDate(date),
+      timestamp: `${toIsoDate(date)}T20:00:00.000Z`,
       open,
       high,
       low,
       close,
       volume,
+      dailyVariation,
+      previousClose,
+      amountTraded: roundPrice(averagePrice * volume),
+      averagePrice,
+      currency: 'peso_Argentino',
+      operationCount: Math.max(1, Math.round(volume / 850)),
+      description: profile.description,
+      settlement: '48hs',
+      minimumSheet: 1,
+      lot: 1,
+      bid: {
+        buyQuantity: Math.max(1, Math.round(volume * 0.0012)),
+        buyPrice: roundPrice(close * 0.998),
+        sellPrice: roundPrice(close * 1.002),
+        sellQuantity: Math.max(1, Math.round(volume * 0.001)),
+      },
     })
   }
 

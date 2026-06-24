@@ -71,7 +71,10 @@ export function useMarketPanel(
   });
 
   const rows = useMemo(
-    () => (data?.data ?? []).map(mapPanelTituloToStockProps),
+    () =>
+      (data?.data ?? []).map((item) =>
+        mapPanelTituloToStockProps(item, data?.fetchedAt ?? data?.servedAt)
+      ),
     [data],
   );
   const hasData = data !== undefined;

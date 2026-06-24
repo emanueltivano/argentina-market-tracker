@@ -32,6 +32,67 @@ describe('stock history normalization', () => {
     ])
   })
 
+  it('preserves the extended IOL quote fields on historical points', () => {
+    expect(
+      normalizeStockHistoryData([
+        {
+          ultimoPrecio: 1028,
+          variacion: 6.25,
+          apertura: 990,
+          maximo: 1040,
+          minimo: 985,
+          fechaHora: '2026-06-24T20:39:47.208Z',
+          cierreAnterior: 967.5,
+          montoOperado: 2500000,
+          volumenNominal: 2400,
+          precioPromedio: 1012.5,
+          moneda: 'peso_Argentino',
+          interesesAbiertos: 15,
+          puntas: [
+            {
+              cantidadCompra: 20,
+              precioCompra: 1027,
+              precioVenta: 1029,
+              cantidadVenta: 18,
+            },
+          ],
+          cantidadOperaciones: 42,
+          descripcionTitulo: 'Aluar',
+          plazo: '48hs',
+          laminaMinima: 1,
+          lote: 1,
+        },
+      ])
+    ).toEqual([
+      {
+        date: '2026-06-24',
+        timestamp: '2026-06-24T20:39:47.208Z',
+        close: 1028,
+        dailyVariation: 6.25,
+        open: 990,
+        high: 1040,
+        low: 985,
+        previousClose: 967.5,
+        amountTraded: 2500000,
+        volume: 2400,
+        averagePrice: 1012.5,
+        currency: 'peso_Argentino',
+        openInterest: 15,
+        operationCount: 42,
+        description: 'Aluar',
+        settlement: '48hs',
+        minimumSheet: 1,
+        lot: 1,
+        bid: {
+          buyQuantity: 20,
+          buyPrice: 1027,
+          sellPrice: 1029,
+          sellQuantity: 18,
+        },
+      },
+    ])
+  })
+
   it('normalizes alternate CEDEAR-style price fields from IOL', () => {
     expect(
       normalizeStockHistoryData([
@@ -97,6 +158,7 @@ describe('stock history normalization', () => {
     ).toEqual([
       {
         date: '2026-05-07',
+        timestamp: '2026-05-07T00:00:00',
         close: 101.25,
         open: 98,
         high: 102.5,

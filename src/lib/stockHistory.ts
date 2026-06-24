@@ -8,11 +8,29 @@ export const DEFAULT_STOCK_HISTORY_MARKET: StockHistoryMarket = 'bCBA'
 
 export interface StockHistoryPoint {
   date: string
+  timestamp?: string
   close: number
   open?: number
   high?: number
   low?: number
   volume?: number
+  dailyVariation?: number
+  previousClose?: number
+  amountTraded?: number
+  averagePrice?: number
+  currency?: string
+  openInterest?: number
+  operationCount?: number
+  description?: string
+  settlement?: string
+  minimumSheet?: number
+  lot?: number
+  bid?: {
+    buyQuantity?: number
+    buyPrice?: number
+    sellPrice?: number
+    sellQuantity?: number
+  }
 }
 
 export interface StockHistorySuccessResponse {
@@ -82,6 +100,7 @@ export function buildStockHistoryApiPath(
 
 const FIELD_ALIASES = {
   date: ['fecha', 'date', 'fechaHora', 'fechaCotizacion'],
+  timestamp: ['fechaHora', 'quoteDate', 'timestamp'],
   close: [
     'ultimoPrecio',
     'cierre',
@@ -94,7 +113,19 @@ const FIELD_ALIASES = {
   open: ['apertura', 'open', 'precioApertura'],
   high: ['maximo', 'high', 'precioMaximo'],
   low: ['minimo', 'low', 'precioMinimo'],
-  volume: ['volumen', 'volume', 'cantidadOperaciones', 'volumenNominal'],
+  volume: ['volumenNominal', 'volumen', 'volume'],
+  dailyVariation: ['variacion', 'variacionPorcentual', 'dailyVariation'],
+  previousClose: ['cierreAnterior', 'ultimoCierre', 'previousClose'],
+  amountTraded: ['montoOperado', 'amountTraded'],
+  averagePrice: ['precioPromedio', 'averagePrice'],
+  currency: ['moneda', 'currency'],
+  openInterest: ['interesesAbiertos', 'openInterest'],
+  operationCount: ['cantidadOperaciones', 'operationCount'],
+  description: ['descripcionTitulo', 'descripcion', 'description'],
+  settlement: ['plazo', 'settlement'],
+  minimumSheet: ['laminaMinima', 'minimumSheet'],
+  lot: ['lote', 'lot'],
+  bid: ['puntas', 'bid'],
 } as const
 
 const ARRAY_PAYLOAD_FIELDS = ['data', 'cotizaciones', 'serie'] as const
@@ -268,7 +299,19 @@ function normalizeDate(value: unknown): string | null {
 
 function setOptionalNumber(
   point: StockHistoryPoint,
-  field: keyof Omit<StockHistoryPoint, 'date' | 'close'>,
+  field:
+    | 'open'
+    | 'high'
+    | 'low'
+    | 'volume'
+    | 'dailyVariation'
+    | 'previousClose'
+    | 'amountTraded'
+    | 'averagePrice'
+    | 'openInterest'
+    | 'operationCount'
+    | 'minimumSheet'
+    | 'lot',
   value: unknown
 ) {
   const numberValue = toFiniteNumber(value)
@@ -276,6 +319,44 @@ function setOptionalNumber(
   if (numberValue !== null) {
     point[field] = numberValue
   }
+}
+
+function setOptionalString(
+  point: StockHistoryPoint,
+  field: 'currency' | 'description' | 'settlement',
+  value: unknown
+) {
+  if (isNonEmptyString(value)) {
+    point[field] = value.trim()
+  }
+}
+
+function normalizeBid(value: unknown): StockHistoryPoint['bid'] {
+  const candidate = Array.isArray(value) ? value[0] : value
+
+  if (!isRecord(candidate)) {
+    return undefined
+  }
+
+  const bid: NonNullable<StockHistoryPoint['bid']> = {}
+  const fields = {
+    buyQuantity: ['cantidadCompra', 'buyQuantity'],
+    buyPrice: ['precioCompra', 'buyPrice'],
+    sellPrice: ['precioVenta', 'sellPrice'],
+    sellQuantity: ['cantidadVenta', 'sellQuantity'],
+  } as const
+
+  for (const [field, aliases] of Object.entries(fields) as Array<
+    [keyof typeof fields, (typeof fields)[keyof typeof fields]]
+  >) {
+    const numericValue = toFiniteNumber(getFirstField(candidate, aliases))
+
+    if (numericValue !== null) {
+      bid[field] = numericValue
+    }
+  }
+
+  return Object.keys(bid).length > 0 ? bid : undefined
 }
 
 function normalizeHistoryPoint(value: unknown): StockHistoryPoint | null {
@@ -294,11 +375,69 @@ function normalizeHistoryPoint(value: unknown): StockHistoryPoint | null {
     date,
     close,
   }
+  const timestamp = getFirstField(value, FIELD_ALIASES.timestamp)
+
+  if (isNonEmptyString(timestamp)) {
+    point.timestamp = timestamp.trim()
+  }
 
   setOptionalNumber(point, 'open', getFirstField(value, FIELD_ALIASES.open))
   setOptionalNumber(point, 'high', getFirstField(value, FIELD_ALIASES.high))
   setOptionalNumber(point, 'low', getFirstField(value, FIELD_ALIASES.low))
   setOptionalNumber(point, 'volume', getFirstField(value, FIELD_ALIASES.volume))
+  setOptionalNumber(
+    point,
+    'dailyVariation',
+    getFirstField(value, FIELD_ALIASES.dailyVariation)
+  )
+  setOptionalNumber(
+    point,
+    'previousClose',
+    getFirstField(value, FIELD_ALIASES.previousClose)
+  )
+  setOptionalNumber(
+    point,
+    'amountTraded',
+    getFirstField(value, FIELD_ALIASES.amountTraded)
+  )
+  setOptionalNumber(
+    point,
+    'averagePrice',
+    getFirstField(value, FIELD_ALIASES.averagePrice)
+  )
+  setOptionalNumber(
+    point,
+    'openInterest',
+    getFirstField(value, FIELD_ALIASES.openInterest)
+  )
+  setOptionalNumber(
+    point,
+    'operationCount',
+    getFirstField(value, FIELD_ALIASES.operationCount)
+  )
+  setOptionalNumber(
+    point,
+    'minimumSheet',
+    getFirstField(value, FIELD_ALIASES.minimumSheet)
+  )
+  setOptionalNumber(point, 'lot', getFirstField(value, FIELD_ALIASES.lot))
+  setOptionalString(point, 'currency', getFirstField(value, FIELD_ALIASES.currency))
+  setOptionalString(
+    point,
+    'description',
+    getFirstField(value, FIELD_ALIASES.description)
+  )
+  setOptionalString(
+    point,
+    'settlement',
+    getFirstField(value, FIELD_ALIASES.settlement)
+  )
+
+  const bid = normalizeBid(getFirstField(value, FIELD_ALIASES.bid))
+
+  if (bid) {
+    point.bid = bid
+  }
 
   return point
 }
@@ -357,13 +496,48 @@ export function isStockHistoryErrorCode(
 }
 
 export function isStockHistoryPoint(value: unknown): value is StockHistoryPoint {
+  const optionalNumbers = [
+    'open',
+    'high',
+    'low',
+    'volume',
+    'dailyVariation',
+    'previousClose',
+    'amountTraded',
+    'averagePrice',
+    'openInterest',
+    'operationCount',
+    'minimumSheet',
+    'lot',
+  ] as const
+  const optionalStrings = [
+    'timestamp',
+    'currency',
+    'description',
+    'settlement',
+  ] as const
+
+  if (!isRecord(value)) {
+    return false
+  }
+
+  const bid = value.bid
+
   return (
-    isRecord(value) &&
     isNonEmptyString(value.date) &&
     isFiniteNumber(value.close) &&
-    (value.open === undefined || isFiniteNumber(value.open)) &&
-    (value.high === undefined || isFiniteNumber(value.high)) &&
-    (value.low === undefined || isFiniteNumber(value.low)) &&
-    (value.volume === undefined || isFiniteNumber(value.volume))
+    optionalNumbers.every(
+      (field) => value[field] === undefined || isFiniteNumber(value[field])
+    ) &&
+    optionalStrings.every(
+      (field) => value[field] === undefined || isNonEmptyString(value[field])
+    ) &&
+    (bid === undefined ||
+      (isRecord(bid) &&
+        ['buyQuantity', 'buyPrice', 'sellPrice', 'sellQuantity'].every(
+          (field) =>
+            bid[field] === undefined ||
+            isFiniteNumber(bid[field])
+        )))
   )
 }

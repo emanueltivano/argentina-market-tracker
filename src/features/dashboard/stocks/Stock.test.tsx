@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import Stock from './Stock';
 import { type StockData } from '@/features/dashboard/shared/stockData';
@@ -97,5 +97,16 @@ describe('Stock', () => {
     expect(variation?.className).not.toContain('stock-var-soft');
     expect(variation?.className).not.toContain('stock-var-medium');
     expect(variation?.className).not.toContain('stock-var-strong');
+  });
+
+  it('shows calculated previous close in the Cierre column', () => {
+    renderStock({
+      price: 7615,
+      var: -4.33,
+      varType: 'negative',
+      close: 7959.65297376398,
+    });
+
+    expect(screen.getByText('$ 7.959,65')).toBeDefined();
   });
 });

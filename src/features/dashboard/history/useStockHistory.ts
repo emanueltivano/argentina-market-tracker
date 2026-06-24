@@ -33,7 +33,7 @@ export function useStockHistory(
 
   const points = data?.data ?? []
   const hasData = data !== undefined
-  const viewStatus = isLoading && !hasData
+  const viewStatus: 'loading' | 'error' | 'empty' | 'success' = isLoading && !hasData
     ? 'loading'
     : error && !hasData
       ? 'error'

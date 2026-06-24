@@ -13,7 +13,11 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts'
-import { formatMoney, formatSignedPercent } from '@/lib/formatters'
+import {
+  formatCurrencyARS,
+  formatDateTick,
+  formatPercentage,
+} from '@/lib/formatters'
 import { type StockHistoryPoint } from '@/lib/stockHistory'
 import { THEME_CHANGE_EVENT } from '@/lib/theme'
 import {
@@ -46,18 +50,13 @@ type TooltipData = {
 const CHART_HEIGHT = 420
 
 function formatDateLabel(value: Time): string {
-  if (typeof value !== 'number') {
-    return String(value)
+  if (typeof value === 'object' && value !== null && 'year' in value) {
+    return formatDateTick(
+      `${value.year}-${String(value.month).padStart(2, '0')}-${String(value.day).padStart(2, '0')}`
+    )
   }
 
-  const date = new Date(value * 1000)
-
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(date)
+  return formatDateTick(value)
 }
 
 function getTrendColor(
@@ -333,7 +332,7 @@ export default function AdvancedStockDetailChart({
               <dd>
                 {tooltip.point.open === undefined
                   ? '-'
-                  : formatMoney(tooltip.point.open)}
+                  : formatCurrencyARS(tooltip.point.open)}
               </dd>
             </div>
             <div>
@@ -341,7 +340,7 @@ export default function AdvancedStockDetailChart({
               <dd>
                 {tooltip.point.high === undefined
                   ? '-'
-                  : formatMoney(tooltip.point.high)}
+                  : formatCurrencyARS(tooltip.point.high)}
               </dd>
             </div>
             <div>
@@ -349,19 +348,19 @@ export default function AdvancedStockDetailChart({
               <dd>
                 {tooltip.point.low === undefined
                   ? '-'
-                  : formatMoney(tooltip.point.low)}
+                  : formatCurrencyARS(tooltip.point.low)}
               </dd>
             </div>
             <div>
               <dt>Close</dt>
-              <dd>{formatMoney(tooltip.point.close)}</dd>
+              <dd>{formatCurrencyARS(tooltip.point.close)}</dd>
             </div>
             <div>
               <dt>Variación</dt>
               <dd>
                 {tooltip.dailyVariation === null
                   ? '-'
-                  : formatSignedPercent(tooltip.dailyVariation)}
+                  : formatPercentage(tooltip.dailyVariation)}
               </dd>
             </div>
           </dl>

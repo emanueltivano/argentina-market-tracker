@@ -15,6 +15,12 @@ export interface PanelTitulo {
   ultimoCierre?: number
   volumen?: number
   fechaHora?: string
+  montoOperado?: number
+  cantidadOperaciones?: number
+  moneda?: string
+  plazo?: string
+  laminaMinima?: number
+  lote?: number
 }
 
 export interface PanelSuccessResponse {
@@ -127,7 +133,7 @@ function extractArrayPayload(data: unknown): unknown[] | null {
 
 type NumericPanelField = Exclude<
   keyof PanelTitulo,
-  'simbolo' | 'descripcion' | 'puntas' | 'fechaHora'
+  'simbolo' | 'descripcion' | 'puntas' | 'fechaHora' | 'moneda' | 'plazo'
 >
 
 type PuntaField = keyof NonNullable<PanelTitulo['puntas']>
@@ -140,6 +146,10 @@ export const NUMERIC_PANEL_FIELDS = [
   'minimo',
   'ultimoCierre',
   'volumen',
+  'montoOperado',
+  'cantidadOperaciones',
+  'laminaMinima',
+  'lote',
 ] as const satisfies readonly NumericPanelField[]
 
 export const PUNTA_FIELDS = [
@@ -161,6 +171,12 @@ export function isPanelTitulo(value: unknown): value is PanelTitulo {
   }
 
   if (value.fechaHora !== undefined && !isNonEmptyString(value.fechaHora)) {
+    return false
+  }
+  if (value.moneda !== undefined && !isNonEmptyString(value.moneda)) {
+    return false
+  }
+  if (value.plazo !== undefined && !isNonEmptyString(value.plazo)) {
     return false
   }
 
@@ -265,9 +281,27 @@ function parsePanelTitulo(value: unknown): NormalizePanelTituloResult {
   setFiniteNumber(item, 'minimo', value.minimo)
   setFiniteNumber(item, 'ultimoCierre', value.ultimoCierre)
   setFiniteNumber(item, 'volumen', value.volumen)
+  setFiniteNumber(item, 'montoOperado', value.montoOperado)
+  setFiniteNumber(item, 'cantidadOperaciones', value.cantidadOperaciones)
+  setFiniteNumber(item, 'laminaMinima', value.laminaMinima)
+  setFiniteNumber(item, 'lote', value.lote)
 
   if (isNonEmptyString(value.fechaHora)) {
     item.fechaHora = value.fechaHora
+  }
+
+  if (value.moneda !== undefined && !isNonEmptyString(value.moneda)) {
+    return { ok: false, reason: 'INVALID_CURRENCY' }
+  }
+
+  if (value.plazo !== undefined && !isNonEmptyString(value.plazo)) {
+    return { ok: false, reason: 'INVALID_SETTLEMENT' }
+  }
+  if (isNonEmptyString(value.moneda)) {
+    item.moneda = value.moneda
+  }
+  if (isNonEmptyString(value.plazo)) {
+    item.plazo = value.plazo
   }
 
   return {
@@ -382,9 +416,19 @@ export function normalizeQuoteData(
     'volumen',
     quoteData.volumen ?? quoteData.volumenNominal
   )
+  setFiniteNumber(item, 'montoOperado', quoteData.montoOperado)
+  setFiniteNumber(item, 'cantidadOperaciones', quoteData.cantidadOperaciones)
+  setFiniteNumber(item, 'laminaMinima', quoteData.laminaMinima)
+  setFiniteNumber(item, 'lote', quoteData.lote)
 
   if (isNonEmptyString(quoteData.fechaHora)) {
     item.fechaHora = quoteData.fechaHora
+  }
+  if (isNonEmptyString(quoteData.moneda)) {
+    item.moneda = quoteData.moneda
+  }
+  if (isNonEmptyString(quoteData.plazo)) {
+    item.plazo = quoteData.plazo
   }
 
   return item

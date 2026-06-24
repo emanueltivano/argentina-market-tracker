@@ -14,4 +14,10 @@ export interface StockData {
   close: number | null;
   volume: number | null;
   quoteDate?: string | null;
+  amountTraded?: number | null;
+  operationCount?: number | null;
+  currency?: string | null;
+  settlement?: string | null;
+  minimumSheet?: number | null;
+  lot?: number | null;
 }

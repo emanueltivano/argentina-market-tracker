@@ -53,6 +53,72 @@ export type StockPeriodMetrics = {
   pointCount: number
 }
 
+export type LatestHistoryQuotes = {
+  latestHistoricalPoint: StockHistoryPoint | null
+  previousHistoricalPoint: StockHistoryPoint | null
+}
+
+export type DailyQuoteMetrics = {
+  previousClose: number | null
+  dailyVariation: number | null
+}
+
+export function getLatestHistoryQuotes(
+  points: readonly StockHistoryPoint[]
+): LatestHistoryQuotes {
+  const validHistory = [...points]
+    .filter(
+      (point) =>
+        Number.isFinite(point.close) &&
+        point.close > 0 &&
+        DATE_ONLY_PATTERN.test(point.date.trim().slice(0, 10))
+    )
+    .sort((first, second) => first.date.localeCompare(second.date))
+
+  return {
+    latestHistoricalPoint: validHistory.at(-1) ?? null,
+    previousHistoricalPoint: validHistory.at(-2) ?? null,
+  }
+}
+
+export function calculateDailyQuoteMetrics(
+  latestHistoricalPoint: StockHistoryPoint | null,
+  previousHistoricalPoint: StockHistoryPoint | null
+): DailyQuoteMetrics {
+  if (!latestHistoricalPoint) {
+    return {
+      previousClose: null,
+      dailyVariation: null,
+    }
+  }
+
+  const previousClose =
+    typeof latestHistoricalPoint.previousClose === 'number' &&
+    Number.isFinite(latestHistoricalPoint.previousClose) &&
+    latestHistoricalPoint.previousClose > 0
+      ? latestHistoricalPoint.previousClose
+      : previousHistoricalPoint?.close && previousHistoricalPoint.close > 0
+        ? previousHistoricalPoint.close
+        : null
+  const explicitVariation =
+    typeof latestHistoricalPoint.dailyVariation === 'number' &&
+    Number.isFinite(latestHistoricalPoint.dailyVariation) &&
+    latestHistoricalPoint.dailyVariation !== 0
+      ? latestHistoricalPoint.dailyVariation
+      : null
+  const calculatedVariation =
+    previousClose !== null
+      ? ((latestHistoricalPoint.close - previousClose) / previousClose) * 100
+      : null
+
+  return {
+    previousClose,
+    dailyVariation: explicitVariation ?? calculatedVariation,
+  }
+}
+
+export const calculatePeriodStats = calculatePeriodMetrics
+
 const ARGENTINA_TIME_ZONE = 'America/Argentina/Buenos_Aires'
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const MIN_CANDLE_COVERAGE = 0.5
@@ -159,7 +225,7 @@ function normalizeQuoteRecord(
     ),
     date,
     previousClose: toPositivePrice(
-      value.previousClose ?? value.cierreAnterior ?? value.close
+      value.previousClose ?? value.cierreAnterior
     ),
     dailyVariation: toFiniteNumber(
       (value.var ?? value.variacionPorcentual ?? value.variacion) as

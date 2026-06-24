@@ -12,6 +12,9 @@ type MockSWRState = {
 }
 
 const swrResponses = vi.hoisted(() => new Map<string, MockSWRState>())
+const historyState = vi.hoisted(() => ({
+  points: [] as Array<Record<string, unknown>>,
+}))
 
 vi.mock('swr', () => ({
   default: (key: string) => ({
@@ -25,7 +28,7 @@ vi.mock('swr', () => ({
 
 vi.mock('@/features/dashboard/history/useStockHistory', () => ({
   useStockHistory: () => ({
-    points: [],
+    points: historyState.points,
     error: undefined,
     isLoading: false,
     isRefreshing: false,
@@ -71,6 +74,47 @@ function emptyPanelResponse() {
   }
 }
 
+function quoteResponse() {
+  return {
+    ok: true as const,
+    data: {
+      symbol: 'GGAL',
+      market: 'bcba',
+      description: 'Grupo Financiero Galicia S.A',
+      price: 7615,
+      variation: -4.33,
+      open: 7860,
+      high: 7950,
+      low: 7575,
+      timestamp: '2026-06-24T16:59:55.3901383-03:00',
+      previousClose: 7960,
+      amountTraded: 20190703365,
+      volume: 0,
+      averagePrice: 0,
+      currency: 'peso_Argentino',
+      openInterest: 0,
+      operationCount: 8864,
+      settlement: 't1',
+      minimumSheet: 1,
+      lot: 1,
+      minimumQuantity: 1,
+      depth: [
+        {
+          buyQuantity: 1,
+          buyPrice: 7500,
+          sellPrice: 8050,
+          sellQuantity: 85,
+        },
+      ],
+    },
+    fetchedAt: '2026-06-24T20:00:00.000Z',
+    servedAt: '2026-06-24T20:00:00.000Z',
+    source: 'live' as const,
+    market: 'bCBA' as const,
+    symbol: 'GGAL',
+  }
+}
+
 function setPanelResponses(
   lider: MockSWRState,
   general: MockSWRState = { data: emptyPanelResponse() },
@@ -84,6 +128,7 @@ function setPanelResponses(
 describe('StockDetailPageClient', () => {
   beforeEach(() => {
     swrResponses.clear()
+    historyState.points = []
     window.localStorage.clear()
   })
 
@@ -118,18 +163,68 @@ describe('StockDetailPageClient', () => {
       '$ 123,45'
     )
     expect(summary?.querySelector('.stock-detail-change')?.textContent).toBe(
-      '+ 5,25%'
+      '+5,25%'
     )
     expect(
       summary?.querySelector('.stock-detail-summary-values')
     ).not.toBeNull()
     expect(screen.getAllByText('$ 123,45').length).toBeGreaterThan(0)
-    const variationClassName = screen.getAllByText('+ 5,25%')[0]?.className
+    const variationClassName = screen.getAllByText('+5,25%')[0]?.className
     expect(variationClassName).toContain('stock-var-positive')
     expect(variationClassName).toContain('stock-var-strong')
     expect(
       screen.getByRole('link', { name: 'Volver al dashboard' }).getAttribute('href')
     ).toBe('/')
+  })
+
+  it('keeps the panel snapshot as the header source when history differs', () => {
+    setPanelResponses({ data: panelResponse() })
+    historyState.points = [
+      {
+        date: '2026-06-23',
+        timestamp: '2026-06-23T20:00:00.000Z',
+        close: 120,
+      },
+      {
+        date: '2026-06-24',
+        timestamp: '2026-06-24T20:39:47.208Z',
+        close: 1028,
+        dailyVariation: -0.48,
+        description: 'Aluar desde IOL',
+      },
+    ]
+
+    const { container } = render(<StockDetailPageClient symbol="GGAL" />)
+    const summary = container.querySelector('.stock-detail-page-summary')
+
+    expect(screen.getByText('Grupo Financiero Galicia')).toBeDefined()
+    expect(summary?.querySelector('.stock-detail-price')?.textContent).toBe(
+      '$ 123,45'
+    )
+    expect(summary?.querySelector('.stock-detail-change')?.textContent).toBe(
+      '+5,25%'
+    )
+    expect(container.querySelector('.stock-detail-updated-at')?.textContent).toContain(
+      'hora argentina'
+    )
+  })
+
+  it('uses CotizacionDetalle as the primary header source', () => {
+    setPanelResponses({ data: panelResponse() })
+    swrResponses.set('/api/stocks/GGAL/quote?market=bCBA', {
+      data: quoteResponse(),
+    })
+
+    const { container } = render(<StockDetailPageClient symbol="GGAL" />)
+    const summary = container.querySelector('.stock-detail-page-summary')
+
+    expect(screen.getByText('Grupo Financiero Galicia S.A')).toBeDefined()
+    expect(summary?.querySelector('.stock-detail-price')?.textContent).toBe(
+      '$ 7.615,00'
+    )
+    expect(summary?.querySelector('.stock-detail-change')?.textContent).toBe(
+      '-4,33%'
+    )
   })
 
   it('toggles the stock using the existing favorites persistence', async () => {
@@ -164,6 +259,30 @@ describe('StockDetailPageClient', () => {
     expect(
       screen.getByText('No encontramos datos disponibles para este activo.')
     ).toBeDefined()
+  })
+
+  it('uses the latest historical point when quote detail and snapshot are unavailable', () => {
+    setPanelResponses({ data: emptyPanelResponse() })
+    historyState.points = [
+      {
+        date: '2026-06-23',
+        close: 7900,
+      },
+      {
+        date: '2026-06-24',
+        timestamp: '2026-06-24T20:00:00.000Z',
+        close: 7960,
+        dailyVariation: 0.76,
+        description: 'GGAL histórico',
+      },
+    ]
+
+    const { container } = render(<StockDetailPageClient symbol="GGAL" />)
+
+    expect(screen.getByText('GGAL histórico')).toBeDefined()
+    expect(
+      container.querySelector('.stock-detail-price')?.textContent
+    ).toBe('$ 7.960,00')
   })
 
   it('renders an error state when all panel requests fail', () => {

@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatCurrencyARS,
+  formatDateTick,
+  formatDateTimeAR,
   formatInteger,
   formatMoney,
   formatNumber,
+  formatPercentage,
+  formatQuantity,
   formatSignedPercent,
+  normalizeCurrency,
 } from './formatters'
 
 describe('formatters', () => {
@@ -25,12 +31,31 @@ describe('formatters', () => {
 
   it('formats integers without decimals', () => {
     expect(formatInteger(1200.4)).toBe('1.200')
+    expect(formatQuantity(0)).toBe('0')
+    expect(formatQuantity(null)).toBe('—')
   })
 
-  it('formats signed percentages with the existing sign spacing', () => {
-    expect(formatSignedPercent(1.5)).toBe('+ 1,50%')
-    expect(formatSignedPercent(-1.5)).toBe('- 1,50%')
+  it('formats signed percentages without arrows or sign spacing', () => {
+    expect(formatSignedPercent(1.5)).toBe('+1,50%')
+    expect(formatSignedPercent(-1.5)).toBe('-1,50%')
     expect(formatSignedPercent(0)).toBe('0,00%')
     expect(formatSignedPercent(null)).toBe('—')
+  })
+
+  it('formats stock detail values using the Argentina conventions', () => {
+    expect(formatCurrencyARS(1028)).toBe('$ 1.028,00')
+    expect(formatCurrencyARS(0)).toBe('$ 0,00')
+    expect(formatCurrencyARS(0, { zeroIsMissing: true })).toBe('—')
+    expect(formatPercentage(6.25)).toBe('+6,25%')
+    expect(formatPercentage(-0.48)).toBe('-0,48%')
+    expect(formatPercentage(0)).toBe('0,00%')
+    expect(normalizeCurrency('peso_Argentino')).toBe('ARS')
+  })
+
+  it('formats chart ticks without repeating the year and timestamps in Argentina time', () => {
+    expect(formatDateTick('2026-06-24')).toBe('24/06')
+    expect(formatDateTimeAR('2026-06-24T20:39:47.208Z')).toContain(
+      '24/6/26'
+    )
   })
 })

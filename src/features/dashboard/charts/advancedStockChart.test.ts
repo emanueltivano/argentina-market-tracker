@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calculateDailyQuoteMetrics,
   calculatePeriodMetrics,
+  getLatestHistoryQuotes,
   hasSufficientCandles,
   mergeTodayQuoteIntoHistory,
   normalizeCurrentStockQuote,
@@ -37,6 +39,55 @@ describe('advancedStockChart helpers', () => {
       date: '2026-06-23',
       previousClose: 938.5,
       dailyVariation: 3.09,
+    })
+  })
+
+  it('selects the latest two valid positive-price history points', () => {
+    expect(
+      getLatestHistoryQuotes([
+        { date: '2026-06-24', close: 0 },
+        { date: 'invalid', close: 999 },
+        { date: '2026-06-22', close: 100 },
+        { date: '2026-06-25', close: Number.NaN },
+        { date: '2026-06-23', close: 110 },
+      ])
+    ).toEqual({
+      latestHistoricalPoint: { date: '2026-06-23', close: 110 },
+      previousHistoricalPoint: { date: '2026-06-22', close: 100 },
+    })
+  })
+
+  it('falls back to the prior valid close and calculates daily variation', () => {
+    expect(
+      calculateDailyQuoteMetrics(
+        {
+          date: '2026-06-23',
+          close: 110,
+          previousClose: 0,
+          dailyVariation: 0,
+        },
+        { date: '2026-06-22', close: 100 }
+      )
+    ).toEqual({
+      previousClose: 100,
+      dailyVariation: 10,
+    })
+  })
+
+  it('keeps a real zero daily variation when current and previous close match', () => {
+    expect(
+      calculateDailyQuoteMetrics(
+        {
+          date: '2026-06-23',
+          close: 100,
+          previousClose: 0,
+          dailyVariation: 0,
+        },
+        { date: '2026-06-22', close: 100 }
+      )
+    ).toEqual({
+      previousClose: 100,
+      dailyVariation: 0,
     })
   })
 
