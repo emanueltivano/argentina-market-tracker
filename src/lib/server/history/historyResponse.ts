@@ -1,6 +1,5 @@
 import 'server-only'
 
-import { NextResponse } from 'next/server'
 import {
   type StockHistoryErrorCode,
   type StockHistoryErrorResponse,
@@ -9,12 +8,7 @@ import {
   type StockHistoryRange,
   type StockHistorySuccessResponse,
 } from '@/lib/stockHistory'
-import { withRequestIdHeaders } from '@/lib/server/core/observability'
-
-const HISTORY_CACHE_CONTROL = 'no-store'
-const JSON_HEADERS = {
-  'Cache-Control': HISTORY_CACHE_CONTROL,
-}
+import { jsonNoStoreResponse } from '@/lib/server/core/httpResponse'
 
 export function createHistoryResponse(
   data: StockHistorySuccessResponse['data'],
@@ -43,20 +37,7 @@ export function jsonHistoryResponse(
   init: ResponseInit = {},
   requestId?: string
 ) {
-  const headers = requestId
-    ? withRequestIdHeaders(init.headers, requestId)
-    : new Headers(init.headers)
-
-  for (const [key, value] of Object.entries(JSON_HEADERS)) {
-    if (!headers.has(key)) {
-      headers.set(key, value)
-    }
-  }
-
-  return NextResponse.json(body, {
-    ...init,
-    headers,
-  })
+  return jsonNoStoreResponse(body, init, requestId)
 }
 
 export function historyErrorResponse(
