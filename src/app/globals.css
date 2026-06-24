@@ -1969,15 +1969,19 @@ dialog.stock-details-dialog .stock-details-close {
 
 .stock-detail-market-depth-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
 
 .stock-detail-market-depth-table th,
 .stock-detail-market-depth-table td {
-  padding: 0.75rem 0.9rem;
-  text-align: right;
+  width: 25%;
+  padding: 0.8rem 1rem;
+  text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stock-detail-market-depth-table th {
@@ -1991,11 +1995,6 @@ dialog.stock-details-dialog .stock-details-close {
 
 .stock-detail-market-depth-table tbody tr + tr td {
   border-top: 1px solid var(--border-color);
-}
-
-.stock-detail-market-depth-table th:first-child,
-.stock-detail-market-depth-table td:first-child {
-  text-align: left;
 }
 
 .stock-detail-market-depth-buy {
