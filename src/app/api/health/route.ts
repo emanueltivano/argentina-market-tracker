@@ -1,17 +1,17 @@
 import 'server-only'
 
 import { type NextRequest } from 'next/server'
-import { getRuntimeEnvSummary } from '@/lib/server/env'
-import { getHistoryCacheStats } from '@/lib/server/historyCache'
+import { getRuntimeEnvSummary } from '@/lib/server/core/env'
+import { getHistoryCacheStats } from '@/lib/server/history/historyCache'
 import {
   getApproximateUptimeMs,
   getRequestId,
   incrementMetricCounter,
   withRequestIdHeaders,
-} from '@/lib/server/observability'
-import { getPanelCacheStats } from '@/lib/server/panelCache'
-import { jsonResponse } from '@/lib/server/panelResponse'
-import { getRateLimitRuntimeInfo } from '@/lib/server/rateLimit'
+} from '@/lib/server/core/observability'
+import { getPanelCacheStats } from '@/lib/server/panel/panelCache'
+import { jsonResponse } from '@/lib/server/panel/panelResponse'
+import { getRateLimitRuntimeInfo } from '@/lib/server/core/rateLimit'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

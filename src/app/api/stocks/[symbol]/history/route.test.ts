@@ -51,7 +51,7 @@ async function loadRoute(
   vi.resetModules()
   setRequiredEnv(nodeEnv, envOverrides)
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
 
   return import('./route')
 }
@@ -78,7 +78,7 @@ async function loadDemoRouteWithoutLiveEnv() {
     throw new Error('live upstream should not be used in demo mode')
   })
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
 
   const route = await import('./route')
 
@@ -92,8 +92,8 @@ async function clearHistoryTestState() {
   try {
     const [{ clearHistoryCacheForTests }, { clearHistoryRateLimitForTests }] =
       await Promise.all([
-        import('@/lib/server/historyCache'),
-        import('@/lib/server/historyRateLimit'),
+        import('@/lib/server/history/historyCache'),
+        import('@/lib/server/history/historyRateLimit'),
       ])
 
     clearHistoryCacheForTests()

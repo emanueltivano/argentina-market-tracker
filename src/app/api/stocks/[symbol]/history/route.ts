@@ -1,13 +1,13 @@
 import { type NextRequest } from 'next/server'
-import { ENV } from '@/lib/server/env'
-import { parseHistoryRequest } from '@/lib/server/historyRequest'
-import { checkHistoryRateLimit } from '@/lib/server/historyRateLimit'
-import { historyErrorResponse, jsonHistoryResponse } from '@/lib/server/historyResponse'
+import { ENV } from '@/lib/server/core/env'
+import { parseHistoryRequest } from '@/lib/server/history/historyRequest'
+import { checkHistoryRateLimit } from '@/lib/server/history/historyRateLimit'
+import { historyErrorResponse, jsonHistoryResponse } from '@/lib/server/history/historyResponse'
 import {
   getHistoryCacheSizeForTests as getHistoryCacheSize,
   getOrCreateHistoryResponse,
   logHistoryRequestParams,
-} from '@/lib/server/historyService'
+} from '@/lib/server/history/historyService'
 import {
   getRequestId,
   getSafeErrorDetails,
@@ -15,8 +15,8 @@ import {
   logServerError,
   recordMetricDuration,
   withRequestIdHeaders,
-} from '@/lib/server/observability'
-import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/rateLimit'
+} from '@/lib/server/core/observability'
+import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/core/rateLimit'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

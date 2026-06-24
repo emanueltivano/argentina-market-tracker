@@ -15,21 +15,21 @@ Guía breve de onboarding técnico. Para setup, scripts, variables de entorno, e
 
 ### Dashboard cliente
 
-- `src/app/dashboard/components/Panel.tsx`
+- `src/features/dashboard/panel/Panel.tsx`
   - Orquestador principal del dashboard.
-- `src/app/dashboard/components/PanelContent.tsx`
+- `src/features/dashboard/panel/PanelContent.tsx`
   - Shell visual, toolbar y navegación.
-- `src/app/dashboard/components/StockTable.tsx`
+- `src/features/dashboard/stocks/StockTable.tsx`
   - Tabla, estados vacíos y errores.
-- `src/app/dashboard/components/StockDetailsModal.tsx`
+- `src/features/dashboard/history/StockDetailsModal.tsx`
   - Modal con detalle e histórico.
-- `src/app/dashboard/hooks/useMarketPanel.ts`
+- `src/features/dashboard/panel/useMarketPanel.ts`
   - Fetch y refresh del panel principal.
-- `src/app/dashboard/hooks/useFavoritePanel.ts`
+- `src/features/dashboard/favorites/useFavoritePanel.ts`
   - Fetch y refresh del panel de favoritos.
-- `src/app/dashboard/hooks/useFavoriteStocks.ts`
+- `src/features/dashboard/favorites/useFavoriteStocks.ts`
   - Persistencia cliente de favoritos y snapshots.
-- `src/app/dashboard/hooks/useStockHistory.ts`
+- `src/features/dashboard/history/useStockHistory.ts`
   - Fetch del histórico para el modal.
 
 ### BFF interno
@@ -62,21 +62,21 @@ Guía breve de onboarding técnico. Para setup, scripts, variables de entorno, e
 
 ### Server-only
 
-- `src/lib/server/env.ts`
+- `src/lib/server/core/env.ts`
   - Variables de entorno y resumen de runtime.
-- `src/lib/server/iol.ts`
+- `src/lib/server/upstream/iol.ts`
   - Cliente upstream con OAuth, retry y timeout.
-- `src/lib/server/panelCache.ts`
+- `src/lib/server/panel/panelCache.ts`
   - Cache y dedupe del panel.
-- `src/lib/server/historyService.ts`
+- `src/lib/server/history/historyService.ts`
   - Orquestación del histórico.
-- `src/lib/server/favoritesService.ts`
+- `src/lib/server/favorites/favoritesService.ts`
   - Fan-out de favoritos.
-- `src/lib/server/rateLimit.ts`
+- `src/lib/server/core/rateLimit.ts`
   - Base de rate limiting.
-- `src/lib/server/observability.ts`
+- `src/lib/server/core/observability.ts`
   - Métricas, request IDs y logging.
-- `src/lib/server/demoMarketData.ts`
+- `src/lib/server/demo/demoMarketData.ts`
   - Dataset determinístico para modo demo.
 
 ### Tooling y verificación
@@ -109,16 +109,16 @@ Guía breve de onboarding técnico. Para setup, scripts, variables de entorno, e
 
 Revisar primero:
 
-- `src/app/dashboard/components/Panel.tsx`
-- `src/app/dashboard/components/PanelContent.tsx`
-- `src/app/dashboard/components/StockTable.tsx`
-- `src/app/dashboard/components/Stock.tsx`
+- `src/features/dashboard/panel/Panel.tsx`
+- `src/features/dashboard/panel/PanelContent.tsx`
+- `src/features/dashboard/stocks/StockTable.tsx`
+- `src/features/dashboard/stocks/Stock.tsx`
 - `src/app/globals.css`
 
 Si cambia comportamiento de estado, revisar también:
 
-- `src/app/dashboard/hooks/useMarketPanel.ts`
-- `src/app/dashboard/lib/panelState.ts`
+- `src/features/dashboard/panel/useMarketPanel.ts`
+- `src/features/dashboard/panel/panelState.ts`
 - tests vecinos `*.test.tsx`
 
 ### Cambiar paneles de mercado
@@ -128,45 +128,45 @@ Revisar primero:
 - `src/app/api/panel/route.ts`
 - `src/lib/panel.ts`
 - `src/lib/market.ts`
-- `src/lib/server/panelCache.ts`
-- `src/lib/server/panelEndpoint.ts`
-- `src/lib/server/demoMarketData.ts`
-- `src/app/dashboard/lib/marketPanelOptions.ts`
+- `src/lib/server/panel/panelCache.ts`
+- `src/lib/server/panel/panelEndpoint.ts`
+- `src/lib/server/demo/demoMarketData.ts`
+- `src/features/dashboard/panel/marketPanelOptions.ts`
 
 ### Cambiar favoritos
 
 Revisar primero:
 
-- `src/app/dashboard/hooks/useFavoriteStocks.ts`
-- `src/app/dashboard/hooks/useFavoritePanel.ts`
+- `src/features/dashboard/favorites/useFavoriteStocks.ts`
+- `src/features/dashboard/favorites/useFavoritePanel.ts`
 - `src/app/api/favorites/route.ts`
 - `src/lib/favorites.ts`
-- `src/lib/server/favoritesRequest.ts`
-- `src/lib/server/favoritesService.ts`
-- `src/lib/server/quoteCache.ts`
+- `src/lib/server/favorites/favoritesRequest.ts`
+- `src/lib/server/favorites/favoritesService.ts`
+- `src/lib/server/upstream/quoteCache.ts`
 
 ### Cambiar histórico
 
 Revisar primero:
 
-- `src/app/dashboard/components/StockDetailsModal.tsx`
-- `src/app/dashboard/components/LightweightStockChart.tsx`
-- `src/app/dashboard/hooks/useStockHistory.ts`
+- `src/features/dashboard/history/StockDetailsModal.tsx`
+- `src/features/dashboard/charts/LightweightStockChart.tsx`
+- `src/features/dashboard/history/useStockHistory.ts`
 - `src/app/api/stocks/[symbol]/history/route.ts`
 - `src/lib/stockHistory.ts`
-- `src/lib/server/historyRequest.ts`
-- `src/lib/server/historyService.ts`
-- `src/lib/server/historyCache.ts`
+- `src/lib/server/history/historyRequest.ts`
+- `src/lib/server/history/historyService.ts`
+- `src/lib/server/history/historyCache.ts`
 
 ### Cambiar integración upstream
 
 Revisar primero:
 
-- `src/lib/server/iol.ts`
-- `src/lib/server/env.ts`
-- `src/lib/server/panelEndpoint.ts`
-- `src/lib/server/historyEndpoint.ts`
-- `src/lib/server/quoteEndpoint.ts`
+- `src/lib/server/upstream/iol.ts`
+- `src/lib/server/core/env.ts`
+- `src/lib/server/panel/panelEndpoint.ts`
+- `src/lib/server/history/historyEndpoint.ts`
+- `src/lib/server/upstream/quoteEndpoint.ts`
 - `src/lib/panel.ts`
 - `src/lib/stockHistory.ts`
 - `src/lib/favorites.ts`
@@ -179,7 +179,7 @@ Revisar primero:
 - `next.config.mjs`
 - `next.config.test.ts`
 - `src/app/layout.tsx`
-- `src/lib/server/debug.ts`
+- `src/lib/server/core/debug.ts`
 
 ### Cambiar CI o tests
 

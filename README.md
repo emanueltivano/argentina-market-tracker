@@ -81,6 +81,8 @@ Important structure:
 src/
   app/
     api/
+    stocks/
+  features/
     dashboard/
   lib/
     server/

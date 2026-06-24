@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ENV } from '@/lib/server/env';
+import { ENV } from '@/lib/server/core/env';
 
 export const metadata: Metadata = {
   title: 'Datos y proyecto',

@@ -1,12 +1,12 @@
-import Panel from '@/app/dashboard/components/Panel'
+import Panel from '@/features/dashboard/panel/Panel'
 import { cookies } from 'next/headers'
 import {
   isMarketDataPanelKey,
   type MarketDataPanelKey,
 } from '@/lib/market'
-import { ENV } from '@/lib/server/env'
-import { logServerError } from '@/lib/server/observability'
-import { getOrCreatePanelResponse } from '@/lib/server/panelCache'
+import { ENV } from '@/lib/server/core/env'
+import { logServerError } from '@/lib/server/core/observability'
+import { getOrCreatePanelResponse } from '@/lib/server/panel/panelCache'
 import { isTheme, type Theme, THEME_COOKIE_NAME } from '@/lib/theme'
 
 export const dynamic = 'force-dynamic'

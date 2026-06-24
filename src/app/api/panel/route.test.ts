@@ -69,7 +69,7 @@ async function loadLiveRoute(
     ...envOverrides,
   })
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
 
   return import('./route')
 }
@@ -89,7 +89,7 @@ async function loadDemoRoute(
     throw new Error('live upstream should not be used in demo mode')
   })
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
 
   const route = await import('./route')
 
@@ -114,7 +114,7 @@ async function loadRouteWithoutRequiredEnv(iolFetch: ReturnType<typeof vi.fn>) {
     PANEL_CEDEARS_ENDPOINT: undefined,
   }
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
 
   return import('./route')
 }
@@ -126,9 +126,9 @@ async function clearPanelTestState() {
       { clearPanelLimitsForTests },
       { clearObservabilityStateForTests },
     ] = await Promise.all([
-      import('@/lib/server/panelCache'),
-      import('@/lib/server/panelLimits'),
-      import('@/lib/server/observability'),
+      import('@/lib/server/panel/panelCache'),
+      import('@/lib/server/panel/panelLimits'),
+      import('@/lib/server/core/observability'),
     ])
 
     clearPanelResponseCacheForTests()

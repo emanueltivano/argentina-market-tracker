@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { ENV } from '@/lib/server/env'
-import { getDemoPanelData } from '@/lib/server/demoMarketData'
-import { iolFetch } from '@/lib/server/iol'
+import { ENV } from '@/lib/server/core/env'
+import { getDemoPanelData } from '@/lib/server/demo/demoMarketData'
+import { iolFetch } from '@/lib/server/upstream/iol'
 import {
   getRequestId,
   getSafeErrorDetails,
@@ -9,25 +9,25 @@ import {
   logServerError,
   recordMetricDuration,
   withRequestIdHeaders,
-} from '@/lib/server/observability'
-import { getPanelEndpoint } from '@/lib/server/panelEndpoint'
+} from '@/lib/server/core/observability'
+import { getPanelEndpoint } from '@/lib/server/panel/panelEndpoint'
 import {
   clearPanelResponseCacheForTests,
   getOrCreatePanelResponse,
   hasInFlightPanelRefresh,
-} from '@/lib/server/panelCache'
+} from '@/lib/server/panel/panelCache'
 import {
   checkPanelRateLimit,
   checkPanelRefreshCooldown,
   clearPanelLimitsForTests,
-} from '@/lib/server/panelLimits'
+} from '@/lib/server/panel/panelLimits'
 import {
   getPanelType,
   shouldBypassPanelCache,
   shouldReturnRawPanelData,
-} from '@/lib/server/panelRequest'
-import { jsonResponse, panelErrorResponse } from '@/lib/server/panelResponse'
-import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/rateLimit'
+} from '@/lib/server/panel/panelRequest'
+import { jsonResponse, panelErrorResponse } from '@/lib/server/panel/panelResponse'
+import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/core/rateLimit'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

@@ -22,10 +22,10 @@ async function loadRoute() {
     NODE_ENV: 'development',
   }
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/tokenCache', () => ({
+  vi.doMock('@/lib/server/upstream/tokenCache', () => ({
     getCachedToken: vi.fn(() => null),
   }))
-  vi.doMock('@/lib/server/iol', () => ({
+  vi.doMock('@/lib/server/upstream/iol', () => ({
     IolTokenFormatError: class IolTokenFormatError extends Error {},
     IolTokenUpstreamError: class IolTokenUpstreamError extends Error {
       status = 502

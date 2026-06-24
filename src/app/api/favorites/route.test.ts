@@ -64,7 +64,7 @@ async function loadRoute(
   vi.resetModules()
   setRequiredEnv(nodeEnv, envOverrides)
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({
+  vi.doMock('@/lib/server/upstream/iol', () => ({
     getQuoteBySymbol,
     IolUpstreamHttpError: class IolUpstreamHttpError extends Error {
       constructor(
@@ -86,7 +86,7 @@ async function loadDemoRouteWithoutLiveEnv() {
     MARKET_DATA_SOURCE: 'demo',
   }
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({
+  vi.doMock('@/lib/server/upstream/iol', () => ({
     getQuoteBySymbol: vi.fn(() => {
       throw new Error('live upstream should not be used in demo mode')
     }),

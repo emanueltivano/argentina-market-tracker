@@ -28,15 +28,15 @@ async function loadRoutes(
     ...envOverrides,
   }
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
 
   const [{ GET: panelGet, clearPanelCacheForTests }, { GET: historyGet }, { GET: metricsGet }, observability, historyCache] =
     await Promise.all([
       import('@/app/api/panel/route'),
       import('@/app/api/stocks/[symbol]/history/route'),
       import('./route'),
-      import('@/lib/server/observability'),
-      import('@/lib/server/historyCache'),
+      import('@/lib/server/core/observability'),
+      import('@/lib/server/history/historyCache'),
     ])
 
   observability.clearObservabilityStateForTests()

@@ -1,16 +1,16 @@
 import type { NextRequest } from 'next/server'
-import { ENV } from '@/lib/server/env'
-import { parseFavoritesRequest } from '@/lib/server/favoritesRequest'
+import { ENV } from '@/lib/server/core/env'
+import { parseFavoritesRequest } from '@/lib/server/favorites/favoritesRequest'
 import {
   clearFavoritesRateLimitForTests,
   checkFavoritesRateLimit,
-} from '@/lib/server/favoritesRateLimit'
+} from '@/lib/server/favorites/favoritesRateLimit'
 import {
   clearFavoritesStateForTests,
   FavoritesLookupBatchError,
   getFavoritesResponse,
-} from '@/lib/server/favoritesService'
-import { jsonResponse } from '@/lib/server/panelResponse'
+} from '@/lib/server/favorites/favoritesService'
+import { jsonResponse } from '@/lib/server/panel/panelResponse'
 import {
   getRequestId,
   getSafeErrorDetails,
@@ -18,8 +18,8 @@ import {
   logServerError,
   recordMetricDuration,
   withRequestIdHeaders,
-} from '@/lib/server/observability'
-import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/rateLimit'
+} from '@/lib/server/core/observability'
+import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/core/rateLimit'
 import type { FavoritesErrorCode, FavoritesErrorResponse } from '@/lib/favorites'
 
 export const dynamic = 'force-dynamic'

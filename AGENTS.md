@@ -132,32 +132,28 @@ src/
       health/route.ts
       debug/metrics/route.ts
       token/route.ts
+    stocks/[symbol]/page.tsx
+  features/
     dashboard/
-      components/
-      hooks/
-      lib/
+      panel/
+      stocks/
+      favorites/
+      history/
+      charts/
+      shell/
+      shared/
   lib/
     market.ts
     panel.ts
     stockHistory.ts
     favorites.ts
     server/
-      env.ts
-      iol.ts
-      demoMarketData.ts
-      panelCache.ts
-      panelLimits.ts
-      historyCache.ts
-      historyRateLimit.ts
-      historyService.ts
-      favoritesRequest.ts
-      favoritesRateLimit.ts
-      favoritesService.ts
-      quoteCache.ts
-      quoteEndpoint.ts
-      rateLimit.ts
-      observability.ts
-      debug.ts
+      core/
+      upstream/
+      panel/
+      history/
+      favorites/
+      demo/
 docs/
   RUNBOOK.md
 e2e/
@@ -171,7 +167,7 @@ scripts/run-e2e-suite.mjs
 - Mantener App Router. `src/app/page.tsx` hace SSR inicial del panel y entrega `initialData` al cliente.
 - El browser no habla con el proveedor externo. Todo acceso pasa por route handlers internos.
 - Conservar separación:
-  - UI/hooks cliente en `src/app/dashboard/**`
+  - UI/hooks cliente en `src/features/dashboard/**`
   - contratos y normalización compartida en `src/lib/**`
   - integración externa, cachés, rate limiting y observabilidad en `src/lib/server/**`
 - No duplicar tipos si ya existen en `src/lib/market.ts`, `src/lib/panel.ts`, `src/lib/stockHistory.ts` o `src/lib/favorites.ts`.
@@ -200,25 +196,25 @@ Notas importantes:
 
 Live/demo:
 
-- `MARKET_DATA_SOURCE=demo` usa `src/lib/server/demoMarketData.ts` y no requiere credenciales upstream.
-- `MARKET_DATA_SOURCE=live` usa `src/lib/server/iol.ts` y requiere configuración live completa.
+- `MARKET_DATA_SOURCE=demo` usa `src/lib/server/demo/demoMarketData.ts` y no requiere credenciales upstream.
+- `MARKET_DATA_SOURCE=live` usa `src/lib/server/upstream/iol.ts` y requiere configuración live completa.
 - Para despliegue público tipo portfolio, preferir `demo`.
 - Para revisión controlada de integración real, usar `live` y rate limiting distribuido.
 
 Integración server:
 
-- `src/lib/server/iol.ts` maneja OAuth, timeout, `cache: 'no-store'`, sanitización básica y retry único ante `401/403`.
-- `src/lib/server/env.ts` normaliza base URL, endpoints y variables operativas.
-- `src/lib/server/panelCache.ts` usa cache en memoria por panel con TTL de `30s`.
-- `src/lib/server/historyCache.ts` usa cache en memoria por `market:symbol:range` con TTL de `5m` y máximo `500` claves.
-- `src/lib/server/quoteCache.ts` cachea quotes de favoritos y soporta stale fallback.
+- `src/lib/server/upstream/iol.ts` maneja OAuth, timeout, `cache: 'no-store'`, sanitización básica y retry único ante `401/403`.
+- `src/lib/server/core/env.ts` normaliza base URL, endpoints y variables operativas.
+- `src/lib/server/panel/panelCache.ts` usa cache en memoria por panel con TTL de `30s`.
+- `src/lib/server/history/historyCache.ts` usa cache en memoria por `market:symbol:range` con TTL de `5m` y máximo `500` claves.
+- `src/lib/server/upstream/quoteCache.ts` cachea quotes de favoritos y soporta stale fallback.
 
 Rate limiting:
 
-- `src/lib/server/panelLimits.ts` aplica rate limit de `120` requests por `60s` y cooldown de refresh manual de `15s` por panel/cliente.
-- `src/lib/server/historyRateLimit.ts` aplica rate limit de `120` requests por `60s`.
-- `src/lib/server/favoritesRateLimit.ts` aplica rate limit de `120` requests por `60s`.
-- `src/lib/server/rateLimit.ts` soporta `memory` y `redis-rest`, con fallback conservador y fail-closed `503 RATE_LIMIT_UNAVAILABLE`.
+- `src/lib/server/panel/panelLimits.ts` aplica rate limit de `120` requests por `60s` y cooldown de refresh manual de `15s` por panel/cliente.
+- `src/lib/server/history/historyRateLimit.ts` aplica rate limit de `120` requests por `60s`.
+- `src/lib/server/favorites/favoritesRateLimit.ts` aplica rate limit de `120` requests por `60s`.
+- `src/lib/server/core/rateLimit.ts` soporta `memory` y `redis-rest`, con fallback conservador y fail-closed `503 RATE_LIMIT_UNAVAILABLE`.
 - Estos límites siguen siendo proceso-locales si no hay storage distribuido configurado; no tratarlos como protección global real.
 
 ## Seguridad y credenciales
@@ -235,7 +231,7 @@ Rate limiting:
 
 ## UI y dashboard
 
-- El dashboard principal es cliente (`src/app/dashboard/components/Panel.tsx`) e hidrata con datos SSR cuando existen.
+- El dashboard principal es cliente (`src/features/dashboard/panel/Panel.tsx`) e hidrata con datos SSR cuando existen.
 - `useMarketPanel` usa SWR con polling de `60s`, pausa por pestaña oculta y refresh manual con `?refresh=1`.
 - `useFavoritePanel` usa un patrón similar para `/api/favorites`.
 - `StockDetailsModal` se carga con `next/dynamic` y `ssr: false`; no romper esa carga diferida salvo motivo claro.

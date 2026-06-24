@@ -1,17 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { canUseLocalDebug } from '@/lib/server/debug'
-import { getCachedToken } from '@/lib/server/tokenCache'
+import { canUseLocalDebug } from '@/lib/server/core/debug'
+import { getCachedToken } from '@/lib/server/upstream/tokenCache'
 import {
   getRequestId,
   getSafeErrorDetails,
   logServerError,
   withRequestIdHeaders,
-} from '@/lib/server/observability'
+} from '@/lib/server/core/observability'
 import {
   IolTokenFormatError,
   IolTokenUpstreamError,
   refreshTokenForDebug,
-} from '@/lib/server/iol'
+} from '@/lib/server/upstream/iol'
 
 function notFound(requestId: string) {
   return NextResponse.json(

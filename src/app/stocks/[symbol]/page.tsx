@@ -1,4 +1,4 @@
-import StockDetailPageClient from './StockDetailPageClient'
+import StockDetailPageClient from '@/features/dashboard/history/StockDetailPageClient'
 
 type StockPageProps = {
   params: Promise<{
