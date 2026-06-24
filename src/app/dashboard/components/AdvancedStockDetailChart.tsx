@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   AreaSeries,
   CandlestickSeries,
@@ -25,6 +25,7 @@ import {
 type AdvancedStockDetailChartProps = {
   points: StockHistoryPoint[]
   symbol: string
+  rangeControls?: ReactNode
 }
 
 type ChartType = 'area' | 'candles'
@@ -137,6 +138,7 @@ function getTrendColor(
 export default function AdvancedStockDetailChart({
   points,
   symbol,
+  rangeControls,
 }: AdvancedStockDetailChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const normalizedPoints = useMemo(() => normalizeHistoryPoints(points), [points])
@@ -361,9 +363,7 @@ export default function AdvancedStockDetailChart({
           </select>
         </label>
 
-        <span className="advanced-stock-chart-help">
-          Scroll para zoom · arrastrá para navegar
-        </span>
+        {rangeControls}
       </div>
 
       {chartType === 'candles' && !canRenderCandles && (
@@ -371,7 +371,7 @@ export default function AdvancedStockDetailChart({
           No hay suficientes datos OHLC válidos. Se muestra el gráfico de área.
         </p>
       )}
-
+      
       <div className="advanced-stock-chart-canvas">
         <div
           ref={containerRef}

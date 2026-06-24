@@ -1260,7 +1260,7 @@ dialog.stock-details-dialog .stock-details-actions {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 dialog.stock-details-dialog .stock-details-expand,
@@ -1294,6 +1294,10 @@ dialog.stock-details-dialog .stock-details-close {
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 800;
+}
+
+.stock-detail-back-link svg {
+  margin-right: 5px;
 }
 
 .stock-detail-page-header {
@@ -1353,12 +1357,12 @@ dialog.stock-details-dialog .stock-details-close {
   margin-top: 0.55rem;
 }
 
-.stock-detail-title-row p,
+.stock-detail-title-row h2,
 .stock-detail-state p {
   max-width: 44rem;
   margin: 0;
   color: var(--muted-text);
-  font-size: 1rem;
+  font-size: 1.75rem;
   font-weight: 650;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -1471,33 +1475,29 @@ dialog.stock-details-dialog .stock-details-close {
 
 .stock-details-content .stock-history-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.875rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .stock-details-content .stock-history-heading {
-  display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
 }
 
 .stock-details-content .stock-history-title {
   margin: 0;
   color: var(--text-color);
-  font-size: 1rem;
-  font-weight: 800;
+  font-size: 1.5rem !important;
+  font-weight: 900;
   line-height: 1.2;
 }
 
 .stock-details-content .stock-history-subtitle {
-  margin: 0.2rem 0 0;
+  margin: 0.35rem 0 0;
   color: var(--muted-text);
-  font-size: 0.78rem;
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.25;
 }
@@ -1511,11 +1511,9 @@ dialog.stock-details-dialog .stock-details-close {
 }
 
 .stock-details-content .stock-history-performance {
-  flex: 0 0 auto;
-  align-self: center;
-  font-size: 0.98rem;
+  font-size: inherit;
   font-weight: 900;
-  line-height: 1;
+  line-height: inherit;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -1543,6 +1541,19 @@ dialog.stock-details-dialog .stock-details-close {
   border-radius: 0.625rem;
   background-color: var(--surface-muted);
   box-shadow: 0 1px 1px rgb(15 23 42 / 3%) inset;
+}
+
+.stock-details-content .stock-history-range-control {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stock-details-content .stock-history-control-label {
+  color: var(--muted-text);
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .stock-details-content .stock-history-range-button {
@@ -1691,9 +1702,15 @@ dialog.stock-details-dialog .stock-details-close {
 .advanced-stock-chart-toolbar {
   display: flex;
   min-width: 0;
-  align-items: flex-end;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 1rem;
-  padding: 0.25rem;
+  padding: 0.25rem 0.25rem 0.5rem;
+}
+
+.advanced-stock-chart-toolbar span {
+  font-size: 1rem;
+  font-weight: 900;
 }
 
 .advanced-stock-chart-select {
@@ -1719,13 +1736,11 @@ dialog.stock-details-dialog .stock-details-close {
 }
 
 .advanced-stock-chart-help {
-  margin-left: auto;
-  flex: 0 0 auto;
-  padding-bottom: 0.55rem;
+  margin: -0.25rem 0 0;
+  padding: 0 0.25rem;
   color: var(--muted-text);
   font-size: 0.7rem;
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .advanced-stock-chart-fallback {
@@ -1815,7 +1830,7 @@ dialog.stock-details-dialog .stock-details-close {
 
 .stock-detail-period-metric span {
   color: var(--muted-text);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 800;
   line-height: 1.2;
 }
@@ -2063,11 +2078,6 @@ dialog.stock-details-dialog .stock-details-close {
     align-items: flex-start;
   }
 
-  dialog.stock-details-dialog .stock-details-actions {
-    flex-direction: column-reverse;
-    align-items: flex-end;
-  }
-
   dialog.stock-details-dialog .stock-details-expand,
   dialog.stock-details-dialog .stock-details-close {
     min-height: 2.1rem;
@@ -2125,7 +2135,13 @@ dialog.stock-details-dialog .stock-details-close {
     align-items: flex-start;
   }
 
+  .stock-details-content .stock-history-range-control {
+    width: 100%;
+    align-items: flex-start;
+  }
+
   .stock-details-content .stock-history-range-group {
+    max-width: 100%;
     justify-content: flex-start;
     overflow-x: auto;
   }

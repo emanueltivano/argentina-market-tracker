@@ -110,6 +110,29 @@ export default function StockDetailsContent({
             ? 'Serie histórica de demo determinística.'
             : null
       : null
+  const historyRangeControls = (
+    <div className="stock-history-range-control">
+      <span className="stock-history-control-label">Período</span>
+      <div className="stock-history-range-group" aria-label="Período">
+        {STOCK_HISTORY_RANGES.map((range) => (
+          <button
+            key={range}
+            type="button"
+            className={
+              range === historyRange
+                ? 'stock-history-range-button stock-history-range-button-active'
+                : 'stock-history-range-button'
+            }
+            onClick={() => setHistoryRange(range)}
+            aria-pressed={range === historyRange}
+            title={HISTORY_RANGE_LABEL[range]}
+          >
+            {range}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 
   const modalPrimaryDetailRows: StockDetailRow[] = [
     { label: 'Último precio', value: formatMoney(stock.price) },
@@ -162,13 +185,29 @@ export default function StockDetailsContent({
 
   return (
     <div className={`stock-details-content stock-details-content-${variant}`}>
-      <section className="stock-history-section" aria-label="Histórico">
+      <section
+        className="stock-history-section"
+        aria-labelledby="stock-history-title"
+      >
         <div className="stock-history-header">
           <div className="stock-history-heading">
             <div>
-              <h3 className="stock-history-title">Histórico</h3>
+              <h3 id="stock-history-title" className="stock-history-title">
+                Histórico
+              </h3>
               <p className="stock-history-subtitle">
-                {HISTORY_RANGE_LABEL[historyRange]}
+                {HISTORY_RANGE_LABEL[historyRange]}:{' '}
+                {historyStatus === 'success' && historyVariation !== null ? (
+                  <span
+                    className={`stock-history-performance ${historyVariationClass}`}
+                  >
+                    {formatSignedPercent(historyVariation)}
+                  </span>
+                ) : (
+                  <span className="stock-history-performance stock-history-performance-neutral">
+                    -
+                  </span>
+                )}
               </p>
               {historyMetaMessage && (
                 <p className="stock-history-subtitle stock-history-subtitle-meta">
@@ -176,34 +215,9 @@ export default function StockDetailsContent({
                 </p>
               )}
             </div>
-
-            {historyStatus === 'success' && historyVariation !== null && (
-              <span
-                className={`stock-history-performance ${historyVariationClass}`}
-              >
-                {formatSignedPercent(historyVariation)}
-              </span>
-            )}
           </div>
 
-          <div className="stock-history-range-group" aria-label="Rango">
-            {STOCK_HISTORY_RANGES.map((range) => (
-              <button
-                key={range}
-                type="button"
-                className={
-                  range === historyRange
-                    ? 'stock-history-range-button stock-history-range-button-active'
-                    : 'stock-history-range-button'
-                }
-                onClick={() => setHistoryRange(range)}
-                aria-pressed={range === historyRange}
-                title={HISTORY_RANGE_LABEL[range]}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
+          {variant === 'modal' && historyRangeControls}
         </div>
 
         {isHistoryLoading && (
@@ -221,7 +235,7 @@ export default function StockDetailsContent({
         {historyStatus === 'empty' && (
           <div className="stock-history-state">
             <strong>Sin histórico disponible</strong>
-            <span>No hay datos históricos para este rango.</span>
+            <span>No hay datos históricos para este período.</span>
           </div>
         )}
 
@@ -237,6 +251,7 @@ export default function StockDetailsContent({
               <AdvancedStockDetailChart
                 points={chartHistoryPoints}
                 symbol={stock.ticker}
+                rangeControls={historyRangeControls}
               />
             ) : (
               <LightweightStockChart

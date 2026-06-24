@@ -19,6 +19,7 @@ import StockDetailsContent from '@/app/dashboard/components/StockDetailsContent'
 import StockFavoriteButton from '@/app/dashboard/components/StockFavoriteButton'
 import { getVariationSeverityClass } from '@/app/dashboard/components/stockVariationSeverity'
 import { useFavoriteStocks } from '@/app/dashboard/hooks/useFavoriteStocks'
+import path from 'path/win32'
 
 type StockDetailPageClientProps = {
   symbol: string
@@ -128,7 +129,13 @@ export default function StockDetailPageClient({
             href="/"
             className="ui-button ui-button-ghost stock-detail-back-link"
           >
-            Volver al dashboard
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M5 12l14 0" />
+              <path d="M5 12l6 6" />
+              <path d="M5 12l6 -6" />
+            </svg>
+            Volver
           </Link>
           <h1>Activo inválido</h1>
           <p>La URL no incluye un símbolo válido para consultar.</p>
@@ -145,7 +152,13 @@ export default function StockDetailPageClient({
             href="/"
             className="ui-button ui-button-ghost stock-detail-back-link"
           >
-            Volver al dashboard
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M5 12l14 0" />
+              <path d="M5 12l6 6" />
+              <path d="M5 12l6 -6" />
+            </svg>
+            Volver
           </Link>
           <h1>{normalizedSymbol}</h1>
           <p>Cargando detalle del activo...</p>
@@ -162,7 +175,13 @@ export default function StockDetailPageClient({
             href="/"
             className="ui-button ui-button-ghost stock-detail-back-link"
           >
-            Volver al dashboard
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M5 12l14 0" />
+              <path d="M5 12l6 6" />
+              <path d="M5 12l6 -6" />
+            </svg>
+            Volver
           </Link>
           <h1>No se pudo cargar {normalizedSymbol}</h1>
           <p>
@@ -182,7 +201,13 @@ export default function StockDetailPageClient({
             href="/"
             className="ui-button ui-button-ghost stock-detail-back-link"
           >
-            Volver al dashboard
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M5 12l14 0" />
+              <path d="M5 12l6 6" />
+              <path d="M5 12l6 -6" />
+            </svg>
+            Volver
           </Link>
           <h1>{normalizedSymbol}</h1>
           <p>No encontramos datos disponibles para este activo.</p>
@@ -205,7 +230,13 @@ export default function StockDetailPageClient({
           href="/"
           className="ui-button ui-button-ghost stock-detail-back-link"
         >
-          Volver al dashboard
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M5 12l14 0" />
+            <path d="M5 12l6 6" />
+            <path d="M5 12l6 -6" />
+          </svg>
+          Volver
         </Link>
 
         <header className="stock-detail-page-header">
@@ -223,7 +254,7 @@ export default function StockDetailPageClient({
             </div>
 
             <div className="stock-detail-title-row">
-              <p>{stock.description}</p>
+              <h2>{stock.description}</h2>
               <span className="ui-pill ui-pill-muted stock-details-panel-label">
                 {panelLabel}
               </span>

@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type StockData } from '../lib/stockData'
 import StockDetailsContent from './StockDetailsContent'
@@ -50,9 +56,22 @@ vi.mock('./LightweightStockChart', () => ({
 }))
 
 vi.mock('./AdvancedStockDetailChart', () => ({
-  default: (props: { points: Array<{ date: string; close: number }> }) => {
+  default: (props: {
+    points: Array<{ date: string; close: number }>
+    rangeControls?: React.ReactNode
+  }) => {
     chartMocks.advancedPoints(props.points)
-    return <div data-testid="advanced-chart" />
+    return (
+      <div data-testid="advanced-chart">
+        <label>
+          Tipo de gráfico
+          <select defaultValue="candles">
+            <option value="candles">Velas</option>
+          </select>
+        </label>
+        {props.rangeControls}
+      </div>
+    )
   },
 }))
 
@@ -105,6 +124,19 @@ describe('StockDetailsContent variants', () => {
   it('uses history enriched with today on the detail page', () => {
     render(<StockDetailsContent stock={stock} variant="page" />)
 
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Histórico' })
+    ).not.toBeNull()
+    expect(screen.getByText('Último mes:').textContent).toContain('+ 10,00%')
+    expect(screen.getByLabelText('Tipo de gráfico')).not.toBeNull()
+    expect(screen.getByText('Período')).not.toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: '1W' }))
+
+    expect(screen.getByText('Última semana:').textContent).toContain('+ 10,00%')
+    expect(
+      screen.getByRole('button', { name: '1W' }).getAttribute('aria-pressed')
+    ).toBe('true')
     expect(screen.getByTestId('advanced-chart')).not.toBeNull()
     expect(screen.queryByTestId('simple-chart')).toBeNull()
     const periodMetrics = screen.getByLabelText('Métricas del período')
