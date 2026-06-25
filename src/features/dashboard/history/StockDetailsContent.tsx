@@ -189,18 +189,6 @@ function HistorySection({
   )
   const periodVariation = periodMetrics?.periodVariation ?? null
   const periodVariationClass = getHistoryVariationClass(periodVariation)
-  const dailyVariation = currentQuote.variation
-  const dailyVariationType =
-    dailyVariation === null || dailyVariation === 0
-      ? 'neutral'
-      : dailyVariation > 0
-        ? 'positive'
-        : 'negative'
-  const dailyVariationClass = getVariationClass(dailyVariationType)
-  const dailySeverityClass = getVariationSeverityClass(
-    dailyVariation,
-    dailyVariationType
-  )
   const historyDataStatus = history.meta
     ? history.meta.stale
       ? 'Stale'

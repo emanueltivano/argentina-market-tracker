@@ -269,16 +269,16 @@ describe('StockDetailsContent variants', () => {
     expect(within(quoteSection).getByText('Cierre anterior')).not.toBeNull()
     expect(within(quoteSection).getByText('Mínimo diario')).not.toBeNull()
     expect(within(quoteSection).getByText('Máximo diario')).not.toBeNull()
-    expect(within(quoteSection).getByText('Variación diaria')).not.toBeNull()
+    expect(within(quoteSection).queryByText('Variación diaria')).toBeNull()
     expect(
       within(quoteSection).getByText('Cierre anterior').nextElementSibling
         ?.textContent
     ).toBe('$ 108,00')
-    expect(within(quoteSection).getByText('+1,50%')).not.toBeNull()
+    expect(within(quoteSection).queryByText('+1,50%')).toBeNull()
     expect(within(quoteSection).queryByText('Precio promedio')).toBeNull()
     expect(
       quoteSection.querySelectorAll('.stock-detail-secondary-metric')
-    ).toHaveLength(5)
+    ).toHaveLength(4)
     expect(within(quoteSection).getByText('Demo')).not.toBeNull()
     expect(within(liquiditySection).getByText('Volumen nominal')).not.toBeNull()
     expect(within(liquiditySection).getByText('Monto operado')).not.toBeNull()
