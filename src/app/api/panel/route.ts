@@ -33,6 +33,47 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const runtime = 'nodejs'
 
+const PANEL_ROUTE = '/api/panel'
+
+function recordPanelRequest(
+  startedAt: number,
+  status: number,
+  outcome: string,
+  source: string
+) {
+  incrementMetricCounter('api.request.total', 1, {
+    endpoint: PANEL_ROUTE,
+    method: 'GET',
+    outcome,
+    source,
+    status,
+  })
+  recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+    endpoint: PANEL_ROUTE,
+    method: 'GET',
+    status,
+  })
+}
+
+function rateLimitUnavailableResponse(
+  status: number,
+  retryAfterSec: number,
+  requestId: string
+) {
+  return panelErrorResponse(
+    'RATE_LIMIT_UNAVAILABLE',
+    {
+      status,
+      headers: withRequestIdHeaders(
+        { 'Retry-After': String(retryAfterSec) },
+        requestId
+      ),
+    },
+    undefined,
+    requestId
+  )
+}
+
 export function clearPanelCacheForTests() {
   clearPanelResponseCacheForTests()
   clearPanelLimitsForTests()
@@ -45,18 +86,7 @@ export async function GET(req: NextRequest) {
   const dataSource = ENV.MARKET_DATA_SOURCE
 
   if (!panelType.ok) {
-    incrementMetricCounter('api.request.total', 1, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      outcome: 'error',
-      source: dataSource,
-      status: 400,
-    })
-    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      status: 400,
-    })
+    recordPanelRequest(startedAt, 400, 'error', dataSource)
     return panelErrorResponse('INVALID_PANEL_TYPE', { status: 400 }, undefined, requestId)
   }
 
@@ -65,33 +95,14 @@ export async function GET(req: NextRequest) {
   const bypassCache = shouldBypassPanelCache(req)
   const rateLimitCheck = await safeCheckRateLimit(() => checkPanelRateLimit(req), {
     requestId,
-    route: '/api/panel',
+    route: PANEL_ROUTE,
   })
 
   if (!rateLimitCheck.ok) {
-    incrementMetricCounter('api.request.total', 1, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      outcome: 'rate-limit-unavailable',
-      source: dataSource,
-      status: 503,
-    })
-    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      status: 503,
-    })
-
-    return panelErrorResponse(
-      'RATE_LIMIT_UNAVAILABLE',
-      {
-        status: rateLimitCheck.status,
-        headers: withRequestIdHeaders(
-          { 'Retry-After': String(rateLimitCheck.retryAfterSec) },
-          requestId
-        ),
-      },
-      undefined,
+    recordPanelRequest(startedAt, 503, 'rate-limit-unavailable', dataSource)
+    return rateLimitUnavailableResponse(
+      rateLimitCheck.status,
+      rateLimitCheck.retryAfterSec,
       requestId
     )
   }
@@ -99,18 +110,7 @@ export async function GET(req: NextRequest) {
   const rateLimit = rateLimitCheck.rateLimit
 
   if (!rateLimit.ok) {
-    incrementMetricCounter('api.request.total', 1, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      outcome: 'rate-limited',
-      source: dataSource,
-      status: 429,
-    })
-    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      status: 429,
-    })
+    recordPanelRequest(startedAt, 429, 'rate-limited', dataSource)
     return panelErrorResponse('RATE_LIMITED', {
       status: 429,
       headers: withRequestIdHeaders(getRetryAfterHeaders(rateLimit), requestId),
@@ -124,34 +124,15 @@ export async function GET(req: NextRequest) {
       () => checkPanelRefreshCooldown(req, type),
       {
         requestId,
-        route: '/api/panel',
+        route: PANEL_ROUTE,
       }
     )
 
     if (!refreshCooldownCheck.ok) {
-      incrementMetricCounter('api.request.total', 1, {
-        endpoint: '/api/panel',
-        method: 'GET',
-        outcome: 'rate-limit-unavailable',
-        source: dataSource,
-        status: 503,
-      })
-      recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-        endpoint: '/api/panel',
-        method: 'GET',
-        status: 503,
-      })
-
-      return panelErrorResponse(
-        'RATE_LIMIT_UNAVAILABLE',
-        {
-          status: refreshCooldownCheck.status,
-          headers: withRequestIdHeaders(
-            { 'Retry-After': String(refreshCooldownCheck.retryAfterSec) },
-            requestId
-          ),
-        },
-        undefined,
+      recordPanelRequest(startedAt, 503, 'rate-limit-unavailable', dataSource)
+      return rateLimitUnavailableResponse(
+        refreshCooldownCheck.status,
+        refreshCooldownCheck.retryAfterSec,
         requestId
       )
     }
@@ -159,18 +140,7 @@ export async function GET(req: NextRequest) {
     const refreshCooldown = refreshCooldownCheck.rateLimit
 
     if (!refreshCooldown.ok) {
-      incrementMetricCounter('api.request.total', 1, {
-        endpoint: '/api/panel',
-        method: 'GET',
-        outcome: 'cooldown-blocked',
-        source: dataSource,
-        status: 429,
-      })
-      recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-        endpoint: '/api/panel',
-        method: 'GET',
-        status: 429,
-      })
+      recordPanelRequest(startedAt, 429, 'cooldown-blocked', dataSource)
       return panelErrorResponse('REFRESH_COOLDOWN', {
         status: 429,
         headers: withRequestIdHeaders(
@@ -187,18 +157,7 @@ export async function GET(req: NextRequest) {
         ENV.MARKET_DATA_SOURCE === 'demo'
           ? getDemoPanelData(type)
           : await iolFetch(getPanelEndpoint(type))
-      incrementMetricCounter('api.request.total', 1, {
-        endpoint: '/api/panel',
-        method: 'GET',
-        outcome: 'success',
-        source: dataSource,
-        status: 200,
-      })
-      recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-        endpoint: '/api/panel',
-        method: 'GET',
-        status: 200,
-      })
+      recordPanelRequest(startedAt, 200, 'success', dataSource)
 
       return jsonResponse(
         {
@@ -219,18 +178,7 @@ export async function GET(req: NextRequest) {
       panelType: type,
       source: dataSource,
     })
-    incrementMetricCounter('api.request.total', 1, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      outcome: 'success',
-      source: dataSource,
-      status: 200,
-    })
-    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      status: 200,
-    })
+    recordPanelRequest(startedAt, 200, 'success', dataSource)
 
     return jsonResponse(response, {
       headers: withRequestIdHeaders(rateLimit.headers, requestId),
@@ -240,23 +188,12 @@ export async function GET(req: NextRequest) {
 
     logServerError('api.panel.GET', err, {
       requestId,
-      route: '/api/panel',
+      route: PANEL_ROUTE,
       panelType: type,
       bypassCache,
       shouldReturnRaw,
     })
-    incrementMetricCounter('api.request.total', 1, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      outcome: 'error',
-      source: dataSource,
-      status: 502,
-    })
-    recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
-      endpoint: '/api/panel',
-      method: 'GET',
-      status: 502,
-    })
+    recordPanelRequest(startedAt, 502, 'error', dataSource)
 
     return panelErrorResponse(
       'PANEL_ERROR',
@@ -270,7 +207,7 @@ export async function GET(req: NextRequest) {
 export function POST(req: NextRequest) {
   const requestId = getRequestId(req)
   incrementMetricCounter('api.request.total', 1, {
-    endpoint: '/api/panel',
+    endpoint: PANEL_ROUTE,
     method: 'POST',
     outcome: 'method-not-allowed',
     source: ENV.MARKET_DATA_SOURCE,

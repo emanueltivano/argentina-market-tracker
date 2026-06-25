@@ -1,7 +1,8 @@
 {
-  "name": "argentina-market-tracker-mvp",
+  "name": "argentina-market-tracker",
   "private": true,
   "version": "0.1.0",
+  "description": "Production-oriented full-stack dashboard for the Argentine market, with a stable public demo and configurable live integration.",
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3000",
@@ -31,6 +32,9 @@
   },
   "engines": {
     "node": ">=24.15.0 <25"
+  },
+  "volta": {
+    "node": "24.15.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

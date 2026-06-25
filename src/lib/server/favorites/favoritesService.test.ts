@@ -171,6 +171,31 @@ describe('favoritesService', () => {
     expect(response.servedAt).toBe('2026-05-27T18:00:00.000Z')
   })
 
+  it('keeps updatedAt tied to cached row data instead of the response time', async () => {
+    vi.setSystemTime(new Date('2026-05-27T17:00:00.000Z'))
+    const getQuoteBySymbol = vi.fn(async (_market: string, symbol: string) =>
+      quoteResponse(symbol)
+    )
+    const { getFavoritesResponse } = await loadFavoritesService(getQuoteBySymbol)
+    const items = [{ market: 'bCBA' as const, symbol: 'ALUA' }]
+
+    await getFavoritesResponse(items, {
+      bypassCache: false,
+      requestId: 'req-12345678',
+    })
+
+    vi.setSystemTime(new Date('2026-05-27T17:00:10.000Z'))
+
+    const response = await getFavoritesResponse(items, {
+      bypassCache: false,
+      requestId: 'req-12345678',
+    })
+
+    expect(response.updatedAt).toBe('2026-05-27T17:00:00.000Z')
+    expect(response.servedAt).toBe('2026-05-27T17:00:10.000Z')
+    expect(getQuoteBySymbol).toHaveBeenCalledTimes(1)
+  })
+
   it('uses a service timestamp instead of epoch for empty favorites', async () => {
     const getQuoteBySymbol = vi.fn()
     const { getFavoritesResponse } = await loadFavoritesService(getQuoteBySymbol)

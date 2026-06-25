@@ -56,7 +56,12 @@ describe('Panel data', () => {
       initialPanelKey: 'lider',
     })
 
-    expect(await screen.findByLabelText('Demo data badge')).not.toBeNull()
+    const badge = await screen.findByLabelText(
+      'Demo pública con datos sintéticos'
+    )
+
+    expect(badge.textContent).toBe('Demo público · datos sintéticos')
+    expect(badge.getAttribute('title')).toContain('estabilidad y seguridad')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

@@ -46,9 +46,10 @@ export default function PanelContent({
             {isDemoMode && (
               <span
                 className="ui-pill ui-pill-warning panel-demo-badge"
-                aria-label="Demo data badge"
+                aria-label="Demo pública con datos sintéticos"
+                title="El deploy público usa datos sintéticos determinísticos para estabilidad y seguridad."
               >
-                Demo data
+                Demo público · datos sintéticos
               </span>
             )}
             {status}

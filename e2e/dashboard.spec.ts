@@ -306,7 +306,9 @@ test.describe('dashboard', () => {
     })
 
     await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
-    await expect(page.getByLabel('Demo data badge')).toBeVisible()
+    await expect(
+      page.getByLabel('Demo pública con datos sintéticos')
+    ).toBeVisible()
     await expect(
       page.getByRole('button', {
         name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',

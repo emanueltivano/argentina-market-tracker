@@ -24,7 +24,7 @@ test.describe('dashboard SSR boot', () => {
     expect(initialHtml).toContain('Panel Líder')
     expect(initialHtml).toContain('GGAL')
     expect(initialHtml).toContain('data-symbol="GGAL"')
-    expect(initialHtml).toContain('Demo data')
+    expect(initialHtml).toContain('Demo público · datos sintéticos')
     expect(initialHtml).not.toContain('Cargando datos...')
 
     const browserResponse = await page.goto(appUrl)
@@ -33,7 +33,9 @@ test.describe('dashboard SSR boot', () => {
     expect(browserResponse?.ok()).toBe(true)
 
     await expect(page.getByRole('heading', { name: 'Panel Líder' })).toBeVisible()
-    await expect(page.getByLabel('Demo data badge')).toBeVisible()
+    await expect(
+      page.getByLabel('Demo pública con datos sintéticos')
+    ).toBeVisible()
     await expect(page.getByText(/Actualizado/)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Actualizar' })).toHaveCount(0)
     await expect(page.getByRole('button', {

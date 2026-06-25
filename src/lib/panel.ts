@@ -92,7 +92,21 @@ function toFiniteNumber(value: unknown): number | null {
     return null
   }
 
-  const parsedValue = Number(trimmedValue.replace(/,/g, ''))
+  let normalizedValue: string
+
+  if (/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(trimmedValue)) {
+    normalizedValue = trimmedValue.replace(/,/g, '')
+  } else if (/^[+-]?\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(trimmedValue)) {
+    normalizedValue = trimmedValue.replace(/\./g, '').replace(',', '.')
+  } else if (/^[+-]?\d+(?:\.\d+)?$/.test(trimmedValue)) {
+    normalizedValue = trimmedValue
+  } else if (/^[+-]?\d+,\d+$/.test(trimmedValue)) {
+    normalizedValue = trimmedValue.replace(',', '.')
+  } else {
+    return null
+  }
+
+  const parsedValue = Number(normalizedValue)
 
   return Number.isFinite(parsedValue) ? parsedValue : null
 }
@@ -108,6 +122,10 @@ export function isOptionalFiniteNumber(
   value: unknown
 ): value is number | undefined {
   return value === undefined || isFiniteNumber(value)
+}
+
+function isOptionalNumericInput(value: unknown): boolean {
+  return value === undefined || toFiniteNumber(value) !== null
 }
 
 function hasPanelTituloIdentity(
@@ -246,7 +264,7 @@ function parsePanelTitulo(value: unknown): NormalizePanelTituloResult {
   }
 
   for (const field of NUMERIC_PANEL_FIELDS) {
-    if (!isOptionalFiniteNumber(value[field])) {
+    if (!isOptionalNumericInput(value[field])) {
       return { ok: false, reason: `INVALID_NUMERIC_FIELD:${field}` }
     }
   }
@@ -257,7 +275,7 @@ function parsePanelTitulo(value: unknown): NormalizePanelTituloResult {
     }
 
     for (const field of PUNTA_FIELDS) {
-      if (!isOptionalFiniteNumber(value.puntas[field])) {
+      if (!isOptionalNumericInput(value.puntas[field])) {
         return { ok: false, reason: `INVALID_PUNTA_FIELD:${field}` }
       }
     }

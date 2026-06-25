@@ -85,7 +85,7 @@ describe('normalizePanelData', () => {
         {
           simbolo: 'PAMP',
           descripcion: 'Pampa Energia',
-          ultimoPrecio: '123.45',
+          ultimoPrecio: 'not-a-number',
         },
       ])
     ).toEqual({
@@ -150,13 +150,51 @@ describe('normalizePanelData', () => {
     ])
   })
 
-  it('throws when a valid row contains invalid numeric field types', () => {
-    expect(() =>
+  it('accepts safe numeric strings and normalizes them to numbers', () => {
+    expect(
       normalizePanelData([
         {
           simbolo: 'PAMP',
           descripcion: 'Pampa Energia',
           ultimoPrecio: '123.45',
+          variacionPorcentual: '-1,25',
+          volumen: '1,234,567',
+          montoOperado: '1.234.567,89',
+          puntas: {
+            cantidadCompra: '10',
+            precioVenta: '1,234.50',
+          },
+        },
+      ])
+    ).toEqual([
+      {
+        simbolo: 'PAMP',
+        descripcion: 'Pampa Energia',
+        ultimoPrecio: 123.45,
+        variacionPorcentual: -1.25,
+        volumen: 1234567,
+        montoOperado: 1234567.89,
+        puntas: {
+          cantidadCompra: 10,
+          precioVenta: 1234.5,
+        },
+      },
+    ])
+  })
+
+  it.each([
+    ['currency text', '$ 123.45'],
+    ['multiple decimal separators', '12.34.56'],
+    ['scientific notation', '1e3'],
+    ['non-finite text', 'Infinity'],
+    ['empty text', '   '],
+  ])('rejects invalid numeric strings: %s', (_caseName, ultimoPrecio) => {
+    expect(() =>
+      normalizePanelData([
+        {
+          simbolo: 'PAMP',
+          descripcion: 'Pampa Energia',
+          ultimoPrecio,
         },
       ])
     ).toThrow('Upstream payload contains no valid items')

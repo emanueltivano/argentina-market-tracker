@@ -266,7 +266,7 @@ export async function getFavoritesResponse(
   const missingItems: string[] = []
   const failedItems: string[] = []
   const servedAt = new Date().toISOString()
-  let updatedAt = servedAt
+  let latestFetchedAt: string | undefined
   let stale = false
 
   for (const result of results) {
@@ -274,8 +274,8 @@ export async function getFavoritesResponse(
       rows.push(result.row)
       stale ||= result.stale
 
-      if (result.fetchedAt > updatedAt) {
-        updatedAt = result.fetchedAt
+      if (!latestFetchedAt || result.fetchedAt > latestFetchedAt) {
+        latestFetchedAt = result.fetchedAt
       }
 
       continue
@@ -318,7 +318,7 @@ export async function getFavoritesResponse(
     failedItems,
     source: ENV.MARKET_DATA_SOURCE,
     requestId: options.requestId,
-    updatedAt,
+    updatedAt: latestFetchedAt ?? servedAt,
     servedAt,
     stale,
   }

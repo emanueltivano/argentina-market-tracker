@@ -210,6 +210,34 @@ describe('/api/panel route', () => {
     expect(iolFetch).toHaveBeenCalledTimes(1)
   })
 
+  it('normalizes safe numeric strings before returning the BFF contract', async () => {
+    const iolFetch = vi.fn().mockResolvedValue({
+      titulos: [
+        {
+          simbolo: 'YPFD',
+          descripcion: 'YPF',
+          ultimoPrecio: '100.50',
+          variacionPorcentual: '-1,25',
+          volumen: '1,234',
+        },
+      ],
+    })
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    const response = await GET(request('/api/panel?type=general'))
+    const body = await response.json()
+
+    expectPanelSuccess(body, [
+      {
+        simbolo: 'YPFD',
+        descripcion: 'YPF',
+        ultimoPrecio: 100.5,
+        variacionPorcentual: -1.25,
+        volumen: 1234,
+      },
+    ])
+  })
+
   it('uses the cedears endpoint for type=cedears', async () => {
     const iolFetch = vi.fn().mockResolvedValue([
       { simbolo: 'AAPL', descripcion: 'Apple' },

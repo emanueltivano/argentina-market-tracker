@@ -223,7 +223,7 @@ How to distinguish:
 
 - `/api/health` reports `dataSource`
 - history responses include `meta.source`
-- the UI shows a `Demo data` badge in demo mode
+- the UI shows a `Demo público · datos sintéticos` badge in demo mode
 
 Guidance:
 

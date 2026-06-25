@@ -5,14 +5,32 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-green)
 
-Production-oriented portfolio dashboard for Argentine equities built with
-Next.js, React, and TypeScript.
+## Recruiter / Reviewer Snapshot
 
-This repo is intentionally a technical demo, not a broker, trading platform,
-or financial advisory product. The goal is to show a pragmatic BFF-style
-Next.js architecture with validated upstream contracts, SSR bootstrapping,
-resilient client refresh, safer defaults for public demo deploys, and
-meaningful automated verification.
+**Argentina Market Tracker** is a production-oriented full-stack dashboard for
+exploring Argentine equities and CEDEARs. It is a portfolio project that
+demonstrates how I structure a modern Next.js application beyond the UI:
+server-side data access, validated contracts, resilient caching, observability,
+accessibility, and automated verification.
+
+- **Live demo:** [argentina-market-tracker.vercel.app](https://argentina-market-tracker.vercel.app)
+- **Stack:** Next.js 16, React 19, TypeScript strict, Tailwind CSS 4, SWR,
+  lightweight-charts, Vitest, Testing Library, and Playwright
+- **Architecture:** App Router with SSR first paint and an internal BFF; the
+  browser never receives upstream credentials
+- **Reliability:** validated/normalized external data, cache and stale
+  fallbacks, bounded favorites fan-out, rate limiting, request IDs, health, and
+  metrics
+- **Public demo safety:** deterministic synthetic data for stable recruiter
+  review, with a configurable server-only live integration
+
+![Argentina Market Tracker desktop dashboard](./docs/screenshots/desktop.png)
+
+> The public deployment is a technical demo using synthetic market data. It is
+> not a broker, trading platform, real-time quote service, or financial advice.
+
+The sections below document the implementation details, tradeoffs, operating
+modes, and verification strategy.
 
 ## Overview
 
@@ -50,8 +68,8 @@ Recommendation:
 - live integration review: `MARKET_DATA_SOURCE=live` plus distributed
   rate-limit storage and trusted proxy configuration
 
-The UI shows a `Demo data` badge in demo mode, and `/api/health` reports the
-active `dataSource`.
+The UI shows a `Demo público · datos sintéticos` badge in demo mode, and
+`/api/health` reports the active `dataSource`.
 
 ## Architecture
 
@@ -94,7 +112,7 @@ docs/
 
 Requirements:
 
-- Node `24.15.0` recommended
+- Node `24.15.0` pinned in `.nvmrc` and Volta
 - Node `>=24.15.0 <25` supported by the repo `engines`
 
 Install:
@@ -369,11 +387,7 @@ When live or demo quote refresh cannot resolve a favorite, the dashboard may
 show an explicit local snapshot fallback labeled as outdated. This preserves
 the UI without making local storage the primary source of truth.
 
-## Screenshots
-
-### Desktop
-
-![Argentina Market Tracker desktop](./docs/screenshots/desktop.png)
+## Additional Screenshots
 
 ### Historical Modal
 
@@ -382,9 +396,3 @@ the UI without making local storage the primary source of truth.
 ### Mobile
 
 ![Argentina Market Tracker mobile](./docs/screenshots/mobile.png)
-
-## Suggested Positioning
-
-Example GitHub description:
-
-`Market dashboard for Argentine equities with a Next.js BFF, validated external contracts, resilient historical data handling, protected demo/live modes, structured observability, and automated SSR/E2E verification.`
