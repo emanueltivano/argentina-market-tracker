@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { type StockData } from '@/features/dashboard/shared/stockData'
 import {
-  appendCurrentQuoteToHistoricalSeries,
+  getArgentinaMarketStatus,
+  mergeLiveQuoteIntoHistoricalSeries,
   resolveCurrentStockQuote,
+  shouldUseLiveCandle,
 } from './currentStockQuote'
 import { type StockQuoteDetail } from '@/lib/stockQuote'
 
@@ -181,87 +183,161 @@ describe('resolveCurrentStockQuote', () => {
       source: 'history',
     })
   })
+})
 
-  it('appends an intraday candle when the snapshot is newer than history', () => {
-    const currentQuote = resolveCurrentStockQuote(snapshot, [
-      { date: '2026-06-23', close: 1037 },
-    ])
-
-    expect(
-      appendCurrentQuoteToHistoricalSeries(
-        [{ date: '2026-06-23', close: 1037 }],
-        currentQuote
-      )
-    ).toEqual([
-      { date: '2026-06-23', close: 1037 },
-      {
-        date: '2026-06-24',
-        timestamp: '2026-06-24T20:00:00.000Z',
-        open: 1015,
-        high: 1032,
-        low: 1008,
-        close: 1028,
-        volume: 5000,
-      },
-    ])
+describe('live session candles', () => {
+  const openMarketNow = new Date('2026-06-24T18:00:00.000Z')
+  const closedMarketNow = new Date('2026-06-25T04:00:00.000Z')
+  const liveDetail = resolveCurrentStockQuote(snapshot, [], {
+    ...detail,
+    timestamp: '2026-06-24T14:30:00.000-03:00',
   })
 
-  it('appends an intraday candle from CotizacionDetalle', () => {
-    const currentQuote = resolveCurrentStockQuote(snapshot, [], detail)
+  it('does not create a candle while the market is closed', () => {
+    const historical = [{ date: '2026-06-23', close: 7960 }]
 
     expect(
-      appendCurrentQuoteToHistoricalSeries(
-        [{ date: '2026-06-23', close: 7960 }],
-        currentQuote
-      ).at(-1)
-    ).toMatchObject({
+      mergeLiveQuoteIntoHistoricalSeries(historical, liveDetail, {
+        now: closedMarketNow,
+        quoteSource: 'live',
+      })
+    ).toEqual({
+      points: historical,
+      liveSessionCandle: null,
+    })
+  })
+
+  it('creates a provisional candle from a real operation during market hours', () => {
+    const result = mergeLiveQuoteIntoHistoricalSeries(
+      [{ date: '2026-06-23', close: 7960 }],
+      liveDetail,
+      {
+        now: openMarketNow,
+        quoteSource: 'live',
+      }
+    )
+
+    expect(result.points.at(-1)).toMatchObject({
       date: '2026-06-24',
+      timestamp: '2026-06-24T14:30:00.000-03:00',
       open: 7860,
       high: 7950,
       low: 7575,
       close: 7615,
-      volume: 0,
     })
+    expect(result.liveSessionCandle).not.toBeNull()
   })
 
-  it('does not duplicate today and repairs missing intraday OHLC values', () => {
-    const currentQuote = resolveCurrentStockQuote(
-      { ...snapshot, open: 0, min: 0, max: 0 },
-      [{ date: '2026-06-23', close: 1037 }]
+  it('rejects a live quote without a real operation timestamp', () => {
+    const quoteWithoutOperationTime = {
+      ...liveDetail,
+      timestamp: null,
+    }
+
+    expect(
+      shouldUseLiveCandle(
+        quoteWithoutOperationTime,
+        getArgentinaMarketStatus(openMarketNow),
+        'live'
+      )
+    ).toBe(false)
+    expect(
+      mergeLiveQuoteIntoHistoricalSeries(
+        [{ date: '2026-06-23', close: 7960 }],
+        quoteWithoutOperationTime,
+        {
+          now: openMarketNow,
+          quoteSource: 'live',
+        }
+      ).points
+    ).toEqual([{ date: '2026-06-23', close: 7960 }])
+  })
+
+  it('does not trust demo or panel refresh timestamps', () => {
+    const panelSnapshot = resolveCurrentStockQuote(
+      {
+        ...snapshot,
+        quoteDate: '2026-06-24T14:30:00.000-03:00',
+      },
+      []
     )
 
     expect(
-      appendCurrentQuoteToHistoricalSeries(
-        [{ date: '2026-06-24', close: 1037 }],
-        currentQuote
+      shouldUseLiveCandle(
+        liveDetail,
+        getArgentinaMarketStatus(openMarketNow),
+        'demo'
       )
-    ).toEqual([{ date: '2026-06-24', close: 1037 }])
-
+    ).toBe(false)
     expect(
-      appendCurrentQuoteToHistoricalSeries(
-        [{ date: '2026-06-23', close: 1037 }],
-        currentQuote
-      ).at(-1)
-    ).toMatchObject({
+      shouldUseLiveCandle(
+        panelSnapshot,
+        getArgentinaMarketStatus(openMarketNow),
+        'live'
+      )
+    ).toBe(false)
+  })
+
+  it('updates an existing OHLC candle without duplicating its date', () => {
+    const result = mergeLiveQuoteIntoHistoricalSeries(
+      [
+        { date: '2026-06-23', close: 7960 },
+        {
+          date: '2026-06-24',
+          open: 7800,
+          high: 7900,
+          low: 7600,
+          close: 7850,
+        },
+      ],
+      liveDetail,
+      {
+        now: openMarketNow,
+        quoteSource: 'live',
+      }
+    )
+
+    expect(result.points).toHaveLength(2)
+    expect(result.points.at(-1)).toMatchObject({
       date: '2026-06-24',
-      open: 1028,
-      high: 1028,
-      low: 1028,
-      close: 1028,
+      open: 7800,
+      high: 7900,
+      low: 7600,
+      close: 7615,
     })
   })
 
-  it('does not append a historical fallback as a new intraday candle', () => {
-    const currentQuote = resolveCurrentStockQuote(
-      { ...snapshot, price: null },
-      [{ date: '2026-06-23', close: 1037 }]
+  it('keeps the first observed realtime price as provisional open', () => {
+    const quoteWithoutOpen = {
+      ...liveDetail,
+      open: null,
+      high: null,
+      low: null,
+      price: 7700,
+    }
+    const firstMerge = mergeLiveQuoteIntoHistoricalSeries(
+      [{ date: '2026-06-23', close: 7960 }],
+      quoteWithoutOpen,
+      {
+        now: openMarketNow,
+        quoteSource: 'live',
+      }
+    )
+    const secondMerge = mergeLiveQuoteIntoHistoricalSeries(
+      [{ date: '2026-06-23', close: 7960 }],
+      { ...quoteWithoutOpen, price: 7750 },
+      {
+        now: openMarketNow,
+        quoteSource: 'live',
+        previousLiveCandle: firstMerge.liveSessionCandle,
+      }
     )
 
-    expect(
-      appendCurrentQuoteToHistoricalSeries(
-        [{ date: '2026-06-23', close: 1037 }],
-        currentQuote
-      )
-    ).toEqual([{ date: '2026-06-23', close: 1037 }])
+    expect(secondMerge.liveSessionCandle).toMatchObject({
+      open: 7700,
+      high: 7750,
+      low: 7700,
+      close: 7750,
+    })
   })
 })

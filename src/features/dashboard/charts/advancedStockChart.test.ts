@@ -12,10 +12,6 @@ import {
 } from './advancedStockChart'
 
 describe('advancedStockChart helpers', () => {
-  const todayOptions = {
-    now: new Date('2026-06-24T01:30:00.000Z'),
-  }
-
   it('normalizes the real IOL array quote shape', () => {
     expect(
       normalizeCurrentStockQuote([
@@ -229,7 +225,7 @@ describe('advancedStockChart helpers', () => {
     })
   })
 
-  it('adds today in Buenos Aires when history ends yesterday', () => {
+  it('does not create a dated point when the quote has no market timestamp', () => {
     expect(
       mergeTodayQuoteIntoHistory(
         [{ date: '2026-06-22', close: 100 }],
@@ -239,23 +235,12 @@ describe('advancedStockChart helpers', () => {
           max: 112,
           min: 101,
           volume: 5000,
-        },
-        todayOptions
+        }
       )
-    ).toEqual([
-      { date: '2026-06-22', close: 100 },
-      {
-        date: '2026-06-23',
-        close: 110,
-        open: 102,
-        high: 112,
-        low: 101,
-        volume: 5000,
-      },
-    ])
+    ).toEqual([{ date: '2026-06-22', close: 100 }])
   })
 
-  it('updates today without duplicating its date', () => {
+  it('updates a matching quote date without duplicating it', () => {
     const result = mergeTodayQuoteIntoHistory(
       [
         { date: '2026-06-22', close: 100 },
@@ -269,12 +254,12 @@ describe('advancedStockChart helpers', () => {
       ],
       {
         price: 111,
+        date: '2026-06-23',
         open: null,
         max: null,
         min: null,
         volume: 6000,
-      },
-      todayOptions
+      }
     )
 
     expect(result).toHaveLength(2)
@@ -294,12 +279,12 @@ describe('advancedStockChart helpers', () => {
         [{ date: '2026-06-22', close: 108 }],
         {
           price: 105,
+          date: '2026-06-23',
           open: null,
           max: null,
           min: null,
           volume: null,
-        },
-        todayOptions
+        }
       ).at(-1)
     ).toEqual({
       date: '2026-06-23',
@@ -320,8 +305,7 @@ describe('advancedStockChart helpers', () => {
           max: 102,
           min: 99,
           volume: 1000,
-        },
-        todayOptions
+        }
       )
     ).toEqual([{ date: '2026-06-22', close: 100 }])
   })
@@ -335,12 +319,12 @@ describe('advancedStockChart helpers', () => {
       ],
       {
         price: 110,
+        date: '2026-06-23',
         open: 103,
         max: 111,
         min: 102,
         volume: null,
-      },
-      todayOptions
+      }
     )
 
     expect(result.map((point) => point.date)).toEqual([

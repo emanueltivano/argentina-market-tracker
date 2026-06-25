@@ -34,6 +34,7 @@ export function useStockQuote(
 
   return {
     quote: data?.data ?? null,
+    source: data?.source ?? null,
     error,
     isLoading,
     isRefreshing: isValidating && data !== undefined,

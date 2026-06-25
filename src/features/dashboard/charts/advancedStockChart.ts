@@ -12,7 +12,6 @@ export type CurrentStockQuote = {
 }
 
 export type MergeTodayQuoteOptions = {
-  now?: Date
   timeZone?: string
 }
 
@@ -282,8 +281,8 @@ export function mergeTodayQuoteIntoHistory(
     )
   }
 
-  const quoteDate =
-    quote.date ?? toMarketDateString(options.now ?? new Date(), timeZone)
+  // A refresh timestamp is not evidence of a market operation.
+  const quoteDate = quote.date
 
   if (!quoteDate) {
     return Array.from(pointsByDate.values()).sort((first, second) =>

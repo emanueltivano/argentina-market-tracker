@@ -26,8 +26,9 @@ import {
   normalizeHistoryPoints,
 } from '@/features/dashboard/charts/advancedStockChart'
 import {
-  appendCurrentQuoteToHistoricalSeries,
+  mergeLiveQuoteIntoHistoricalSeries,
   resolveCurrentStockQuote,
+  type LiveSessionCandle,
 } from '@/features/dashboard/history/currentStockQuote'
 import {
   getVariationClass,
@@ -56,6 +57,7 @@ type StockDetailsContentProps =
       onHistoryRangeChange: (range: StockHistoryRange) => void
       history: HistoryViewState
       quoteDetail?: StockQuoteDetail | null
+      quoteSource?: 'demo' | 'live' | null
     }
 
 type StockDetailRow = {
@@ -122,6 +124,7 @@ function HistorySection({
   onHistoryRangeChange,
   history,
   quoteDetail,
+  quoteSource,
 }: {
   stock: StockData
   variant: 'modal' | 'page'
@@ -129,18 +132,53 @@ function HistorySection({
   onHistoryRangeChange: (range: StockHistoryRange) => void
   history: HistoryViewState
   quoteDetail?: StockQuoteDetail | null
+  quoteSource?: 'demo' | 'live' | null
 }) {
+  const [observedQuoteKey, setObservedQuoteKey] = useState<string | null>(null)
+  const [liveSessionCandle, setLiveSessionCandle] =
+    useState<LiveSessionCandle | null>(null)
   const currentQuote = useMemo(
     () => resolveCurrentStockQuote(stock, history.points, quoteDetail),
     [history.points, quoteDetail, stock]
   )
-  const chartSeries = useMemo(
+  const quoteKey = [
+    quoteSource,
+    currentQuote.source,
+    currentQuote.timestamp,
+    currentQuote.price,
+    currentQuote.open,
+    currentQuote.high,
+    currentQuote.low,
+    currentQuote.volume,
+  ].join('|')
+  let previousLiveCandle = liveSessionCandle
+
+  if (quoteKey !== observedQuoteKey) {
+    const observedMerge = mergeLiveQuoteIntoHistoricalSeries(
+      history.points,
+      currentQuote,
+      {
+        now: new Date(),
+        quoteSource: quoteSource ?? null,
+        previousLiveCandle,
+      }
+    )
+
+    previousLiveCandle = observedMerge.liveSessionCandle
+    setObservedQuoteKey(quoteKey)
+    setLiveSessionCandle(previousLiveCandle)
+  }
+  const liveMerge = useMemo(
     () =>
-      variant === 'page'
-        ? appendCurrentQuoteToHistoricalSeries(history.points, currentQuote)
-        : history.points,
-    [currentQuote, history.points, variant]
+      mergeLiveQuoteIntoHistoricalSeries(history.points, currentQuote, {
+        now: new Date(),
+        quoteSource: quoteSource ?? null,
+        previousLiveCandle,
+      }),
+    [currentQuote, history.points, previousLiveCandle, quoteSource]
   )
+
+  const chartSeries = liveMerge.points
   const normalizedHistoryPoints = useMemo(
     () => normalizeHistoryPoints(chartSeries),
     [chartSeries]
@@ -333,14 +371,6 @@ function HistorySection({
                 <dt>Máximo diario</dt>
                 <dd>{formatCurrencyARS(currentQuote.high, { zeroIsMissing: true })}</dd>
               </div>
-              <div className="stock-detail-secondary-metric">
-                <dt>Variación diaria</dt>
-                <dd
-                  className={`stock-var stock-detail-secondary-variation ${dailyVariationClass} ${dailySeverityClass}`.trim()}
-                >
-                  {formatPercentage(dailyVariation)}
-                </dd>
-              </div>
             </dl>
           </section>
 
@@ -492,6 +522,7 @@ export default function StockDetailsContent(props: StockDetailsContentProps) {
           onHistoryRangeChange={props.onHistoryRangeChange}
           history={props.history}
           quoteDetail={props.quoteDetail}
+          quoteSource={props.quoteSource}
         />
       </div>
     )

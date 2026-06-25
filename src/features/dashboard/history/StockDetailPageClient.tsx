@@ -96,11 +96,13 @@ function findStockInPanels(
 function StockDetailPageResolved({
   lookup,
   quoteDetail,
+  quoteSource,
   symbol,
   lookupError,
 }: {
   lookup: PanelLookupResult | null
   quoteDetail: StockQuoteDetail | null
+  quoteSource: 'demo' | 'live' | null
   symbol: string
   lookupError?: Error
 }) {
@@ -256,6 +258,7 @@ function StockDetailPageResolved({
           onHistoryRangeChange={setHistoryRange}
           history={history}
           quoteDetail={quoteDetail}
+          quoteSource={quoteSource}
         />
       </div>
     </main>
@@ -334,6 +337,7 @@ export default function StockDetailPageClient({
     <StockDetailPageResolved
       lookup={lookup}
       quoteDetail={currentQuote.quote}
+      quoteSource={currentQuote.source}
       symbol={normalizedSymbol}
       lookupError={
         errors.length === panels.length ? errors[0] : undefined

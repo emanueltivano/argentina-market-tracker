@@ -300,12 +300,41 @@ describe('StockDetailsContent variants', () => {
     expect(chartMocks.advancedPoints).toHaveBeenLastCalledWith([
       expect.objectContaining({ date: '2026-05-01', close: 100 }),
       expect.objectContaining({ date: '2026-05-02', close: 110 }),
+    ])
+  })
+
+  it('keeps the latest quote in the card without adding it to the daily chart', () => {
+    render(<PageContentHarness />)
+
+    expect(screen.getAllByText('$ 110,00').length).toBeGreaterThan(0)
+    expect(chartMocks.advancedPoints).toHaveBeenLastCalledWith(pageHistory.points)
+    expect(
+      chartMocks.advancedPoints.mock.calls.at(-1)?.[0].some(
+        (point: { date: string }) => point.date === '2026-05-03'
+      )
+    ).toBe(false)
+  })
+
+  it('adds a live session candle from CotizacionDetalle during market hours', () => {
+    vi.setSystemTime(new Date('2026-06-24T19:59:56.000Z'))
+
+    render(
+      <StockDetailsContent
+        stock={stock}
+        variant="page"
+        historyRange="1M"
+        onHistoryRangeChange={() => undefined}
+        history={pageHistory}
+        quoteDetail={quoteDetail}
+        quoteSource="live"
+      />
+    )
+
+    expect(chartMocks.advancedPoints).toHaveBeenLastCalledWith([
+      ...pageHistory.points,
       expect.objectContaining({
-        date: '2026-05-03',
-        open: 100,
-        high: 112,
-        low: 99,
-        close: 110,
+        date: '2026-06-24',
+        close: 7615,
       }),
     ])
   })
