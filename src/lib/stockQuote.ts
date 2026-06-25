@@ -74,6 +74,21 @@ function finiteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+function firstPositiveNumber(
+  value: Record<string, unknown>,
+  fields: readonly string[]
+): number | null {
+  for (const field of fields) {
+    const numberValue = finiteNumber(value[field])
+
+    if (numberValue !== null && numberValue > 0) {
+      return numberValue
+    }
+  }
+
+  return null
+}
+
 function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim()
     ? value.trim()
@@ -126,7 +141,12 @@ export function normalizeStockQuoteDetail(
     timestamp: optionalString(value.fechaHora),
     previousClose: finiteNumber(value.cierreAnterior),
     amountTraded: finiteNumber(value.montoOperado),
-    volume: finiteNumber(value.volumenNominal),
+    volume: firstPositiveNumber(value, [
+      'volumenNominalOperado',
+      'volumenNominal',
+      'volumen',
+      'volume',
+    ]),
     averagePrice: finiteNumber(value.precioPromedio),
     currency: optionalString(value.moneda),
     openInterest: finiteNumber(value.interesesAbiertos),

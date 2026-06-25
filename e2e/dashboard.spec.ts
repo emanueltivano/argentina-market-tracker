@@ -551,7 +551,11 @@ test.describe('dashboard', () => {
 
     await expect(dialog).toBeVisible()
     await expect(dialog.getByText('Cantidad compra')).toBeVisible()
-    await expect(dialog.getByText('Volumen')).toBeVisible()
+    const nominalVolume = dialog
+      .getByText('Volumen nominal', { exact: true })
+      .locator('..')
+
+    await expect(nominalVolume).toContainText('120.000')
   })
 
   test('loads stock history in the modal and changes range with the expected request', async ({

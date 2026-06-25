@@ -122,6 +122,29 @@ describe('StockDetailsModal', () => {
     ).not.toBeNull()
   })
 
+  it('shows the nominal volume from the selected panel stock', async () => {
+    render(<ModalHarness />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir' }))
+
+    const volumeValue = screen.getByText('Volumen nominal').nextElementSibling
+
+    expect(volumeValue?.textContent).toBe('1.000')
+  })
+
+  it('shows the metric fallback when nominal volume is unavailable', async () => {
+    render(
+      <StockDetailsModal
+        stock={{ ...stock, volume: null }}
+        onClose={() => undefined}
+      />
+    )
+
+    const volumeValue = screen.getByText('Volumen nominal').nextElementSibling
+
+    expect(volumeValue?.textContent).toBe('—')
+  })
+
   it('shows a full page action for the selected stock', async () => {
     render(<ModalHarness />)
 

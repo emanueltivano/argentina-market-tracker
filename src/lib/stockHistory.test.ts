@@ -117,6 +117,24 @@ describe('stock history normalization', () => {
     ])
   })
 
+  it('normalizes volumenNominalOperado from historical payloads', () => {
+    expect(
+      normalizeStockHistoryData([
+        {
+          fecha: '2026-05-07',
+          ultimoPrecio: 1028,
+          volumenNominalOperado: 164867,
+        },
+      ])
+    ).toEqual([
+      {
+        date: '2026-05-07',
+        close: 1028,
+        volume: 164867,
+      },
+    ])
+  })
+
   it('normalizes CEDEAR rows with local date and numeric string values', () => {
     expect(
       normalizeStockHistoryData({

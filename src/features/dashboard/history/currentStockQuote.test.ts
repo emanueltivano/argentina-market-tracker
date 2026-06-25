@@ -73,6 +73,20 @@ describe('resolveCurrentStockQuote', () => {
     expect(currentQuote.depth).toEqual(detail.depth)
   })
 
+  it('keeps the panel nominal volume when CotizacionDetalle returns zero', () => {
+    expect(resolveCurrentStockQuote(snapshot, [], detail).volume).toBe(5000)
+  })
+
+  it('uses a dash-compatible null when no source has an informed volume', () => {
+    expect(
+      resolveCurrentStockQuote(
+        { ...snapshot, volume: 0 },
+        [{ date: '2026-06-24', close: 1028, volume: 0 }],
+        detail
+      ).volume
+    ).toBeNull()
+  })
+
   it('calculates previous close only when CotizacionDetalle omits a valid value', () => {
     expect(
       resolveCurrentStockQuote(snapshot, [], {

@@ -113,7 +113,12 @@ const FIELD_ALIASES = {
   open: ['apertura', 'open', 'precioApertura'],
   high: ['maximo', 'high', 'precioMaximo'],
   low: ['minimo', 'low', 'precioMinimo'],
-  volume: ['volumenNominal', 'volumen', 'volume'],
+  volume: [
+    'volumenNominalOperado',
+    'volumenNominal',
+    'volumen',
+    'volume',
+  ],
   dailyVariation: ['variacion', 'variacionPorcentual', 'dailyVariation'],
   previousClose: ['cierreAnterior', 'ultimoCierre', 'previousClose'],
   amountTraded: ['montoOperado', 'amountTraded'],

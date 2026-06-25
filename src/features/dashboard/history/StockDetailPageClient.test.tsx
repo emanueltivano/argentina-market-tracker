@@ -36,7 +36,7 @@ vi.mock('@/features/dashboard/history/useStockHistory', () => ({
   }),
 }))
 
-function panelResponse(symbol = 'GGAL') {
+function panelResponse(symbol = 'GGAL', volume = 1000) {
   return {
     ok: true as const,
     data: [
@@ -55,7 +55,7 @@ function panelResponse(symbol = 'GGAL') {
         minimo: 119,
         maximo: 125,
         ultimoCierre: 121,
-        volumen: 1000,
+        volumen: volume,
       },
     ],
     fetchedAt: '2026-05-04T16:00:00.000Z',
@@ -225,6 +225,50 @@ describe('StockDetailPageClient', () => {
     expect(summary?.querySelector('.stock-detail-change')?.textContent).toBe(
       '-4,33%'
     )
+  })
+
+  it('keeps the panel nominal volume when quote detail reports zero', () => {
+    setPanelResponses({ data: panelResponse('ALUA', 164867) })
+    swrResponses.set('/api/stocks/ALUA/quote?market=bCBA', {
+      data: {
+        ...quoteResponse(),
+        data: {
+          ...quoteResponse().data,
+          symbol: 'ALUA',
+          description: 'Aluar',
+          volume: 0,
+        },
+        symbol: 'ALUA',
+      },
+    })
+
+    render(<StockDetailPageClient symbol="ALUA" />)
+
+    const volumeValue = screen.getByText('Volumen nominal').nextElementSibling
+
+    expect(volumeValue?.textContent).toBe('164.867')
+  })
+
+  it('shows a dash when no full-page volume source is informed', () => {
+    setPanelResponses({ data: panelResponse('ALUA', 0) })
+    swrResponses.set('/api/stocks/ALUA/quote?market=bCBA', {
+      data: {
+        ...quoteResponse(),
+        data: {
+          ...quoteResponse().data,
+          symbol: 'ALUA',
+          description: 'Aluar',
+          volume: 0,
+        },
+        symbol: 'ALUA',
+      },
+    })
+
+    render(<StockDetailPageClient symbol="ALUA" />)
+
+    const volumeValue = screen.getByText('Volumen nominal').nextElementSibling
+
+    expect(volumeValue?.textContent).toBe('—')
   })
 
   it('toggles the stock using the existing favorites persistence', async () => {

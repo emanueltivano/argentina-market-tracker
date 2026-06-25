@@ -70,6 +70,12 @@ function positivePrice(value: number | null | undefined): number | null {
   return numberValue !== null && numberValue > 0 ? numberValue : null
 }
 
+function positiveVolume(value: number | null | undefined): number | null {
+  const numberValue = finiteNumber(value)
+
+  return numberValue !== null && numberValue > 0 ? numberValue : null
+}
+
 function getArgentinaDateTimeParts(date: Date) {
   if (!Number.isFinite(date.getTime())) {
     return null
@@ -249,7 +255,10 @@ export function resolveCurrentStockQuote(
       previousClose,
       low: positivePrice(quoteDetail.low),
       high: positivePrice(quoteDetail.high),
-      volume: finiteNumber(quoteDetail.volume),
+      volume:
+        positiveVolume(quoteDetail.volume) ??
+        positiveVolume(stock.volume) ??
+        positiveVolume(latestHistoricalPoint?.volume),
       amountTraded: finiteNumber(quoteDetail.amountTraded),
       operationCount: finiteNumber(quoteDetail.operationCount),
       buyQuantity: finiteNumber(quoteDetail.depth[0]?.buyQuantity),
@@ -303,7 +312,7 @@ export function resolveCurrentStockQuote(
       previousClose: historicalDailyMetrics.previousClose,
       low: positivePrice(latestHistoricalPoint.low),
       high: positivePrice(latestHistoricalPoint.high),
-      volume: finiteNumber(latestHistoricalPoint.volume),
+      volume: positiveVolume(latestHistoricalPoint.volume),
       amountTraded: finiteNumber(latestHistoricalPoint.amountTraded),
       operationCount: finiteNumber(latestHistoricalPoint.operationCount),
       buyQuantity: finiteNumber(latestHistoricalPoint.bid?.buyQuantity),
@@ -355,7 +364,9 @@ export function resolveCurrentStockQuote(
     previousClose: snapshotPreviousClose,
     low: positivePrice(stock.min),
     high: positivePrice(stock.max),
-    volume: finiteNumber(stock.volume),
+    volume:
+      positiveVolume(stock.volume) ??
+      positiveVolume(latestHistoricalPoint?.volume),
     amountTraded:
       finiteNumber(stock.amountTraded) ??
       finiteNumber(latestHistoricalPoint?.amountTraded),

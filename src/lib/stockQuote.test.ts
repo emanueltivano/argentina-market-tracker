@@ -44,6 +44,25 @@ describe('stockQuote', () => {
     })
   })
 
+  it('uses the first informed nominal volume alias and ignores zero placeholders', () => {
+    expect(
+      normalizeStockQuoteDetail({
+        ultimoPrecio: 1028,
+        simbolo: 'ALUA',
+        volumenNominal: 0,
+        volumenNominalOperado: 164867,
+      }).volume
+    ).toBe(164867)
+
+    expect(
+      normalizeStockQuoteDetail({
+        ultimoPrecio: 1028,
+        simbolo: 'ALUA',
+        volumenNominal: 0,
+      }).volume
+    ).toBeNull()
+  })
+
   it('builds the internal BFF path', () => {
     expect(buildStockQuoteApiPath('GGAL')).toBe(
       '/api/stocks/GGAL/quote?market=bCBA'

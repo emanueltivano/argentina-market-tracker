@@ -26,4 +26,14 @@ describe('mapPanelTituloToStockProps', () => {
 
     expect(stock.close).toBe(7958)
   })
+
+  it('maps the panel nominal volume to the stock detail model', () => {
+    const stock = mapPanelTituloToStockProps({
+      simbolo: 'GGAL',
+      descripcion: 'Grupo Financiero Galicia',
+      volumen: 407493,
+    })
+
+    expect(stock.volume).toBe(407493)
+  })
 })
