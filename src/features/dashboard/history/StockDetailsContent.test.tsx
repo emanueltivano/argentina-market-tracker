@@ -216,16 +216,10 @@ describe('StockDetailsContent variants', () => {
     expect(screen.getByText('Último precio')).not.toBeNull()
     expect(screen.getByText('Cantidad compra')).not.toBeNull()
     expect(screen.getByText('Precio venta')).not.toBeNull()
+    expect(screen.getByText('Último mes:').textContent).toContain('+10,00%')
     expect(chartMocks.simplePoints).toHaveBeenLastCalledWith([
       expect.objectContaining({ date: '2026-05-01', close: 100 }),
       expect.objectContaining({ date: '2026-05-02', close: 110 }),
-      expect.objectContaining({
-        date: '2026-05-03',
-        open: 100,
-        high: 112,
-        low: 99,
-        close: 110,
-      }),
     ])
   })
 

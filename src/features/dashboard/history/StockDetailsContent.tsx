@@ -135,8 +135,11 @@ function HistorySection({
     [history.points, quoteDetail, stock]
   )
   const chartSeries = useMemo(
-    () => appendCurrentQuoteToHistoricalSeries(history.points, currentQuote),
-    [currentQuote, history.points]
+    () =>
+      variant === 'page'
+        ? appendCurrentQuoteToHistoricalSeries(history.points, currentQuote)
+        : history.points,
+    [currentQuote, history.points, variant]
   )
   const normalizedHistoryPoints = useMemo(
     () => normalizeHistoryPoints(chartSeries),
