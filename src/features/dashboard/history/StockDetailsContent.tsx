@@ -330,6 +330,14 @@ function HistorySection({
                 <dt>Máximo diario</dt>
                 <dd>{formatCurrencyARS(currentQuote.high, { zeroIsMissing: true })}</dd>
               </div>
+              <div className="stock-detail-secondary-metric">
+                <dt>Variación diaria</dt>
+                <dd
+                  className={`stock-var stock-detail-secondary-variation ${dailyVariationClass} ${dailySeverityClass}`.trim()}
+                >
+                  {formatPercentage(dailyVariation)}
+                </dd>
+              </div>
             </dl>
           </section>
 
