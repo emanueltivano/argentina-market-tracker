@@ -13,6 +13,11 @@ type HistoryRequest = {
   market: string | null
 }
 
+type QuoteRequest = {
+  symbol: string
+  market: string | null
+}
+
 type BrowserDiagnostics = {
   consoleErrors: string[]
   pageErrors: string[]
@@ -196,6 +201,68 @@ async function mockHistoryApi(
       body: JSON.stringify(
         historySuccessResponse(symbol.toUpperCase(), range ?? '1M', data)
       ),
+    })
+  })
+}
+
+async function mockQuoteApi(
+  page: Page,
+  options: {
+    requests?: QuoteRequest[]
+  } = {}
+) {
+  await page.route(/\/api\/stocks\/[^/]+\/quote\?/, async (route) => {
+    const url = new URL(route.request().url())
+    const pathMatch = url.pathname.match(/\/api\/stocks\/([^/]+)\/quote$/)
+    const symbol = pathMatch ? decodeURIComponent(pathMatch[1] ?? '') : ''
+    const market = url.searchParams.get('market')
+
+    options.requests?.push({ symbol: symbol.toUpperCase(), market })
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        data: {
+          symbol: symbol.toUpperCase(),
+          market: market ?? 'bCBA',
+          description:
+            symbol.toUpperCase() === 'GGAL'
+              ? 'Grupo Financiero Galicia'
+              : symbol.toUpperCase(),
+          price: 4200.5,
+          variation: 1.25,
+          open: 4100,
+          high: 4250,
+          low: 4050,
+          timestamp: fetchedAt,
+          previousClose: 4148.63,
+          amountTraded: 504060000,
+          volume: 120000,
+          averagePrice: null,
+          currency: 'ARS',
+          openInterest: null,
+          operationCount: 50,
+          settlement: 'CI',
+          minimumSheet: null,
+          lot: null,
+          minimumQuantity: null,
+          depth: [
+            {
+              buyQuantity: 100,
+              buyPrice: 4195,
+              sellPrice: 4205,
+              sellQuantity: 120,
+            },
+          ],
+        },
+        fetchedAt,
+        servedAt: fetchedAt,
+        source: 'demo',
+        market: market ?? 'bCBA',
+        symbol: symbol.toUpperCase(),
+      }),
     })
   })
 }
@@ -393,7 +460,14 @@ test.describe('dashboard', () => {
     }
   })
 
-  test('toggles favorites without breaking the modal flow', async ({ page }) => {
+  test('toggles favorites without breaking the modal flow', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'mobile-chrome',
+      'Modal quick view is desktop/tablet-large behavior.'
+    )
+
     const requests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 
@@ -426,7 +500,12 @@ test.describe('dashboard', () => {
 
   test('supports keyboard navigation for favorites and modal focus restoration', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'mobile-chrome',
+      'Modal focus restoration is desktop/tablet-large behavior.'
+    )
+
     const requests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 
@@ -496,7 +575,12 @@ test.describe('dashboard', () => {
 
   test('opens and closes the stock details modal while restoring focus', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'mobile-chrome',
+      'Modal quick view is desktop/tablet-large behavior.'
+    )
+
     const requests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 
@@ -524,43 +608,88 @@ test.describe('dashboard', () => {
     await expect(opener).toBeFocused()
   })
 
-  test('mobile opens stock details when responsive columns are hidden', async ({
+  test('mobile navigates to the stock detail page instead of opening the modal', async ({
     page,
   }, testInfo) => {
     test.skip(
       testInfo.project.name !== 'mobile-chrome',
-      'Responsive hidden-column coverage is mobile-specific.'
+      'Responsive stock-detail navigation coverage is mobile-specific.'
     )
 
     const requests: PanelRequest[] = []
+    const quoteRequests: QuoteRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 
     await mockPanelApi(page, { requests })
     await mockHistoryApi(page)
+    await mockQuoteApi(page, { requests: quoteRequests })
     await page.goto('/')
     await expectPanelRequest(requests)
     expectNoBrowserErrors(diagnostics)
 
-    await page
-      .getByRole('button', {
-        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
-      })
-      .click()
+    const favoriteButton = page.getByRole('button', {
+      name: 'Agregar GGAL a favoritos',
+    })
 
-    const dialog = page.getByRole('dialog', { name: 'GGAL' })
+    await favoriteButton.click()
+    await expect(
+      page.getByRole('button', { name: 'Quitar GGAL de favoritos' })
+    ).toBeVisible()
 
-    await expect(dialog).toBeVisible()
-    await expect(dialog.getByText('Cantidad compra')).toBeVisible()
-    const nominalVolume = dialog
-      .getByText('Volumen nominal', { exact: true })
-      .locator('..')
+    const opener = page.getByRole('button', {
+      name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+    })
 
-    await expect(nominalVolume).toContainText('120.000')
+    await expect(opener).not.toHaveAttribute('aria-haspopup', 'dialog')
+    await opener.click()
+
+    await page.waitForURL('**/stocks/GGAL')
+
+    await expect(page.getByRole('dialog', { name: 'GGAL' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'GGAL' })).toBeVisible()
+    await expect(page.getByText('Grupo Financiero Galicia')).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Quitar GGAL de favoritos' })
+    ).toBeVisible()
+    const marketDepth = page.getByRole('region', { name: 'Puntas' })
+    const mobileDepth = marketDepth.locator('.stock-detail-market-depth-mobile')
+    const desktopTable = marketDepth.locator(
+      '.stock-detail-market-depth-table-wrap'
+    )
+
+    await expect(marketDepth).toBeVisible()
+    await expect(mobileDepth).toBeVisible()
+    await expect(desktopTable).toBeHidden()
+    await expect(mobileDepth.getByText('Compra')).toBeVisible()
+    await expect(mobileDepth.getByText('Venta')).toBeVisible()
+    await expect(mobileDepth.getByText('$ 4.195,00')).toBeVisible()
+    await expect(mobileDepth.getByText('$ 4.205,00')).toBeVisible()
+    await expect(mobileDepth.getByText('Cantidad: 100')).toBeVisible()
+    await expect(mobileDepth.getByText('Cantidad: 120')).toBeVisible()
+    await expect(
+      mobileDepth.getByLabel('Precio compra: $ 4.195,00')
+    ).toBeVisible()
+    await expect(mobileDepth.getByLabel('Cantidad compra: 100')).toBeVisible()
+    await expect(
+      mobileDepth.getByLabel('Precio venta: $ 4.205,00')
+    ).toBeVisible()
+    await expect(mobileDepth.getByLabel('Cantidad venta: 120')).toBeVisible()
+    await expect(mobileDepth).not.toContainText('Precio compra')
+    await expect(mobileDepth).not.toContainText('Precio venta')
+    await expect(mobileDepth).not.toContainText('...')
+    await expect
+      .poll(() => quoteRequests.some((request) => request.symbol === 'GGAL'))
+      .toBe(true)
   })
 
   test('loads stock history in the modal and changes range with the expected request', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'mobile-chrome',
+      'Modal history controls are desktop/tablet-large behavior.'
+    )
+
     const historyRequests: HistoryRequest[] = []
     const panelRequests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
@@ -628,7 +757,14 @@ test.describe('dashboard', () => {
     await expect(opener).toBeFocused()
   })
 
-  test('renders an error state when stock history fails', async ({ page }) => {
+  test('renders an error state when stock history fails', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'mobile-chrome',
+      'Modal error state coverage is desktop/tablet-large behavior.'
+    )
+
     const requests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 
@@ -654,7 +790,14 @@ test.describe('dashboard', () => {
     ).toBeVisible()
   })
 
-  test('renders an empty state when stock history has no points', async ({ page }) => {
+  test('renders an empty state when stock history has no points', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'mobile-chrome',
+      'Modal empty state coverage is desktop/tablet-large behavior.'
+    )
+
     const requests: PanelRequest[] = []
     const diagnostics = attachBrowserDiagnostics(page)
 

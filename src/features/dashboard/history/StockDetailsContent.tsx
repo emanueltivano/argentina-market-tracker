@@ -401,36 +401,102 @@ function HistorySection({
                 Sin puntas disponibles
               </p>
             ) : (
-              <div className="stock-detail-market-depth-table-wrap">
-                <table className="stock-detail-market-depth-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Cant. compra</th>
-                      <th scope="col">Precio compra</th>
-                      <th scope="col">Precio venta</th>
-                      <th scope="col">Cant. venta</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentQuote.depth.map((level, index) => (
-                      <tr key={index}>
-                        <td>{formatQuantity(level.buyQuantity)}</td>
-                        <td className="stock-detail-market-depth-buy">
+              <>
+                <div className="stock-detail-market-depth-table-wrap">
+                  <table className="stock-detail-market-depth-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Cant. compra</th>
+                        <th scope="col">Precio compra</th>
+                        <th scope="col">Precio venta</th>
+                        <th scope="col">Cant. venta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentQuote.depth.map((level, index) => (
+                        <tr key={index}>
+                          <td>{formatQuantity(level.buyQuantity)}</td>
+                          <td className="stock-detail-market-depth-buy">
+                            {formatCurrencyARS(level.buyPrice, {
+                              zeroIsMissing: true,
+                            })}
+                          </td>
+                          <td className="stock-detail-market-depth-sell">
+                            {formatCurrencyARS(level.sellPrice, {
+                              zeroIsMissing: true,
+                            })}
+                          </td>
+                          <td>{formatQuantity(level.sellQuantity)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div
+                  className="stock-detail-market-depth-mobile"
+                  aria-label="Puntas por nivel"
+                >
+                  {currentQuote.depth.map((level, index) => (
+                    <div
+                      className="stock-detail-market-depth-card"
+                      key={index}
+                    >
+                      <div className="stock-detail-market-depth-side">
+                        <span className="stock-detail-market-depth-side-title">
+                          Compra
+                        </span>
+                        <span
+                          className="stock-detail-market-depth-price stock-detail-market-depth-buy"
+                          aria-label={`Precio compra: ${formatCurrencyARS(
+                            level.buyPrice,
+                            {
+                              zeroIsMissing: true,
+                            }
+                          )}`}
+                        >
                           {formatCurrencyARS(level.buyPrice, {
                             zeroIsMissing: true,
                           })}
-                        </td>
-                        <td className="stock-detail-market-depth-sell">
+                        </span>
+                        <span
+                          className="stock-detail-market-depth-quantity"
+                          aria-label={`Cantidad compra: ${formatQuantity(
+                            level.buyQuantity
+                          )}`}
+                        >
+                          Cantidad: {formatQuantity(level.buyQuantity)}
+                        </span>
+                      </div>
+                      <div className="stock-detail-market-depth-side">
+                        <span className="stock-detail-market-depth-side-title">
+                          Venta
+                        </span>
+                        <span
+                          className="stock-detail-market-depth-price stock-detail-market-depth-sell"
+                          aria-label={`Precio venta: ${formatCurrencyARS(
+                            level.sellPrice,
+                            {
+                              zeroIsMissing: true,
+                            }
+                          )}`}
+                        >
                           {formatCurrencyARS(level.sellPrice, {
                             zeroIsMissing: true,
                           })}
-                        </td>
-                        <td>{formatQuantity(level.sellQuantity)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </span>
+                        <span
+                          className="stock-detail-market-depth-quantity"
+                          aria-label={`Cantidad venta: ${formatQuantity(
+                            level.sellQuantity
+                          )}`}
+                        >
+                          Cantidad: {formatQuantity(level.sellQuantity)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </section>
         </>

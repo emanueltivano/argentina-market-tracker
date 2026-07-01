@@ -311,13 +311,21 @@ describe('StockDetailsContent variants', () => {
     ).not.toBeNull()
     expect(within(liquiditySection).getByText('0')).not.toBeNull()
     expect(within(marketDepth).getByText('Cant. compra')).not.toBeNull()
-    expect(within(marketDepth).getByText('10')).not.toBeNull()
-    expect(within(marketDepth).getByText('Precio compra')).not.toBeNull()
-    expect(within(marketDepth).getByText('$ 109,00')).not.toBeNull()
-    expect(within(marketDepth).getByText('Precio venta')).not.toBeNull()
-    expect(within(marketDepth).getByText('$ 111,00')).not.toBeNull()
+    expect(within(marketDepth).getAllByText('10').length).toBeGreaterThan(0)
+    expect(
+      within(marketDepth).getAllByText('Precio compra').length
+    ).toBeGreaterThan(0)
+    expect(
+      within(marketDepth).getAllByText('$ 109,00').length
+    ).toBeGreaterThan(0)
+    expect(
+      within(marketDepth).getAllByText('Precio venta').length
+    ).toBeGreaterThan(0)
+    expect(
+      within(marketDepth).getAllByText('$ 111,00').length
+    ).toBeGreaterThan(0)
     expect(within(marketDepth).getByText('Cant. venta')).not.toBeNull()
-    expect(within(marketDepth).getByText('20')).not.toBeNull()
+    expect(within(marketDepth).getAllByText('20').length).toBeGreaterThan(0)
     expect(marketDepth.querySelectorAll('tbody tr')).toHaveLength(1)
     expect(within(liquiditySection).getByText('ARS')).not.toBeNull()
     expect(chartMocks.advancedPoints).toHaveBeenLastCalledWith([
@@ -389,6 +397,63 @@ describe('StockDetailsContent variants', () => {
     expect(marketDepth.querySelectorAll('tbody tr')).toHaveLength(5)
     expect(within(marketDepth).getAllByText('0').length).toBeGreaterThan(0)
     expect(within(marketDepth).getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('renders mobile market-depth cards with complete labels and values', () => {
+    render(
+      <StockDetailsContent
+        stock={stock}
+        variant="page"
+        historyRange="1M"
+        onHistoryRangeChange={() => undefined}
+        history={pageHistory}
+        quoteDetail={quoteDetail}
+      />
+    )
+
+    const marketDepth = screen.getByRole('region', { name: 'Puntas' })
+    const mobileDepth = marketDepth.querySelector(
+      '.stock-detail-market-depth-mobile'
+    )
+    const firstCard = mobileDepth?.querySelector(
+      '.stock-detail-market-depth-card'
+    )
+
+    expect(mobileDepth).not.toBeNull()
+    expect(firstCard).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByLabelText(
+        'Precio compra: $ 7.500,00'
+      )
+    ).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByLabelText('Cantidad compra: 1')
+    ).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByLabelText(
+        'Precio venta: $ 8.050,00'
+      )
+    ).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByLabelText('Cantidad venta: 85')
+    ).not.toBeNull()
+    expect(within(firstCard as HTMLElement).getByText('Compra')).not.toBeNull()
+    expect(within(firstCard as HTMLElement).getByText('Venta')).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByText('$ 7.500,00')
+    ).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByText('$ 8.050,00')
+    ).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByText('Cantidad: 1')
+    ).not.toBeNull()
+    expect(
+      within(firstCard as HTMLElement).getByText('Cantidad: 85')
+    ).not.toBeNull()
+    expect(firstCard?.textContent).not.toContain('Precio compra')
+    expect(firstCard?.textContent).not.toContain('Precio venta')
+    expect(firstCard?.textContent).not.toContain('...')
   })
 
   it('renders an empty market-depth state', () => {

@@ -23,6 +23,7 @@ export interface StockProps extends StockData {
   onSelect?: (stock: StockData) => void;
   isFavorite?: boolean;
   isStale?: boolean;
+  opensInModal?: boolean;
   onToggleFavorite?: (stock: StockData) => void;
 }
 
@@ -43,6 +44,7 @@ function Stock(props: StockProps) {
   const {
     isFavorite = false,
     isStale = false,
+    opensInModal = true,
     onSelect,
     onToggleFavorite,
     ...stock
@@ -88,7 +90,7 @@ function Stock(props: StockProps) {
             event.stopPropagation();
             handleSelect();
           }}
-          aria-haspopup="dialog"
+          aria-haspopup={opensInModal ? 'dialog' : undefined}
           aria-describedby={isStale ? staleLabelId : undefined}
           aria-label={`Abrir detalle de ${stock.ticker}, ${stock.description}`}
         >

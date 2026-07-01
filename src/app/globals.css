@@ -273,6 +273,7 @@ html.dark {
   max-width: 1280px;
   margin: 0 auto;
   padding: 1.5rem;
+  background: radial-gradient(circle at 20% 0%, #1c36be14, transparent 32rem), linear-gradient(to bottom, var(--body-bg-start), var(--body-bg-end));
 }
 
 .stock-table-container {
@@ -834,12 +835,7 @@ html.dark {
 ========================= */
 
 .panel-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 1rem;
-  margin-left: 0rem;
-  margin-right: 0.5rem;
   margin-bottom: 1rem;
 }
 
@@ -928,9 +924,7 @@ html.dark {
 
 @media (max-width: 768px) {
   .panel-toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+    align-items: center;
     gap: 0.75rem;
     margin-bottom: 0.875rem;
   }
@@ -1321,7 +1315,6 @@ dialog.stock-details-dialog .stock-details-close {
 .stock-detail-page {
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 1.25rem;
   background:
     radial-gradient(circle at 20% 0%, rgb(28 54 190 / 8%), transparent 32rem),
     linear-gradient(to bottom, var(--body-bg-start), var(--body-bg-end));
@@ -2045,6 +2038,10 @@ dialog.stock-details-dialog .stock-details-close {
   background: var(--surface-raised);
 }
 
+.stock-detail-market-depth-mobile {
+  display: none;
+}
+
 .stock-detail-market-depth-table {
   width: 100%;
   table-layout: fixed;
@@ -2083,6 +2080,52 @@ dialog.stock-details-dialog .stock-details-close {
 .stock-detail-market-depth-sell {
   color: var(--negative-color);
   font-weight: 850;
+}
+
+.stock-detail-market-depth-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  background: var(--surface-raised);
+}
+
+.stock-detail-market-depth-side {
+  display: grid;
+  align-content: start;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.stock-detail-market-depth-side-title {
+  display: block;
+  margin-bottom: 0.08rem;
+  color: var(--text-color);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.stock-detail-market-depth-price {
+  display: block;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.stock-detail-market-depth-quantity {
+  display: block;
+  min-width: 0;
+  color: var(--muted-text);
+  font-size: 0.76rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .stock-detail-market-depth-empty {
@@ -2281,7 +2324,7 @@ dialog.stock-details-dialog .stock-details-close {
   }
 
   .stock-detail-page-topbar {
-    gap: 0.55rem;
+    gap: 0rem;
   }
 
   .stock-detail-page-topbar h1 {
@@ -2298,13 +2341,15 @@ dialog.stock-details-dialog .stock-details-close {
   }
 
   .stock-detail-page-summary > div {
-    align-items: flex-start;
-    flex-direction: column;
+    justify-content: space-between;
+    flex-direction: row;
     gap: 0.75rem;
   }
 
   .stock-detail-page-summary {
-    justify-content: flex-start;
+    width: 100%;
+    justify-content: space-between!important;
+    display: block;
   }
 
   .stock-detail-ticker-row {
@@ -2357,6 +2402,15 @@ dialog.stock-details-dialog .stock-details-close {
 
   .stock-detail-period-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stock-detail-market-depth-table-wrap {
+    display: none;
+  }
+
+  .stock-detail-market-depth-mobile {
+    display: grid;
+    gap: 0.75rem;
   }
 
   .stock-details-content .stock-details-grid,
@@ -2655,6 +2709,10 @@ html.dark .ui-icon-button:focus-visible {
 @media (max-width: 768px) {
   .dashboard-container {
     padding: 0.875rem;
+  }
+
+  .stock-detail-shell {
+    padding: 0;
   }
 
   .page-title {

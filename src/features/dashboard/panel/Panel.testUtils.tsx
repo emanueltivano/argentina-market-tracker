@@ -8,15 +8,17 @@ import { type MarketDataPanelKey } from '@/lib/market'
 import { type PanelSuccessResponse, type PanelTitulo } from '@/lib/panel'
 
 const navigationMock = vi.hoisted(() => ({
+  push: vi.fn(),
   replace: vi.fn(),
   searchParams: new URLSearchParams(),
 }))
 
+export const push = navigationMock.push
 export const replace = navigationMock.replace
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
-  useRouter: () => ({ replace }),
+  useRouter: () => ({ push, replace }),
   useSearchParams: () => navigationMock.searchParams,
 }))
 
@@ -128,6 +130,7 @@ export function mockAutoRefreshInterval() {
 
 export function setupPanelTest() {
   navigationMock.searchParams = new URLSearchParams()
+  push.mockClear()
   replace.mockClear()
   window.localStorage.clear()
   HTMLDialogElement.prototype.showModal = vi.fn(function showModal(

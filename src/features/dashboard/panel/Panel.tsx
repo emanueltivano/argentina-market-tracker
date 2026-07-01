@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 import {
   type MarketDataPanelKey,
@@ -34,6 +35,7 @@ import { type StockData } from '@/features/dashboard/shared/stockData';
 import { resolvePanelRows } from '@/features/dashboard/panel/panelState';
 import { type MarketPanelSuccessResponse } from '@/features/dashboard/panel/marketPanelClient';
 import { normalizeTicker } from '@/features/dashboard/shared/ticker';
+import { useIsMobileViewport } from '@/features/dashboard/shared/useIsMobileViewport';
 import { type Theme } from '@/lib/theme';
 
 const StockDetailsModal = dynamic(() => import('@/features/dashboard/history/StockDetailsModal'), {
@@ -58,6 +60,8 @@ export default function Panel({
   initialTheme,
   isDemoMode = false,
 }: PanelProps) {
+  const { push } = useRouter();
+  const isMobileViewport = useIsMobileViewport();
   const { sort, handleSortChange } = useStockSortState();
   const {
     favorites,
@@ -134,6 +138,18 @@ export default function Panel({
       toggleFavoriteStock(stock, { sourcePanel: dataPanelKey });
     },
     [dataPanelKey, toggleFavoriteStock],
+  );
+  const handleStockOpen = useCallback(
+    (stock: StockData) => {
+      if (isMobileViewport) {
+        clearSelectedStock();
+        push(`/stocks/${encodeURIComponent(stock.ticker)}`);
+        return;
+      }
+
+      handleStockSelect(stock);
+    },
+    [clearSelectedStock, handleStockSelect, isMobileViewport, push],
   );
   const handlePanelContentChange = useCallback((key: MarketPanelKey) => {
     clearSelectedStock();
@@ -224,7 +240,8 @@ export default function Panel({
                   {...row}
                   isFavorite={isFavorite(row.ticker)}
                   isStale={staleFavoriteTickers.has(normalizeTicker(row.ticker))}
-                  onSelect={handleStockSelect}
+                  opensInModal={!isMobileViewport}
+                  onSelect={handleStockOpen}
                   onToggleFavorite={handleToggleFavorite}
                 />
               ))
