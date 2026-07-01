@@ -145,16 +145,25 @@ describe('StockDetailPageClient', () => {
     expect(screen.getByRole('heading', { name: 'GGAL' })).toBeDefined()
     expect(screen.getByText('Grupo Financiero Galicia')).toBeDefined()
     const titleRow = container.querySelector('.stock-detail-title-row')
-    const tickerRow = container.querySelector('.stock-detail-ticker-row')
+    const topbar = container.querySelector('.stock-detail-page-topbar')
+    const actionsRow = container.querySelector('.stock-detail-page-actions')
     const heading = container.querySelector('.stock-detail-page-heading')
     const summary = container.querySelector('.stock-detail-page-summary')
+    const backLink = screen.getByRole('link', { name: /volver al dashboard/i })
+    const favoriteButton = screen.getByRole('button', {
+      name: 'Agregar GGAL a favoritos',
+    })
 
-    expect(tickerRow?.querySelector('h1')?.textContent).toBe('GGAL')
-    expect(
-      tickerRow?.querySelector(
-        'button[aria-label="Agregar GGAL a favoritos"]'
-      )
-    ).not.toBeNull()
+    expect(topbar?.querySelector('h1')?.textContent).toBe('GGAL')
+    expect(heading?.querySelector('h1')).toBeNull()
+    expect(backLink.getAttribute('href')).toBe('/')
+    expect(backLink.textContent).toBe('')
+    expect(backLink.classList.contains('stock-detail-icon-button')).toBe(true)
+    expect(screen.queryByText('Volver al dashboard')).toBeNull()
+    expect(actionsRow?.contains(favoriteButton)).toBe(true)
+    expect(favoriteButton.classList.contains('stock-detail-icon-button')).toBe(
+      true
+    )
     expect(titleRow?.textContent).toContain('Grupo Financiero Galicia')
     expect(titleRow?.textContent).toContain('Panel Líder')
     expect(heading?.textContent).toContain('Actualizado:')
@@ -172,9 +181,6 @@ describe('StockDetailPageClient', () => {
     const variationClassName = screen.getAllByText('+5,25%')[0]?.className
     expect(variationClassName).toContain('stock-var-positive')
     expect(variationClassName).toContain('stock-var-strong')
-    expect(
-      screen.getByRole('link', { name: 'Volver al dashboard' }).getAttribute('href')
-    ).toBe('/')
   })
 
   it('keeps the panel snapshot as the header source when history differs', () => {

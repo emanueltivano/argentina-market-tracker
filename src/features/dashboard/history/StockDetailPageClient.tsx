@@ -188,36 +188,39 @@ function StockDetailPageResolved({
   return (
     <main className="stock-detail-page">
       <div className="stock-detail-shell">
-        <Link
-          href="/"
-          className="ui-button ui-button-ghost stock-detail-back-link"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M5 12l14 0" />
-            <path d="M5 12l6 6" />
-            <path d="M5 12l6 -6" />
-          </svg>
-          Volver al dashboard
-        </Link>
+        <div className="stock-detail-page-topbar">
+          <Link
+            href="/"
+            className="ui-icon-button stock-detail-icon-button stock-detail-back-link"
+            aria-label="Volver al dashboard"
+            title="Volver al dashboard"
+          >
+            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M5 12l14 0" />
+              <path d="M5 12l6 6" />
+              <path d="M5 12l6 -6" />
+            </svg>
+          </Link>
 
+          <h1>{stock.ticker}</h1>
+
+          <div className="stock-detail-page-actions">
+            <StockFavoriteButton
+              ticker={stock.ticker}
+              isFavorite={stockIsFavorite}
+              className="stock-detail-icon-button stock-detail-favorite-button"
+              onToggleFavorite={() =>
+                toggleFavoriteStock(
+                  stock,
+                  panelKey ? { sourcePanel: panelKey } : undefined
+                )
+              }
+            />
+          </div>
+        </div>
         <header className="stock-detail-page-header">
           <div className="stock-detail-page-heading">
-            <div className="stock-detail-ticker-row">
-              <h1>{stock.ticker}</h1>
-              <StockFavoriteButton
-                ticker={stock.ticker}
-                isFavorite={stockIsFavorite}
-                className="stock-detail-favorite-button"
-                onToggleFavorite={() =>
-                  toggleFavoriteStock(
-                    stock,
-                    panelKey ? { sourcePanel: panelKey } : undefined
-                  )
-                }
-              />
-            </div>
-
             <div className="stock-detail-title-row">
               <h2>{description}</h2>
               {panelLabel && (
@@ -295,7 +298,7 @@ export default function StockDetailPageClient({
             href="/"
             className="ui-button ui-button-ghost stock-detail-back-link"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path stroke="none" d="M0 0h24v24H0z" fill="none" />
               <path d="M5 12l14 0" />
               <path d="M5 12l6 6" />
@@ -318,7 +321,7 @@ export default function StockDetailPageClient({
             href="/"
             className="ui-button ui-button-ghost stock-detail-back-link"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path stroke="none" d="M0 0h24v24H0z" fill="none" />
               <path d="M5 12l14 0" />
               <path d="M5 12l6 6" />

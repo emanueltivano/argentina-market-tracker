@@ -154,9 +154,23 @@ describe('StockDetailsModal', () => {
       name: 'Ver página completa de GGAL',
     })
     const closeButton = screen.getByRole('button', { name: 'Cerrar detalle' })
+    const favoriteButton = screen.getByRole('button', {
+      name: 'Agregar GGAL a favoritos',
+    })
 
     expect(link.getAttribute('href')).toBe('/stocks/GGAL')
+    expect(link.classList.contains('ui-icon-button')).toBe(true)
+    expect(link.classList.contains('stock-detail-icon-button')).toBe(true)
     expect(link.classList.contains('stock-details-action')).toBe(true)
+    expect(link.classList.contains('ui-icon-button-raised')).toBe(false)
+    expect(closeButton.classList.contains('ui-icon-button')).toBe(true)
+    expect(closeButton.classList.contains('stock-detail-icon-button')).toBe(
+      true
+    )
     expect(closeButton.classList.contains('stock-details-action')).toBe(true)
+    expect(closeButton.classList.contains('ui-icon-button-raised')).toBe(false)
+    expect(favoriteButton.classList.contains('stock-detail-icon-button')).toBe(
+      true
+    )
   })
 })

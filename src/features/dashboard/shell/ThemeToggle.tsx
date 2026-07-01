@@ -12,6 +12,7 @@ import {
 
 type ThemeToggleProps = {
   initialTheme?: Theme;
+  className?: string;
 };
 
 function getSystemTheme(): Theme {
@@ -53,7 +54,10 @@ function applyTheme(theme: Theme) {
   window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
 }
 
-export default function ThemeToggle({ initialTheme = 'light' }: ThemeToggleProps) {
+export default function ThemeToggle({
+  initialTheme = 'light',
+  className = '',
+}: ThemeToggleProps) {
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
@@ -90,8 +94,6 @@ export default function ThemeToggle({ initialTheme = 'light' }: ThemeToggleProps
     theme === 'dark' ? (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -106,8 +108,6 @@ export default function ThemeToggle({ initialTheme = 'light' }: ThemeToggleProps
     ) : (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -123,7 +123,7 @@ export default function ThemeToggle({ initialTheme = 'light' }: ThemeToggleProps
   return (
     <button
       type="button"
-      className="ui-icon-button ui-icon-button-raised theme-toggle-button panel-theme-toggle"
+      className={`ui-icon-button theme-toggle-button panel-theme-toggle ${className}`.trim()}
       onClick={handleToggle}
       aria-label={ariaLabel}
       aria-pressed={ariaPressed}

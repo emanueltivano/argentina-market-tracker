@@ -5,7 +5,7 @@ import { type MarketPanelKey } from '@/lib/market';
 
 import PanelMenu from './PanelMenu';
 import Title from '@/features/dashboard/shell/PageTitle';
-import ThemeToggle from '@/features/dashboard/shell/ThemeToggle';
+import DashboardFloatingActions from './DashboardFloatingActions';
 import { MARKET_PANEL_OPTIONS } from '@/features/dashboard/panel/marketPanelOptions';
 import { type Theme } from '@/lib/theme';
 
@@ -56,9 +56,6 @@ export default function PanelContent({
           </div>
         </div>
 
-        <div className="panel-actions">
-          <ThemeToggle initialTheme={initialTheme} />
-        </div>
       </div>
 
       <div className="stock-table-container">{children}</div>
@@ -72,6 +69,8 @@ export default function PanelContent({
           Datos y proyecto
         </Link>
       </footer>
+
+      <DashboardFloatingActions initialTheme={initialTheme} />
     </section>
   );
 }

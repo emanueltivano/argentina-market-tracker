@@ -216,6 +216,29 @@ describe('StockDetailsContent variants', () => {
     expect(screen.getByText('Último precio')).not.toBeNull()
     expect(screen.getByText('Cantidad compra')).not.toBeNull()
     expect(screen.getByText('Precio venta')).not.toBeNull()
+    expect(screen.getByText('Variación diaria')).not.toBeNull()
+    expect(screen.getByRole('button', { name: '1M' })).not.toBeNull()
+
+    const lastPrice = screen.getByText('Último precio')
+    const dailyVariation = screen.getByText('Variación diaria')
+    const historyTitle = screen.getByRole('heading', {
+      level: 2,
+      name: 'Histórico',
+    })
+    const buyQuantity = screen.getByText('Cantidad compra')
+
+    expect(
+      lastPrice.compareDocumentPosition(historyTitle) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).not.toBe(0)
+    expect(
+      dailyVariation.compareDocumentPosition(historyTitle) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).not.toBe(0)
+    expect(
+      historyTitle.compareDocumentPosition(buyQuantity) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).not.toBe(0)
     expect(screen.getByText('Último mes:').textContent).toContain('+10,00%')
     expect(chartMocks.simplePoints).toHaveBeenLastCalledWith([
       expect.objectContaining({ date: '2026-05-01', close: 100 }),

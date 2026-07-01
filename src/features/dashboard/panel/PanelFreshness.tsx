@@ -52,9 +52,6 @@ export default function PanelFreshness({
       aria-busy={isRefreshing}
       title={updatedAt?.title}
     >
-      <span className="panel-freshness-separator" aria-hidden="true">
-        ·
-      </span>
       <span>{label}</span>
     </p>
   );

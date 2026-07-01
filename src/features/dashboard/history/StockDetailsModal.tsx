@@ -86,7 +86,7 @@ export default function StockDetailsModal({
               ticker={stock.ticker}
               isFavorite={isFavorite}
               onToggleFavorite={handleToggleFavorite}
-              className="stock-details-favorite-button"
+              className="stock-detail-icon-button stock-details-favorite-button"
             />
 
             <div>
@@ -109,10 +109,10 @@ export default function StockDetailsModal({
           <div className="stock-details-actions">
             <Link
               href={stockPageHref}
-              className="ui-icon-button ui-icon-button-raised stock-details-action stock-details-expand"
+              className="ui-icon-button stock-detail-icon-button stock-details-action stock-details-expand"
               aria-label={`Ver página completa de ${stock.ticker}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                 <path d="M4 8v-2a2 2 0 0 1 2 -2h2" />
                 <path d="M4 16v2a2 2 0 0 0 2 2h2" />
@@ -124,11 +124,11 @@ export default function StockDetailsModal({
             <button
               ref={closeButtonRef}
               type="button"
-              className="ui-icon-button ui-icon-button-raised stock-details-action stock-details-close"
+              className="ui-icon-button stock-detail-icon-button stock-details-action stock-details-close"
               onClick={onClose}
               aria-label="Cerrar detalle"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                 <path d="M18 6l-12 12" /><path d="M6 6l12 12" />
               </svg>

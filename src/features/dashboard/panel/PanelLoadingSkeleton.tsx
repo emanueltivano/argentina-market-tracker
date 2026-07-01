@@ -50,11 +50,6 @@ export default function PanelLoadingSkeleton() {
           </div>
         </div>
 
-        <div className="panel-actions">
-          <span className="theme-toggle-button panel-skeleton-icon">
-            <SkeletonBar />
-          </span>
-        </div>
       </div>
 
       <div className="stock-table-container">
@@ -77,6 +72,12 @@ export default function PanelLoadingSkeleton() {
             <StockTableLoadingState />
           </tbody>
         </table>
+      </div>
+
+      <div className="dashboard-floating-actions" aria-hidden="true">
+        <span className="ui-icon-button dashboard-floating-button panel-skeleton-icon">
+          <SkeletonBar />
+        </span>
       </div>
     </section>
   );

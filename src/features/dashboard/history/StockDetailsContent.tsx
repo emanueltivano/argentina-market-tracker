@@ -472,13 +472,6 @@ function StockDetailsModalContent({ stock }: { stock: StockData }) {
 
   return (
     <div className="stock-details-content stock-details-content-modal">
-      <HistorySection
-        stock={stock}
-        variant="modal"
-        historyRange={historyRange}
-        onHistoryRangeChange={setHistoryRange}
-        history={history}
-      />
       <dl className="stock-details-grid stock-details-grid-primary">
         {primaryRows.map(({ label, value, className, valueClassName }) => (
           <div key={label} className={className}>
@@ -487,6 +480,13 @@ function StockDetailsModalContent({ stock }: { stock: StockData }) {
           </div>
         ))}
       </dl>
+      <HistorySection
+        stock={stock}
+        variant="modal"
+        historyRange={historyRange}
+        onHistoryRangeChange={setHistoryRange}
+        history={history}
+      />
       <dl className="stock-details-grid stock-details-grid-secondary">
         {secondaryRows.map(({ label, value, className, valueClassName }) => (
           <div key={label} className={className}>

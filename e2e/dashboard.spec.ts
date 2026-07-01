@@ -356,11 +356,11 @@ test.describe('dashboard', () => {
     expectNoBrowserErrors(diagnostics)
 
     const menuStatus = page.locator('.panel-menu-status')
-    const actions = page.locator('.panel-actions')
+    const floatingActions = page.locator('.dashboard-floating-actions')
 
     await expect(menuStatus.getByText(/Actualizado/)).toBeVisible()
     await expect(
-      actions.getByRole('button', { name: 'Usar tema oscuro' })
+      floatingActions.getByRole('button', { name: 'Usar tema oscuro' })
     ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Actualizar' })).toHaveCount(0)
     expect(requests.some((request) => request.refresh === '1')).toBe(false)
@@ -372,6 +372,7 @@ test.describe('dashboard', () => {
         const menuToggle = page.locator('.panel-menu-toggle')
         const themeToggle = page.locator('.panel-theme-toggle')
         const freshness = page.locator('.panel-freshness-inline')
+        const floatingStack = page.locator('.dashboard-floating-actions')
         const [menuBox, themeBox, freshnessBox] = await Promise.all([
           menuToggle.boundingBox(),
           themeToggle.boundingBox(),
@@ -381,10 +382,7 @@ test.describe('dashboard', () => {
         expect(menuBox).not.toBeNull()
         expect(themeBox).not.toBeNull()
         expect(freshnessBox).not.toBeNull()
-        expect(Math.abs(menuBox!.y - themeBox!.y)).toBeLessThanOrEqual(1)
-        expect(Math.abs(menuBox!.height - themeBox!.height)).toBeLessThanOrEqual(
-          1
-        )
+        await expect(floatingStack).toBeVisible()
         expect(themeBox!.width).toBe(40)
         expect(themeBox!.height).toBe(40)
         expect(freshnessBox!.y).toBeGreaterThanOrEqual(

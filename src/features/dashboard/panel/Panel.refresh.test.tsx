@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -36,11 +36,54 @@ describe('Panel refresh', () => {
     const themeToggle = screen.getByRole('button', { name: 'Usar tema oscuro' })
 
     expect(freshness.closest('.panel-status')).not.toBeNull()
-    expect(themeToggle.closest('.panel-actions')).not.toBeNull()
+    expect(themeToggle.closest('.dashboard-floating-actions')).not.toBeNull()
+    expect(themeToggle.closest('.panel-actions')).toBeNull()
     expect(themeToggle.classList.contains('panel-theme-toggle')).toBe(true)
     expect(themeToggle.classList.contains('ui-icon-button')).toBe(true)
+    expect(themeToggle.classList.contains('ui-icon-button-raised')).toBe(false)
     expect(screen.queryByRole('button', { name: 'Actualizar' })).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('shows a floating scroll-to-top action after scrolling', async () => {
+    const scrollToMock = vi.fn()
+
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 0,
+      writable: true,
+    })
+    vi.stubGlobal('scrollTo', scrollToMock)
+
+    renderPanel({
+      initialData: panelResponse([
+        { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+      ]),
+      initialPanelKey: 'lider',
+    })
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Subir al inicio' })).toBeNull()
+
+    window.scrollY = 420
+    fireEvent.scroll(window)
+
+    const scrollTopButton = await screen.findByRole('button', {
+      name: 'Subir al inicio',
+    })
+
+    expect(scrollTopButton.closest('.dashboard-floating-actions')).not.toBeNull()
+
+    await userEvent.click(scrollTopButton)
+
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 0,
+      behavior: 'smooth',
+    })
   })
 
   it('keeps the empty state visible when automatic refresh fails', async () => {

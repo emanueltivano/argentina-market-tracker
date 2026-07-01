@@ -10,5 +10,10 @@ describe('PanelLoadingSkeleton', () => {
     expect(screen.queryByText('Cargando panel...')).toBeNull()
     expect(screen.getByText('Cargando panel')).not.toBeNull()
     expect(screen.getAllByTestId('stock-table-skeleton-row')).toHaveLength(6)
+    expect(
+      document.querySelector('.panel-skeleton-icon')?.closest(
+        '.dashboard-floating-actions'
+      )
+    ).not.toBeNull()
   })
 })
