@@ -89,7 +89,7 @@ export default function StockDetailsModal({
               className="stock-detail-icon-button stock-details-favorite-button"
             />
 
-            <div>
+            <div className="stock-details-heading-copy">
               <div className="stock-details-title-row">
                 <h2 id={titleId} className="stock-details-title">
                   {stock.ticker}

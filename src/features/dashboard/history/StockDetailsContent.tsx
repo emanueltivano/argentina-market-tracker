@@ -560,9 +560,18 @@ function StockDetailsModalContent({ stock }: { stock: StockData }) {
     <div className="stock-details-content stock-details-content-modal">
       <dl className="stock-details-grid stock-details-grid-primary">
         {primaryRows.map(({ label, value, className, valueClassName }) => (
-          <div key={label} className={className}>
-            <dt>{label}</dt>
-            <dd className={valueClassName}>{value}</dd>
+          <div
+            key={label}
+            className={`stock-details-metric-card ${className ?? ''}`.trim()}
+          >
+            <dt className="stock-details-metric-label">{label}</dt>
+            <dd
+              className={`stock-details-metric-value ${
+                valueClassName ?? ''
+              }`.trim()}
+            >
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -575,9 +584,18 @@ function StockDetailsModalContent({ stock }: { stock: StockData }) {
       />
       <dl className="stock-details-grid stock-details-grid-secondary">
         {secondaryRows.map(({ label, value, className, valueClassName }) => (
-          <div key={label} className={className}>
-            <dt>{label}</dt>
-            <dd className={valueClassName}>{value}</dd>
+          <div
+            key={label}
+            className={`stock-details-metric-card ${className ?? ''}`.trim()}
+          >
+            <dt className="stock-details-metric-label">{label}</dt>
+            <dd
+              className={`stock-details-metric-value ${
+                valueClassName ?? ''
+              }`.trim()}
+            >
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
