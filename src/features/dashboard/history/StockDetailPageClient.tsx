@@ -133,7 +133,9 @@ function StockDetailPageResolved({
   const panelKey = lookup?.panelKey
   const fetchedAt = lookup?.fetchedAt
   const servedAt = lookup?.servedAt
-  const history = useStockHistory(stock.ticker, historyRange)
+  const history = useStockHistory(stock.ticker, historyRange, undefined, {
+    enabled: true,
+  })
   const currentQuote = useMemo(
     () => resolveCurrentStockQuote(stock, history.points, quoteDetail),
     [history.points, quoteDetail, stock]

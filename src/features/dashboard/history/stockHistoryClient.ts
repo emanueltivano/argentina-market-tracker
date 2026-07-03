@@ -119,11 +119,13 @@ export async function getStockHistoryFetchError(
 }
 
 export const fetchStockHistory = async (
-  url: string
+  url: string,
+  options: { signal?: AbortSignal } = {}
 ): Promise<StockHistorySuccessResponse> =>
   fetchValidatedJson(url, {
     assertSuccessResponse: assertStockHistorySuccessResponse,
     getError: getStockHistoryFetchError,
     invalidJsonMessage: `Respuesta inválida del servidor al cargar el histórico: ${url}`,
     parseBeforeHttpError: true,
+    signal: options.signal,
   })

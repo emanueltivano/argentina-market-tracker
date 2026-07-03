@@ -14,6 +14,7 @@ type MockSWRState = {
 const swrResponses = vi.hoisted(() => new Map<string, MockSWRState>())
 const historyState = vi.hoisted(() => ({
   points: [] as Array<Record<string, unknown>>,
+  useStockHistory: vi.fn(),
 }))
 
 vi.mock('swr', () => ({
@@ -27,13 +28,7 @@ vi.mock('swr', () => ({
 }))
 
 vi.mock('@/features/dashboard/history/useStockHistory', () => ({
-  useStockHistory: () => ({
-    points: historyState.points,
-    error: undefined,
-    isLoading: false,
-    isRefreshing: false,
-    viewStatus: 'empty',
-  }),
+  useStockHistory: historyState.useStockHistory,
 }))
 
 function panelResponse(symbol = 'GGAL', volume = 1000) {
@@ -129,12 +124,20 @@ describe('StockDetailPageClient', () => {
   beforeEach(() => {
     swrResponses.clear()
     historyState.points = []
+    historyState.useStockHistory.mockImplementation(() => ({
+      points: historyState.points,
+      error: undefined,
+      isLoading: false,
+      isRefreshing: false,
+      viewStatus: 'empty',
+    }))
     window.localStorage.clear()
   })
 
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
+    historyState.useStockHistory.mockReset()
   })
 
   it('renders the dedicated stock page with basic stock information', () => {
@@ -178,6 +181,12 @@ describe('StockDetailPageClient', () => {
       summary?.querySelector('.stock-detail-summary-values')
     ).not.toBeNull()
     expect(screen.getAllByText('$ 123,45').length).toBeGreaterThan(0)
+    expect(historyState.useStockHistory).toHaveBeenLastCalledWith(
+      'GGAL',
+      '1M',
+      undefined,
+      { enabled: true }
+    )
     const variationClassName = screen.getAllByText('+5,25%')[0]?.className
     expect(variationClassName).toContain('stock-var-positive')
     expect(variationClassName).toContain('stock-var-strong')

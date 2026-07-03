@@ -5,6 +5,7 @@ import {
   mergeLiveQuoteIntoHistoricalSeries,
   resolveCurrentStockQuote,
   shouldUseLiveCandle,
+  syncHistoryWithCurrentQuote,
 } from './currentStockQuote'
 import { type StockQuoteDetail } from '@/lib/stockQuote'
 
@@ -353,5 +354,161 @@ describe('live session candles', () => {
       low: 7700,
       close: 7750,
     })
+  })
+})
+
+describe('syncHistoryWithCurrentQuote', () => {
+  it('updates the latest same-day point with the current snapshot price', () => {
+    const currentQuote = resolveCurrentStockQuote(
+      {
+        ...snapshot,
+        price: 994.5,
+        min: 990,
+        max: 1000,
+        quoteDate: '2026-06-24T20:00:00.000Z',
+      },
+      []
+    )
+    const result = syncHistoryWithCurrentQuote(
+      [
+        { date: '2026-06-23', close: 980 },
+        { date: '2026-06-24', open: 991, high: 996, low: 989, close: 993.5 },
+      ],
+      currentQuote
+    )
+
+    expect(result.syncedQuote).toBe(true)
+    expect(result.syncedAt).toBe('2026-06-24T20:00:00.000Z')
+    expect(result.points.at(-1)).toMatchObject({
+      date: '2026-06-24',
+      close: 994.5,
+      open: 991,
+      high: 1000,
+      low: 989,
+    })
+  })
+
+  it('updates candle close and expands high/low with the current quote', () => {
+    const currentQuote = resolveCurrentStockQuote(
+      {
+        ...snapshot,
+        price: 1005,
+        min: 988,
+        max: 1002,
+        quoteDate: '2026-06-24T20:00:00.000Z',
+      },
+      []
+    )
+    const result = syncHistoryWithCurrentQuote(
+      [{ date: '2026-06-24', open: 991, high: 996, low: 990, close: 993.5 }],
+      currentQuote
+    )
+
+    expect(result.points).toEqual([
+      expect.objectContaining({
+        date: '2026-06-24',
+        close: 1005,
+        open: 991,
+        high: 1005,
+        low: 988,
+      }),
+    ])
+  })
+
+  it('does not overwrite history when the current quote is older', () => {
+    const currentQuote = resolveCurrentStockQuote(
+      {
+        ...snapshot,
+        price: 994.5,
+        quoteDate: '2026-06-23T20:00:00.000Z',
+      },
+      []
+    )
+    const history = [
+      { date: '2026-06-24', close: 993.5 },
+    ]
+
+    expect(syncHistoryWithCurrentQuote(history, currentQuote)).toEqual({
+      points: history,
+      syncedAt: null,
+      syncedQuote: false,
+    })
+  })
+
+  it('does not append a new candle when the quote has no reliable OHLC data', () => {
+    const currentQuote = resolveCurrentStockQuote(
+      {
+        ...snapshot,
+        price: 994.5,
+        open: null,
+        min: null,
+        max: null,
+        quoteDate: '2026-06-24T20:00:00.000Z',
+      },
+      []
+    )
+    const history = [{ date: '2026-06-23', close: 980 }]
+
+    expect(syncHistoryWithCurrentQuote(history, currentQuote)).toEqual({
+      points: history,
+      syncedAt: null,
+      syncedQuote: false,
+    })
+  })
+
+  it('appends a new point when current quote has a reliable OHLC set', () => {
+    const currentQuote = resolveCurrentStockQuote(
+      {
+        ...snapshot,
+        price: 994.5,
+        open: 991,
+        min: 990,
+        max: 1000,
+        quoteDate: '2026-06-24T20:00:00.000Z',
+      },
+      []
+    )
+    const result = syncHistoryWithCurrentQuote(
+      [{ date: '2026-06-23', close: 980 }],
+      currentQuote
+    )
+
+    expect(result.points).toEqual([
+      { date: '2026-06-23', close: 980 },
+      expect.objectContaining({
+        date: '2026-06-24',
+        open: 991,
+        high: 1000,
+        low: 990,
+        close: 994.5,
+      }),
+    ])
+  })
+
+  it('deduplicates and sorts history before syncing', () => {
+    const currentQuote = resolveCurrentStockQuote(
+      {
+        ...snapshot,
+        price: 994.5,
+        quoteDate: '2026-06-24T20:00:00.000Z',
+      },
+      []
+    )
+    const result = syncHistoryWithCurrentQuote(
+      [
+        { date: '2026-06-24', close: 990 },
+        { date: '2026-06-22', close: 970 },
+        { date: '2026-06-23', close: 980 },
+        { date: '2026-06-24', close: 993.5, high: 996, low: 989 },
+      ],
+      currentQuote
+    )
+
+    expect(result.points.map((point) => point.date)).toEqual([
+      '2026-06-22',
+      '2026-06-23',
+      '2026-06-24',
+    ])
+    expect(result.points.at(-1)?.close).toBe(994.5)
   })
 })

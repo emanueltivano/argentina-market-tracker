@@ -6,14 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StockDetailsModal from '@/features/dashboard/history/StockDetailsModal'
 import { type StockData } from '@/features/dashboard/shared/stockData'
 
+const historyMocks = vi.hoisted(() => ({
+  useStockHistory: vi.fn(),
+}))
+
 vi.mock('@/features/dashboard/history/useStockHistory', () => ({
-  useStockHistory: () => ({
-    points: [],
-    error: undefined,
-    isLoading: false,
-    isRefreshing: false,
-    viewStatus: 'empty',
-  }),
+  useStockHistory: historyMocks.useStockHistory,
 }))
 
 const stock: StockData = {
@@ -50,6 +48,13 @@ function ModalHarness() {
 
 describe('StockDetailsModal', () => {
   beforeEach(() => {
+    historyMocks.useStockHistory.mockReturnValue({
+      points: [],
+      error: undefined,
+      isLoading: false,
+      isRefreshing: false,
+      viewStatus: 'empty',
+    })
     HTMLDialogElement.prototype.showModal = vi.fn(function showModal(
       this: HTMLDialogElement
     ) {
@@ -64,6 +69,7 @@ describe('StockDetailsModal', () => {
 
   afterEach(() => {
     cleanup()
+    historyMocks.useStockHistory.mockReset()
     vi.restoreAllMocks()
   })
 
@@ -130,6 +136,12 @@ describe('StockDetailsModal', () => {
     const volumeValue = screen.getByText('Volumen nominal').nextElementSibling
 
     expect(volumeValue?.textContent).toBe('1.000')
+    expect(historyMocks.useStockHistory).toHaveBeenLastCalledWith(
+      'GGAL',
+      '1M',
+      undefined,
+      { enabled: true }
+    )
   })
 
   it('shows the metric fallback when nominal volume is unavailable', async () => {

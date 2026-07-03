@@ -3,6 +3,7 @@ type FetchJsonOptions<TSuccess> = {
   invalidJsonMessage: string
   getError(response: Response, parsedJson?: unknown): Promise<Error>
   parseBeforeHttpError?: boolean
+  signal?: AbortSignal
 }
 
 export async function fetchValidatedJson<TSuccess>(
@@ -12,6 +13,7 @@ export async function fetchValidatedJson<TSuccess>(
   const response = await fetch(url, {
     cache: 'no-store',
     headers: { accept: 'application/json' },
+    signal: options.signal,
   })
 
   let json: unknown

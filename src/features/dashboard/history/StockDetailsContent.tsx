@@ -26,9 +26,8 @@ import {
   normalizeHistoryPoints,
 } from '@/features/dashboard/charts/advancedStockChart'
 import {
-  mergeLiveQuoteIntoHistoricalSeries,
   resolveCurrentStockQuote,
-  type LiveSessionCandle,
+  syncHistoryWithCurrentQuote,
 } from '@/features/dashboard/history/currentStockQuote'
 import {
   getVariationClass,
@@ -124,7 +123,6 @@ function HistorySection({
   onHistoryRangeChange,
   history,
   quoteDetail,
-  quoteSource,
 }: {
   stock: StockData
   variant: 'modal' | 'page'
@@ -134,51 +132,16 @@ function HistorySection({
   quoteDetail?: StockQuoteDetail | null
   quoteSource?: 'demo' | 'live' | null
 }) {
-  const [observedQuoteKey, setObservedQuoteKey] = useState<string | null>(null)
-  const [liveSessionCandle, setLiveSessionCandle] =
-    useState<LiveSessionCandle | null>(null)
   const currentQuote = useMemo(
     () => resolveCurrentStockQuote(stock, history.points, quoteDetail),
     [history.points, quoteDetail, stock]
   )
-  const quoteKey = [
-    quoteSource,
-    currentQuote.source,
-    currentQuote.timestamp,
-    currentQuote.price,
-    currentQuote.open,
-    currentQuote.high,
-    currentQuote.low,
-    currentQuote.volume,
-  ].join('|')
-  let previousLiveCandle = liveSessionCandle
-
-  if (quoteKey !== observedQuoteKey) {
-    const observedMerge = mergeLiveQuoteIntoHistoricalSeries(
-      history.points,
-      currentQuote,
-      {
-        now: new Date(),
-        quoteSource: quoteSource ?? null,
-        previousLiveCandle,
-      }
-    )
-
-    previousLiveCandle = observedMerge.liveSessionCandle
-    setObservedQuoteKey(quoteKey)
-    setLiveSessionCandle(previousLiveCandle)
-  }
-  const liveMerge = useMemo(
-    () =>
-      mergeLiveQuoteIntoHistoricalSeries(history.points, currentQuote, {
-        now: new Date(),
-        quoteSource: quoteSource ?? null,
-        previousLiveCandle,
-      }),
-    [currentQuote, history.points, previousLiveCandle, quoteSource]
+  const syncedHistory = useMemo(
+    () => syncHistoryWithCurrentQuote(history.points, currentQuote),
+    [currentQuote, history.points]
   )
 
-  const chartSeries = liveMerge.points
+  const chartSeries = syncedHistory.points
   const normalizedHistoryPoints = useMemo(
     () => normalizeHistoryPoints(chartSeries),
     [chartSeries]
@@ -205,6 +168,10 @@ function HistorySection({
           : history.meta.source === 'demo'
             ? 'Serie histórica de demo determinística.'
             : null
+      : null
+  const historyRefreshMessage =
+    history.viewStatus === 'success' && history.error
+      ? `No se pudo actualizar el historico: ${history.error.message}`
       : null
   const rangeControls = (
     <HistoryRangeControls
@@ -240,6 +207,11 @@ function HistorySection({
             {historyMetaMessage && (
               <p className="stock-history-subtitle stock-history-subtitle-meta">
                 {historyMetaMessage}
+              </p>
+            )}
+            {historyRefreshMessage && (
+              <p className="stock-history-subtitle stock-history-subtitle-meta">
+                {historyRefreshMessage}
               </p>
             )}
           </div>
@@ -529,7 +501,12 @@ function StockDetailsModalContent({ stock }: { stock: StockData }) {
   const [historyRange, setHistoryRange] = useState<StockHistoryRange>(
     DEFAULT_STOCK_HISTORY_RANGE
   )
-  const history = useStockHistory(stock.ticker, historyRange)
+  const history = useStockHistory(
+    stock.ticker,
+    historyRange,
+    undefined,
+    { enabled: true }
+  )
   const currentQuote = useMemo(
     () => resolveCurrentStockQuote(stock, history.points),
     [history.points, stock]

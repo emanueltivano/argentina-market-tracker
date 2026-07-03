@@ -240,9 +240,12 @@ describe('StockDetailsContent variants', () => {
         Node.DOCUMENT_POSITION_FOLLOWING
     ).not.toBe(0)
     expect(screen.getByText('Último mes:').textContent).toContain('+10,00%')
+    expect(screen.queryByText(/Precio sincronizado/)).toBeNull()
+    expect(screen.queryByText(/Historico actualizado/)).toBeNull()
     expect(chartMocks.simplePoints).toHaveBeenLastCalledWith([
       expect.objectContaining({ date: '2026-05-01', close: 100 }),
       expect.objectContaining({ date: '2026-05-02', close: 110 }),
+      expect.objectContaining({ date: '2026-05-03', close: 110 }),
     ])
   })
 
@@ -331,19 +334,19 @@ describe('StockDetailsContent variants', () => {
     expect(chartMocks.advancedPoints).toHaveBeenLastCalledWith([
       expect.objectContaining({ date: '2026-05-01', close: 100 }),
       expect.objectContaining({ date: '2026-05-02', close: 110 }),
+      expect.objectContaining({ date: '2026-05-03', close: 110 }),
     ])
   })
 
-  it('keeps the latest quote in the card without adding it to the daily chart', () => {
+  it('syncs the latest quote into the daily chart when it has a market date', () => {
     render(<PageContentHarness />)
 
     expect(screen.getAllByText('$ 110,00').length).toBeGreaterThan(0)
-    expect(chartMocks.advancedPoints).toHaveBeenLastCalledWith(pageHistory.points)
     expect(
       chartMocks.advancedPoints.mock.calls.at(-1)?.[0].some(
         (point: { date: string }) => point.date === '2026-05-03'
       )
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it('adds a live session candle from CotizacionDetalle during market hours', () => {
