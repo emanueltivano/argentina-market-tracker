@@ -279,19 +279,26 @@ html.dark {
 ========================= */
 
 @layer components {
-  .ui-button {
+  .ui-button,
+  .panel-menu-button,
+  .panel-about-link,
+  .theme-toggle-button:not(.panel-theme-toggle),
+  .panel-menu-toggle {
     @apply rounded-md border px-3 py-1.5 text-[13px] font-semibold shadow-sm;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     cursor: pointer;
-    text-decoration: none;
     transition:
       background-color 0.18s ease,
       color 0.18s ease,
       border-color 0.18s ease,
       box-shadow 0.18s ease,
       transform 0.18s ease;
+  }
+
+  .ui-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
   }
 
   .ui-button:disabled {
@@ -367,10 +374,6 @@ html.dark {
   .ui-icon-button:hover {
     background-color: var(--surface-hover);
     color: var(--main-color);
-  }
-
-  .ui-icon-button:active {
-    transform: translateY(1px);
   }
 
   .stock-detail-icon-button,
@@ -450,17 +453,9 @@ html.dark {
   .panel-about-link,
   .theme-toggle-button:not(.panel-theme-toggle),
   .panel-menu-toggle {
-    @apply rounded-md border px-3 py-1.5 text-[13px] font-semibold shadow-sm;
     border-color: var(--main-color);
     background-color: var(--surface);
     color: var(--text-color);
-    cursor: pointer;
-    transition:
-      background-color 0.18s ease,
-      color 0.18s ease,
-      border-color 0.18s ease,
-      box-shadow 0.18s ease,
-      transform 0.18s ease;
   }
 
   .panel-menu-button {
@@ -2309,13 +2304,6 @@ dialog.stock-details-dialog .stock-details-close {
   font-weight: 700;
 }
 
-html.dark .panel-demo-badge,
-html.dark .about-mode-note {
-  border-color: var(--warning-border);
-  background: var(--warning-surface-bg);
-  color: var(--warning-text);
-}
-
 .about-section {
   padding: 1.5rem 0;
   border-top: 1px solid var(--border-color);
@@ -2411,33 +2399,6 @@ html.dark .stock-var-negative {
   text-shadow: none;
 }
 
-html.dark .stock-favorite-button:hover {
-  border-color: var(--favorite-border-hover);
-  background-color: var(--favorite-bg-hover);
-  color: var(--favorite-color);
-}
-
-html.dark .stock-favorite-button-active,
-html.dark .stock-favorite-button-active:hover {
-  color: var(--favorite-active-color);
-}
-
-html.dark .stock-stale-badge {
-  border-color: var(--warning-border-strong);
-  background-color: var(--warning-badge-bg);
-  color: var(--warning-text);
-}
-
-html.dark .stock-skeleton-bar {
-  background: linear-gradient(
-    90deg,
-    var(--skeleton-bg-start),
-    var(--skeleton-bg-highlight),
-    var(--skeleton-bg-start)
-  );
-  background-size: 200% 100%;
-}
-
 html.dark dialog.stock-details-dialog::backdrop {
   background-color: rgb(2 6 23 / 68%);
 }
@@ -2454,46 +2415,34 @@ html.dark .stock-details-content-modal .stock-history-range-button:hover {
 
 html.dark .stock-details-content .stock-details-metric-value.stock-var-positive {
   border-color: rgb(52 211 153 / 32%);
-  background-color: var(--positive-soft-bg);
-  color: var(--positive-soft-text);
 }
 
 html.dark
   .stock-details-content
   .stock-details-metric-value.stock-var-positive.stock-var-medium {
   border-color: rgb(16 185 129 / 42%);
-  background-color: var(--positive-medium-bg);
-  color: var(--positive-medium-text);
 }
 
 html.dark
   .stock-details-content
   .stock-details-metric-value.stock-var-positive.stock-var-strong {
   border-color: rgb(52 211 153 / 52%);
-  background-color: var(--positive-strong-bg);
-  color: var(--positive-strong-text);
 }
 
 html.dark .stock-details-content .stock-details-metric-value.stock-var-negative {
   border-color: rgb(251 113 133 / 34%);
-  background-color: var(--negative-soft-bg);
-  color: var(--negative-soft-text);
 }
 
 html.dark
   .stock-details-content
   .stock-details-metric-value.stock-var-negative.stock-var-medium {
   border-color: rgb(244 63 94 / 42%);
-  background-color: var(--negative-medium-bg);
-  color: var(--negative-medium-text);
 }
 
 html.dark
   .stock-details-content
   .stock-details-metric-value.stock-var-negative.stock-var-strong {
   border-color: rgb(251 113 133 / 52%);
-  background-color: var(--negative-strong-bg);
-  color: var(--negative-strong-text);
 }
 
 html.dark .ui-icon-button:hover,
