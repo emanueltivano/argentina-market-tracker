@@ -6,8 +6,6 @@
 ========================= */
 
 :root {
-  /* Reserved for future theme mapping and selected-state styles. */
-  --bg: 248 250 252;
   --fg: 17 24 39;
   --body-bg-start: #f8fafc;
   --body-bg-end: #eef2ff;
@@ -17,7 +15,6 @@
   --text-color: #042b5d;
 
   --positive-color: #00a86b;
-  --positive-light-color: #16c784;
   --positive-soft-bg: rgb(22 199 132 / 18%);
   --positive-medium-bg: #047857;
   --positive-strong-bg: #065f46;
@@ -89,8 +86,6 @@ html.light {
 }
 
 html.dark {
-  /* Reserved for future theme mapping and selected-state styles. */
-  --bg: 11 18 32;
   --fg: 226 232 240;
   --body-bg-start: #07111f;
   --body-bg-end: #0f172a;
@@ -100,7 +95,6 @@ html.dark {
   --text-color: #e2e8f0;
 
   --positive-color: #34d399;
-  --positive-light-color: #10b981;
   --positive-soft-bg: rgb(52 211 153 / 24%);
   --positive-medium-bg: rgb(16 185 129 / 42%);
   --positive-strong-bg: rgb(5 150 105 / 68%);
@@ -174,8 +168,6 @@ html.dark {
 
 @media (prefers-color-scheme: dark) {
   html:not(.light):not(.dark) {
-    /* Reserved for future theme mapping and selected-state styles. */
-    --bg: 11 18 32;
     --fg: 226 232 240;
     --body-bg-start: #07111f;
     --body-bg-end: #0f172a;
@@ -185,7 +177,6 @@ html.dark {
     --text-color: #e2e8f0;
 
     --positive-color: #34d399;
-    --positive-light-color: #10b981;
     --positive-soft-bg: rgb(52 211 153 / 24%);
     --positive-medium-bg: rgb(16 185 129 / 42%);
     --positive-strong-bg: rgb(5 150 105 / 68%);
@@ -260,7 +251,9 @@ html.dark {
 @layer base {
   body {
     min-height: 100vh;
-    background: linear-gradient(to bottom, var(--body-bg-start), var(--body-bg-end));
+    background:
+      radial-gradient(circle at 20% 0%, rgb(28 54 190 / 8%), transparent 32rem),
+      linear-gradient(to bottom, var(--body-bg-start), var(--body-bg-end));
     color: rgb(var(--fg));
   }
 }
@@ -273,7 +266,6 @@ html.dark {
   max-width: 1280px;
   margin: 0 auto;
   padding: 1.5rem;
-  background: radial-gradient(circle at 20% 0%, #1c36be14, transparent 32rem), linear-gradient(to bottom, var(--body-bg-start), var(--body-bg-end));
 }
 
 .stock-table-container {
@@ -434,13 +426,11 @@ html.dark {
 
   .page-title {
     min-width: 0;
-    margin: 0;
+    margin: 0 auto 0.75rem;
     font-size: 3.3rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-weight: 900;
-    letter-spacing: 0;
     overflow-wrap: anywhere;
-    margin-bottom: 0.75rem;
     text-align: center;
   }
 
@@ -502,7 +492,6 @@ html.dark {
     align-items: center;
     gap: 0.5rem;
     padding-block: 0;
-    line-height: 1;
   }
 
   .panel-menu-toggle-icon {
@@ -619,7 +608,6 @@ html.dark {
     color: var(--text-color);
     background: var(--nav-bg);
     font-weight: 700;
-    letter-spacing: 0.02em;
   }
 
   .nav-stocks-cell {
@@ -667,9 +655,6 @@ html.dark {
 
   .stock-row-interactive:hover {
     background-color: var(--surface-hover);
-  }
-
-  .stock-row-interactive:hover {
     z-index: 1;
     box-shadow:
       inset 3px 0 0 var(--main-color),
@@ -723,7 +708,6 @@ html.dark {
   background: transparent;
   color: inherit;
   font: inherit;
-  letter-spacing: inherit;
   cursor: pointer;
 }
 
@@ -743,7 +727,6 @@ html.dark {
   flex: 0 0 0.9rem;
   color: currentColor;
   font-size: 0.75rem;
-  line-height: 1;
   opacity: 0.72;
 }
 
@@ -779,21 +762,6 @@ html.dark {
    Loading
 ========================= */
 
-.loader {
-  width: 32px;
-  height: 32px;
-  border: 4px solid var(--main-color);
-  border-top-color: transparent;
-  border-radius: 9999px;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes stock-details-enter {
   from {
     opacity: 0;
@@ -807,10 +775,6 @@ html.dark {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loader {
-    animation-duration: 1.5s;
-  }
-
   .panel-menu-button,
   .ui-button,
   .ui-icon-button,
@@ -875,7 +839,6 @@ html.dark {
   min-height: 2.1rem;
   padding: 0.35rem 0.7rem;
   font-size: 0.76rem;
-  letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: normal;
 }
@@ -1009,14 +972,12 @@ html.dark {
   border-color: var(--warning-border-strong);
   background: var(--warning-badge-bg);
   font-size: 0.62rem;
-  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .stock-price {
   font-size: 16px;
   font-weight: 800;
-  letter-spacing: -0.2px;
   color: var(--text-color);
 }
 
@@ -1120,7 +1081,6 @@ html.dark {
   background-color: transparent;
   color: var(--muted-text);
   font-size: 1.05rem;
-  line-height: 1;
   cursor: pointer;
   transition:
     background-color 0.18s ease,
@@ -1251,7 +1211,6 @@ dialog.stock-details-dialog .stock-details-title {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 1.65rem;
   font-weight: 900;
-  letter-spacing: 0;
 }
 
 dialog.stock-details-dialog .stock-details-title-row {
@@ -1322,15 +1281,14 @@ dialog.stock-details-dialog .stock-details-close {
 }
 
 .stock-detail-shell {
+  --stock-detail-section-gap: 1rem;
+  --stock-detail-card-padding: 1rem;
+  --stock-detail-section-header-gap: 0.75rem;
+  --stock-detail-section-content-gap: 0.85rem;
+
   max-width: 1280px;
   margin: 0 auto;
   padding: 1.5rem;
-}
-
-.stock-detail-shell .stock-details-content .stock-history-section{
-  margin-left: 0rem;
-  margin-right: 0rem;
-  background: var(--surface);
 }
 
 .stock-detail-back-link {
@@ -1352,8 +1310,8 @@ dialog.stock-details-dialog .stock-details-close {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: var(--stock-detail-section-header-gap);
+  margin-bottom: var(--stock-detail-section-gap);
 }
 
 .stock-detail-page-topbar .stock-detail-back-link {
@@ -1370,8 +1328,6 @@ dialog.stock-details-dialog .stock-details-close {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 3.3rem;
   font-weight: 900;
-  line-height: 1;
-  letter-spacing: 0;
   overflow-wrap: anywhere;
   text-align: center;
 }
@@ -1379,10 +1335,10 @@ dialog.stock-details-dialog .stock-details-close {
 .stock-detail-page-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(18rem, 28rem);
-  gap: 1rem;
+  gap: var(--stock-detail-section-gap);
   align-items: stretch;
-  margin-bottom: 1rem;
-  padding: 1.2rem;
+  margin-bottom: var(--stock-detail-section-gap);
+  padding: var(--stock-detail-card-padding);
   border: 1px solid var(--border-strong);
   border-radius: 0.875rem;
   background: var(--surface);
@@ -1416,9 +1372,7 @@ dialog.stock-details-dialog .stock-details-close {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 3.3rem;
-  line-height: 1;
   font-weight: 900;
-  letter-spacing: 0;
 }
 
 .stock-detail-title-row {
@@ -1483,7 +1437,6 @@ dialog.stock-details-dialog .stock-details-close {
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .stock-detail-page-summary strong {
@@ -1497,8 +1450,6 @@ dialog.stock-details-dialog .stock-details-close {
   color: var(--text-color);
   font-size: clamp(1.9rem, 3vw, 2.65rem);
   font-weight: 950;
-  line-height: 1;
-  letter-spacing: -0.04em;
   white-space: nowrap;
 }
 
@@ -1511,10 +1462,8 @@ dialog.stock-details-dialog .stock-details-close {
 }
 
 .stock-detail-page-summary .stock-detail-change {
-  padding: 0.55rem 0.85rem;
   font-size: clamp(1rem, 1.5vw, 1.2rem);
   font-weight: 900;
-  line-height: 1;
   white-space: nowrap;
 }
 
@@ -1532,8 +1481,8 @@ dialog.stock-details-dialog .stock-details-close {
 ========================= */
 
 .stock-details-content .stock-history-section {
-  margin: 0 1.125rem;
-  padding: 1rem;
+  margin: 0;
+  padding: var(--stock-detail-card-padding, 1rem);
   border: 1px solid var(--border-strong);
   border-radius: 0.75rem;
   background: var(--surface-raised);
@@ -1543,15 +1492,20 @@ dialog.stock-details-dialog .stock-details-close {
 }
 
 .stock-details-content-modal .stock-history-section {
-  margin: 0rem 1.125rem;
+  margin: 0 1.125rem;
+}
+
+.stock-detail-shell .stock-history-section {
+  margin: 0;
+  background: var(--surface);
 }
 
 .stock-details-content .stock-history-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.875rem;
-  margin-bottom: 1rem;
+  gap: var(--stock-detail-section-header-gap, 0.75rem);
+  margin-bottom: var(--stock-detail-section-content-gap, 0.85rem);
 }
 
 .stock-details-content .stock-history-heading {
@@ -1584,8 +1538,6 @@ dialog.stock-details-dialog .stock-details-close {
 .stock-details-content .stock-history-performance {
   font-size: inherit;
   font-weight: 900;
-  line-height: inherit;
-  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -1637,7 +1589,6 @@ dialog.stock-details-dialog .stock-details-close {
   color: var(--muted-text);
   font-size: 0.75rem;
   font-weight: 800;
-  line-height: 1;
   cursor: pointer;
 }
 
@@ -1933,8 +1884,8 @@ dialog.stock-details-dialog .stock-details-close {
 }
 
 .stock-detail-data-section {
-  margin-top: 1rem;
-  padding: 1rem;
+  margin-top: var(--stock-detail-section-gap, 1rem);
+  padding: var(--stock-detail-card-padding, 1rem);
   border: 1px solid var(--border-strong);
   border-radius: 0.75rem;
   background: var(--surface);
@@ -1952,17 +1903,16 @@ dialog.stock-details-dialog .stock-details-close {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.85rem;
+  gap: var(--stock-detail-section-header-gap, 0.75rem);
+  margin: 0 0 var(--stock-detail-section-content-gap, 0.85rem);
 }
 
+.stock-detail-section-title,
 .stock-detail-section-header h2 {
   margin: 0;
   color: var(--text-color);
   font-size: 1rem;
   font-weight: 900;
-  letter-spacing: -0.01em;
 }
 
 .stock-detail-section-header > span {
@@ -1993,7 +1943,6 @@ dialog.stock-details-dialog .stock-details-close {
   font-size: 0.66rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.035em;
 }
 
 .stock-detail-secondary-grid dd {
@@ -2065,7 +2014,6 @@ dialog.stock-details-dialog .stock-details-close {
   font-size: 0.72rem;
   font-weight: 850;
   text-transform: uppercase;
-  letter-spacing: 0.035em;
 }
 
 .stock-detail-market-depth-table tbody tr + tr td {
@@ -2135,18 +2083,6 @@ dialog.stock-details-dialog .stock-details-close {
   border-radius: 0.65rem;
   color: var(--muted-text);
   text-align: center;
-}
-
-.stock-detail-market-depth-section {
-  margin-top: 0.95rem;
-}
-
-.stock-detail-market-depth-section h3 {
-  margin: 0 0 0.85rem;
-  color: var(--text-color);
-  font-size: 1rem;
-  font-weight: 900;
-  letter-spacing: -0.01em;
 }
 
 .stock-history-state-loading {
@@ -2230,7 +2166,6 @@ dialog.stock-details-dialog .stock-details-close {
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
   text-wrap: balance;
 }
 
@@ -2320,11 +2255,10 @@ dialog.stock-details-dialog .stock-details-close {
 
   .stock-detail-page-header {
     grid-template-columns: 1fr;
-    padding: 1rem;
   }
 
   .stock-detail-page-topbar {
-    gap: 0rem;
+    gap: var(--stock-detail-section-header-gap);
   }
 
   .stock-detail-page-topbar h1 {
@@ -2341,15 +2275,15 @@ dialog.stock-details-dialog .stock-details-close {
   }
 
   .stock-detail-page-summary > div {
+    width: 100%;
     justify-content: space-between;
     flex-direction: row;
     gap: 0.75rem;
   }
 
   .stock-detail-page-summary {
+    display: flex;
     width: 100%;
-    justify-content: space-between!important;
-    display: block;
   }
 
   .stock-detail-ticker-row {
@@ -2470,7 +2404,6 @@ dialog.stock-details-dialog .stock-details-close {
   color: var(--muted-text);
   font-size: 0.78rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -2478,7 +2411,6 @@ dialog.stock-details-dialog .stock-details-close {
   margin: 0;
   color: var(--text-color);
   font-size: clamp(2rem, 5vw, 4rem);
-  line-height: 1;
   font-weight: 900;
 }
 
@@ -2712,11 +2644,17 @@ html.dark .ui-icon-button:focus-visible {
   }
 
   .stock-detail-shell {
+    --stock-detail-section-gap: 0.875rem;
+    --stock-detail-card-padding: 0.875rem;
+    --stock-detail-section-header-gap: 0.7rem;
+    --stock-detail-section-content-gap: 0.75rem;
+
     padding: 0;
   }
 
   .page-title {
     font-size: 2.1rem;
+    margin-bottom: 0.625rem;
   }
 
   .stock-table-container {

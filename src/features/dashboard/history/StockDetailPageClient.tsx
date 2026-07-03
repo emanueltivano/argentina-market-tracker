@@ -203,7 +203,7 @@ function StockDetailPageResolved({
             </svg>
           </Link>
 
-          <h1>{stock.ticker}</h1>
+          <h1 className="page-title">{stock.ticker}</h1>
 
           <div className="stock-detail-page-actions">
             <StockFavoriteButton

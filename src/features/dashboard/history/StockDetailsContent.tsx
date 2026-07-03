@@ -298,7 +298,12 @@ function HistorySection({
             aria-labelledby="stock-detail-period-title"
           >
             <div className="stock-detail-section-header">
-              <h2 id="stock-detail-period-title">Resumen del período</h2>
+              <h2
+                id="stock-detail-period-title"
+                className="stock-detail-section-title"
+              >
+                Resumen del período
+              </h2>
             </div>
             <dl className="stock-detail-period-metrics">
               <div className="stock-detail-period-metric">
@@ -339,7 +344,12 @@ function HistorySection({
             aria-labelledby="stock-detail-daily-title"
           >
             <div className="stock-detail-section-header">
-              <h2 id="stock-detail-daily-title">Cotización diaria</h2>
+              <h2
+                id="stock-detail-daily-title"
+                className="stock-detail-section-title"
+              >
+                Cotización diaria
+              </h2>
               {historyDataStatus && <span>{historyDataStatus}</span>}
             </div>
             <dl className="stock-detail-secondary-grid">
@@ -367,7 +377,12 @@ function HistorySection({
             aria-labelledby="stock-detail-liquidity-title"
           >
             <div className="stock-detail-section-header">
-              <h2 id="stock-detail-liquidity-title">Liquidez</h2>
+              <h2
+                id="stock-detail-liquidity-title"
+                className="stock-detail-section-title"
+              >
+                Liquidez
+              </h2>
             </div>
             <dl className="stock-detail-secondary-grid">
               <div className="stock-detail-secondary-metric">
@@ -394,7 +409,12 @@ function HistorySection({
             aria-labelledby="stock-detail-market-depth-title"
           >
             <div className="stock-detail-section-header">
-              <h2 id="stock-detail-market-depth-title">Puntas</h2>
+              <h2
+                id="stock-detail-market-depth-title"
+                className="stock-detail-section-title"
+              >
+                Puntas
+              </h2>
             </div>
             {currentQuote.depth.length === 0 ? (
               <p className="stock-detail-market-depth-empty">
