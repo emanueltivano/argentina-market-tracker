@@ -2236,123 +2236,6 @@ dialog.stock-details-dialog .stock-details-close {
   color: var(--negative-strong-text);
 }
 
-@media (max-width: 768px) {
-  dialog.stock-details-dialog .stock-details-header {
-    align-items: flex-start;
-  }
-
-  .stock-detail-page {
-    padding: 0.875rem;
-  }
-
-  .stock-detail-page-header {
-    grid-template-columns: 1fr;
-  }
-
-  .stock-detail-page-topbar {
-    gap: var(--stock-detail-section-header-gap);
-  }
-
-  .stock-detail-page-topbar h1 {
-    font-size: 2.1rem;
-  }
-
-  .stock-detail-page-actions {
-    min-height: 2rem;
-  }
-
-  .stock-detail-page-heading h1,
-  .stock-detail-state h1 {
-    font-size: 2.1rem;
-  }
-
-  .stock-detail-summary-values {
-    width: 100%;
-    justify-content: space-between;
-    flex-direction: row;
-    gap: 0.75rem;
-  }
-
-  .stock-detail-page-summary {
-    display: flex;
-    width: 100%;
-  }
-
-  .stock-detail-ticker-row {
-    gap: 0.6rem;
-  }
-
-  .stock-detail-page-summary .stock-detail-price {
-    font-size: 2rem;
-  }
-
-  .stock-detail-page-summary .stock-detail-change {
-    font-size: 1rem;
-  }
-
-  .stock-details-content .stock-history-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .stock-details-content .stock-history-heading {
-    align-items: flex-start;
-  }
-
-  .stock-details-content .stock-history-range-control {
-    width: 100%;
-    align-items: flex-start;
-  }
-
-  .stock-details-content .stock-history-range-group {
-    max-width: 100%;
-    justify-content: flex-start;
-    overflow-x: auto;
-  }
-
-  .advanced-stock-chart-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .advanced-stock-chart-select {
-    width: 100%;
-  }
-
-  .advanced-stock-chart-help {
-    margin-left: 0;
-    padding-bottom: 0;
-    white-space: normal;
-  }
-
-  .stock-detail-period-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .stock-detail-market-depth-table-wrap {
-    display: none;
-  }
-
-  .stock-detail-market-depth-mobile {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .stock-details-content .stock-details-grid,
-  .stock-details-content .stock-details-grid-primary {
-    grid-template-columns: 1fr;
-  }
-
-  .stock-details-content .stock-details-metric-card,
-  .stock-details-content .stock-details-quote-cell,
-  .stock-details-content
-    .stock-details-grid-primary
-    .stock-details-market-cell {
-    grid-column: span 1;
-  }
-}
-
 /* =========================
    About page
 ========================= */
@@ -2623,6 +2506,7 @@ html.dark .ui-icon-button:focus-visible {
 ========================= */
 
 @media (max-width: 768px) {
+  /* Shared page shell */
   .dashboard-container {
     padding: 0.875rem;
   }
@@ -2641,6 +2525,120 @@ html.dark .ui-icon-button:focus-visible {
     margin-bottom: 0.625rem;
   }
 
+  /* Stock detail page */
+  .stock-detail-page {
+    padding: 0.875rem;
+  }
+
+  .stock-detail-page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-detail-page-topbar {
+    gap: var(--stock-detail-section-header-gap);
+  }
+
+  .stock-detail-page-topbar h1 {
+    font-size: 2.1rem;
+  }
+
+  .stock-detail-page-actions {
+    min-height: 2rem;
+  }
+
+  .stock-detail-page-heading h1,
+  .stock-detail-state h1 {
+    font-size: 2.1rem;
+  }
+
+  .stock-detail-summary-values {
+    width: 100%;
+    justify-content: space-between;
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+
+  .stock-detail-page-summary {
+    display: flex;
+    width: 100%;
+  }
+
+  .stock-detail-ticker-row {
+    gap: 0.6rem;
+  }
+
+  .stock-detail-page-summary .stock-detail-price {
+    font-size: 2rem;
+  }
+
+  .stock-detail-page-summary .stock-detail-change {
+    font-size: 1rem;
+  }
+
+  /* History and detail data */
+  .stock-details-content .stock-history-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .stock-details-content .stock-history-heading {
+    align-items: flex-start;
+  }
+
+  .stock-details-content .stock-history-range-control {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .stock-details-content .stock-history-range-group {
+    max-width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .advanced-stock-chart-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .advanced-stock-chart-select {
+    width: 100%;
+  }
+
+  .advanced-stock-chart-help {
+    margin-left: 0;
+    padding-bottom: 0;
+    white-space: normal;
+  }
+
+  .stock-detail-period-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stock-detail-market-depth-table-wrap {
+    display: none;
+  }
+
+  .stock-detail-market-depth-mobile {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .stock-details-content .stock-details-grid,
+  .stock-details-content .stock-details-grid-primary {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-details-content .stock-details-metric-card,
+  .stock-details-content .stock-details-quote-cell,
+  .stock-details-content
+    .stock-details-grid-primary
+    .stock-details-market-cell {
+    grid-column: span 1;
+  }
+
+  /* Dashboard table */
   .stock-table-container {
     overflow-x: auto;
   }
@@ -2663,15 +2661,23 @@ html.dark .ui-icon-button:focus-visible {
     min-width: 4.75rem;
   }
 
+  /* Floating actions */
   .dashboard-floating-actions {
     right: 0.875rem;
     bottom: calc(0.875rem + env(safe-area-inset-bottom));
   }
 
+  /* Stock details modal */
   dialog.stock-details-dialog {
     width: min(640px, calc(100vw - 1rem));
     max-height: calc(100vh - 1rem);
     max-height: calc(100dvh - 1rem);
+  }
+
+  dialog.stock-details-dialog .stock-details-header {
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.8rem 0.875rem;
   }
 
   .stock-details-content-modal .stock-details-grid {
@@ -2717,12 +2723,6 @@ html.dark .ui-icon-button:focus-visible {
     .stock-details-grid-primary
     .stock-details-market-cell {
     grid-column: auto;
-  }
-
-  dialog.stock-details-dialog .stock-details-header {
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.8rem 0.875rem;
   }
 
   dialog.stock-details-dialog .stock-details-title {
