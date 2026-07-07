@@ -1,113 +1,158 @@
-# Estructura del proyecto
+# Project Structure
 
-Guía breve de onboarding técnico. Para setup, scripts, variables de entorno, estrategia demo/live y operación general, la fuente principal sigue siendo `README.md`. Para observabilidad y troubleshooting, usar `docs/RUNBOOK.md`.
+Reviewer-focused map of the repository. For setup, scripts, environment
+variables, demo/live mode, and portfolio positioning, start with
+[README.md](./README.md). For health, metrics, and troubleshooting, use
+[docs/RUNBOOK.md](./docs/RUNBOOK.md).
 
-## 1. Mapa rápido
+## Quick Map
 
-### Entrada principal
+### App Router
 
 - `src/app/page.tsx`
-  - Hace SSR del panel inicial y pasa `initialData` al dashboard cliente.
+  - Server-renders the initial dashboard panel and passes `initialData` to the
+    client dashboard.
+- `src/app/stocks/[symbol]/page.tsx`
+  - Route entry for the stock detail page.
 - `src/app/layout.tsx`
-  - Metadata, bootstrap de tema y layout raíz.
+  - Metadata, theme bootstrap, and root layout.
 - `src/app/globals.css`
-  - Hoja global activa de la app.
+  - Active global styles.
+- `src/app/error.tsx`, `src/app/global-error.tsx`, `src/app/not-found.tsx`
+  - App Router error and not-found boundaries.
 
-### Dashboard cliente
-
-- `src/features/dashboard/panel/Panel.tsx`
-  - Orquestador principal del dashboard.
-- `src/features/dashboard/panel/PanelContent.tsx`
-  - Shell visual, toolbar y navegación.
-- `src/features/dashboard/stocks/StockTable.tsx`
-  - Tabla, estados vacíos y errores.
-- `src/features/dashboard/stock-detail/StockDetailsModal.tsx`
-  - Modal con detalle, cotización e histórico.
-- `src/features/dashboard/panel/useMarketPanel.ts`
-  - Fetch y refresh del panel principal.
-- `src/features/dashboard/favorites/useFavoritePanel.ts`
-  - Fetch y refresh del panel de favoritos.
-- `src/features/dashboard/favorites/useFavoriteStocks.ts`
-  - Persistencia cliente de favoritos y snapshots.
-- `src/features/dashboard/stock-detail/useStockHistory.ts`
-  - Fetch del histórico para el detalle de activo.
-
-### BFF interno
+### Internal BFF Routes
 
 - `src/app/api/panel/route.ts`
-  - Paneles `lider`, `general` y `cedears`.
+  - Market panels: `lider`, `general`, and `cedears`.
 - `src/app/api/favorites/route.ts`
-  - Batch lookup de favoritos.
+  - Validates favorite item requests and resolves quotes through bounded
+    server-side fan-out.
+- `src/app/api/stocks/[symbol]/quote/route.ts`
+  - Current quote detail for one symbol.
 - `src/app/api/stocks/[symbol]/history/route.ts`
-  - Histórico por símbolo.
+  - Historical data for one symbol and range.
 - `src/app/api/health/route.ts`
-  - Estado operativo.
+  - Runtime health and config/cache/rate-limit checks.
 - `src/app/api/debug/metrics/route.ts`
-  - Métricas y runtime debug.
+  - Lightweight metrics endpoint.
 - `src/app/api/token/route.ts`
-  - Debug local del token.
+  - Localhost-only token debug route.
 
-### Contratos compartidos
+### Dashboard Feature
+
+- `src/features/dashboard/panel/`
+  - Main dashboard coordinator, panel state, refresh behavior, toolbar/menu,
+    loading and freshness UI.
+- `src/features/dashboard/stocks/`
+  - Stock table, row rendering, sorting, ticker display, and table layout
+    helpers.
+- `src/features/dashboard/favorites/`
+  - Favorite persistence, favorite panel fetch/revalidation, and favorite
+    button UI.
+- `src/features/dashboard/stock-detail/`
+  - Detail modal/page, quote and history clients/hooks, current quote
+    resolution, quote/history synchronization, live-session candle handling,
+    and presentational detail sections.
+- `src/features/dashboard/charts/`
+  - Chart components, chart theme, and historical price calculations.
+- `src/features/dashboard/shared/`
+  - Shared client helpers, dashboard row model, ticker utilities, quote metric
+    helpers, and JSON fetch wrapper.
+- `src/features/dashboard/shell/`
+  - Page-level shell utilities such as title and theme toggle.
+
+`stock-detail` is intentionally separate from `panel`, `favorites`, `charts`,
+and `shared` because stock detail has a distinct flow: choose or route to a
+symbol, fetch quote/history detail, resolve the current quote, merge quote data
+with history when appropriate, and render detail-specific sections. Chart
+components remain in `charts` so they can stay focused on visualization, while
+shared row/formatting utilities stay reusable across the dashboard.
+
+### Shared Contracts
 
 - `src/lib/market.ts`
-  - Claves de panel y helpers.
+  - Panel keys and market helpers.
 - `src/lib/panel.ts`
-  - Contrato de panel y normalización de payloads.
+  - Panel contract and payload normalization.
 - `src/lib/stockHistory.ts`
-  - Contrato de histórico y normalización.
+  - Historical data contract and normalization.
+- `src/lib/stockQuote.ts`
+  - Current quote detail contract and normalization.
 - `src/lib/favorites.ts`
-  - Tipos y validación del flujo de favoritos.
+  - Favorites request/response types and validation.
+- `src/lib/formatters.ts`
+  - Display formatting helpers.
 - `src/lib/theme.ts`
-  - Persistencia y tipo de tema.
+  - Theme persistence types.
 
-### Server-only
+### Server-Only Layer
 
 - `src/lib/server/core/env.ts`
-  - Variables de entorno y resumen de runtime.
-- `src/lib/server/upstream/iol.ts`
-  - Cliente upstream con OAuth, retry y timeout.
-- `src/lib/server/panel/panelCache.ts`
-  - Cache y dedupe del panel.
-- `src/lib/server/history/historyService.ts`
-  - Orquestación del histórico.
-- `src/lib/server/favorites/favoritesService.ts`
-  - Fan-out de favoritos.
+  - Environment parsing and runtime summary.
+- `src/lib/server/core/httpResponse.ts`
+  - Shared JSON response helper for route handlers.
 - `src/lib/server/core/rateLimit.ts`
-  - Base de rate limiting.
+  - Rate-limit storage abstraction and failure behavior.
 - `src/lib/server/core/observability.ts`
-  - Métricas, request IDs y logging.
+  - Request IDs, structured logging, metrics, and sanitization.
+- `src/lib/server/core/debug.ts`
+  - Debug route access checks.
+- `src/lib/server/upstream/`
+  - OAuth token cache, upstream API client, quote endpoint helpers, and quote
+    cache.
+- `src/lib/server/panel/`
+  - Panel request parsing, endpoint selection, cache, limits, and response
+    helpers.
+- `src/lib/server/history/`
+  - History request parsing, endpoint selection, cache, rate limiting,
+    response helpers, and service orchestration.
+- `src/lib/server/favorites/`
+  - Favorites request parsing, rate limiting, and server-side quote fan-out.
+- `src/lib/server/quote/`
+  - Current quote service orchestration.
 - `src/lib/server/demo/demoMarketData.ts`
-  - Dataset determinístico para modo demo.
+  - Deterministic demo data source.
 
-### Tooling y verificación
+### Tests And Tooling
 
-- `.github/workflows/ci.yml`
-  - Pipeline principal.
+- Co-located `*.test.ts` and `*.test.tsx`
+  - Unit, component, hook, route, and server tests.
+- `e2e/`
+  - Playwright dashboard and SSR boot tests.
 - `vitest.config.ts`
-  - Configuración de tests unitarios/componentes/hooks/routes.
+  - Vitest configuration.
 - `playwright.config.ts`
-  - Configuración E2E.
+  - Playwright configuration.
 - `scripts/run-e2e.mjs`
-  - Arranque de app built + Playwright.
+  - Built-app runner for Playwright.
 - `scripts/run-e2e-suite.mjs`
-  - Orquestación de suites SSR e interacción.
+  - SSR and interactive E2E suite runner.
+- `.github/workflows/ci.yml`
+  - CI validation in demo mode.
 
-## 2. Reglas de arquitectura
+## Architecture Rules
 
-- El browser no habla con el proveedor externo. Todo acceso remoto pasa por `src/app/api/**`.
-- Los contratos compartidos y normalizadores viven en `src/lib/**`.
-- La lógica sensible del servidor vive en `src/lib/server/**`.
-- Si cambia un payload upstream o un contrato BFF, actualizar normalizadores, consumidores y tests en el mismo cambio.
-- Mantener `runtime = 'nodejs'` en handlers con integración server-side.
-- No duplicar tipos existentes en `src/lib/market.ts`, `src/lib/panel.ts`, `src/lib/stockHistory.ts` o `src/lib/favorites.ts`.
-- La UI debe consumir datos ya validados; no pasar payloads crudos del upstream a componentes.
-- Los endpoints de debug deben seguir protegidos por entorno y host/token.
+- The browser must not call the external market provider directly.
+- External access must go through internal route handlers in `src/app/api/**`.
+- Shared contracts and normalizers belong in `src/lib/**`.
+- Server-only integration, caching, rate limiting, and observability belong in
+  `src/lib/server/**`.
+- Keep `runtime = 'nodejs'` on handlers that use server-side integration code.
+- If an upstream or BFF contract changes, update validators, consumers, and
+  tests in the same change.
+- Do not pass raw upstream payloads into UI components.
+- Do not duplicate existing contracts from `src/lib/market.ts`,
+  `src/lib/panel.ts`, `src/lib/stockHistory.ts`, `src/lib/stockQuote.ts`, or
+  `src/lib/favorites.ts`.
+- Keep debug/token routes protected by environment, local-host checks, or
+  observability token checks as applicable.
 
-## 3. Dónde tocar para cambios comunes
+## Where To Work
 
-### Cambiar UI del dashboard
+### Dashboard UI
 
-Revisar primero:
+Start with:
 
 - `src/features/dashboard/panel/Panel.tsx`
 - `src/features/dashboard/panel/PanelContent.tsx`
@@ -115,15 +160,30 @@ Revisar primero:
 - `src/features/dashboard/stocks/Stock.tsx`
 - `src/app/globals.css`
 
-Si cambia comportamiento de estado, revisar también:
+If behavior changes, also check nearby `*.test.tsx` files and:
 
+- `src/features/dashboard/panel/useDashboardPanelState.ts`
 - `src/features/dashboard/panel/useMarketPanel.ts`
 - `src/features/dashboard/panel/panelState.ts`
-- tests vecinos `*.test.tsx`
 
-### Cambiar paneles de mercado
+### Stock Detail
 
-Revisar primero:
+Start with:
+
+- `src/features/dashboard/stock-detail/StockDetailsContent.tsx`
+- `src/features/dashboard/stock-detail/StockDetailsSections.tsx`
+- `src/features/dashboard/stock-detail/StockDetailsModal.tsx`
+- `src/features/dashboard/stock-detail/StockDetailPageClient.tsx`
+- `src/features/dashboard/stock-detail/useStockHistory.ts`
+- `src/features/dashboard/stock-detail/useStockQuote.ts`
+- `src/features/dashboard/stock-detail/currentStockQuote.ts`
+- `src/features/dashboard/stock-detail/historyQuoteSync.ts`
+- `src/features/dashboard/stock-detail/liveSessionCandle.ts`
+- `src/features/dashboard/stock-detail/currentQuoteTypes.ts`
+
+### Market Panels
+
+Start with:
 
 - `src/app/api/panel/route.ts`
 - `src/lib/panel.ts`
@@ -133,9 +193,9 @@ Revisar primero:
 - `src/lib/server/demo/demoMarketData.ts`
 - `src/features/dashboard/panel/marketPanelOptions.ts`
 
-### Cambiar favoritos
+### Favorites
 
-Revisar primero:
+Start with:
 
 - `src/features/dashboard/favorites/useFavoriteStocks.ts`
 - `src/features/dashboard/favorites/useFavoritePanel.ts`
@@ -145,35 +205,44 @@ Revisar primero:
 - `src/lib/server/favorites/favoritesService.ts`
 - `src/lib/server/upstream/quoteCache.ts`
 
-### Cambiar histórico
+### Historical Data
 
-Revisar primero:
+Start with:
 
-- `src/features/dashboard/stock-detail/StockDetailsModal.tsx`
 - `src/features/dashboard/charts/LightweightStockChart.tsx`
-- `src/features/dashboard/stock-detail/useStockHistory.ts`
+- `src/features/dashboard/charts/AdvancedStockDetailChart.tsx`
 - `src/app/api/stocks/[symbol]/history/route.ts`
 - `src/lib/stockHistory.ts`
 - `src/lib/server/history/historyRequest.ts`
 - `src/lib/server/history/historyService.ts`
 - `src/lib/server/history/historyCache.ts`
 
-### Cambiar integración upstream
+### Current Quote Integration
 
-Revisar primero:
+Start with:
+
+- `src/app/api/stocks/[symbol]/quote/route.ts`
+- `src/lib/stockQuote.ts`
+- `src/lib/server/quote/quoteService.ts`
+- `src/lib/server/upstream/quoteEndpoint.ts`
+- `src/lib/server/upstream/quoteCache.ts`
+- `src/features/dashboard/stock-detail/stockQuoteClient.ts`
+- `src/features/dashboard/stock-detail/useStockQuote.ts`
+
+### Upstream Integration
+
+Start with:
 
 - `src/lib/server/upstream/iol.ts`
+- `src/lib/server/upstream/tokenCache.ts`
+- `src/lib/server/upstream/quoteEndpoint.ts`
 - `src/lib/server/core/env.ts`
 - `src/lib/server/panel/panelEndpoint.ts`
 - `src/lib/server/history/historyEndpoint.ts`
-- `src/lib/server/upstream/quoteEndpoint.ts`
-- `src/lib/panel.ts`
-- `src/lib/stockHistory.ts`
-- `src/lib/favorites.ts`
 
-### Cambiar seguridad o CSP
+### Security Or CSP
 
-Revisar primero:
+Start with:
 
 - `middleware.ts`
 - `next.config.mjs`
@@ -181,9 +250,9 @@ Revisar primero:
 - `src/app/layout.tsx`
 - `src/lib/server/core/debug.ts`
 
-### Cambiar CI o tests
+### CI Or Tests
 
-Revisar primero:
+Start with:
 
 - `.github/workflows/ci.yml`
 - `package.json`
@@ -192,10 +261,14 @@ Revisar primero:
 - `scripts/run-e2e.mjs`
 - `scripts/run-e2e-suite.mjs`
 
-## 4. Notas de mantenimiento
+## Maintenance Notes
 
-- `README.md` es la documentación principal de producto, setup y operación general.
-- `docs/RUNBOOK.md` es el complemento natural cuando el cambio toca health, degradación, métricas o troubleshooting.
-- No existe `src/styles/` en el estado actual del repo; los estilos globales activos están en `src/app/globals.css`.
-- El modo `demo` es parte del flujo normal del proyecto, no sólo un fixture de tests.
-- Los tests suelen estar co-localizados por área: `route.ts` junto a `route.test.ts`, hooks y componentes con `*.test.ts(x)`.
+- `README.md` is the main document for portfolio review, setup, scripts, and
+  operating modes.
+- `docs/RUNBOOK.md` is the companion for health, degraded states, metrics, and
+  troubleshooting.
+- There is no `src/styles/` directory; active global styles are in
+  `src/app/globals.css`.
+- There is no Prisma, database, or seed workflow.
+- Demo mode is a normal runtime mode, not only a test fixture.
+- Tests are usually co-located with the unit they cover.

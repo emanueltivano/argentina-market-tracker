@@ -5,10 +5,8 @@ import {
 } from '@/features/dashboard/charts/advancedStockChart'
 import { type StockHistoryPoint } from '@/lib/stockHistory'
 import { resolvePreviousClose } from '@/features/dashboard/shared/stockQuoteMetrics'
-import {
-  type StockQuoteDepthLevel,
-  type StockQuoteDetail,
-} from '@/lib/stockQuote'
+import { type StockQuoteDetail } from '@/lib/stockQuote'
+import { type ResolvedCurrentQuote } from './currentQuoteTypes'
 
 export {
   getArgentinaMarketStatus,
@@ -21,31 +19,7 @@ export type {
 } from './liveSessionCandle'
 export { syncHistoryWithCurrentQuote } from './historyQuoteSync'
 export type { SyncedHistoryWithQuoteResult } from './historyQuoteSync'
-
-export type ResolvedCurrentQuote = {
-  price: number | null
-  variation: number | null
-  open: number | null
-  previousClose: number | null
-  low: number | null
-  high: number | null
-  volume: number | null
-  amountTraded: number | null
-  operationCount: number | null
-  buyQuantity: number | null
-  buyPrice: number | null
-  sellPrice: number | null
-  sellQuantity: number | null
-  description: string
-  timestamp: string | null
-  currency: string | null
-  settlement: string | null
-  minimumSheet: number | null
-  lot: number | null
-  minimumQuantity: number | null
-  depth: StockQuoteDepthLevel[]
-  source: 'detail' | 'snapshot' | 'history' | 'unavailable'
-}
+export type { ResolvedCurrentQuote } from './currentQuoteTypes'
 
 function finiteNumber(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null

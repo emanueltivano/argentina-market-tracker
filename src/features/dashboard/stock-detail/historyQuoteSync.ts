@@ -1,6 +1,6 @@
 import { toMarketDateString } from '@/features/dashboard/charts/advancedStockChart'
 import { type StockHistoryPoint } from '@/lib/stockHistory'
-import { type ResolvedCurrentQuote } from './currentStockQuote'
+import { type ResolvedCurrentQuote } from './currentQuoteTypes'
 
 export type SyncedHistoryWithQuoteResult = {
   points: StockHistoryPoint[]
