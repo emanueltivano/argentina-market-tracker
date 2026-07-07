@@ -4,7 +4,11 @@ import {
   type FavoritesErrorCode,
   type FavoritesResponse,
 } from '@/lib/favorites'
-import { fetchValidatedJson } from '@/features/dashboard/shared/fetchJsonClient'
+import {
+  fetchValidatedJson,
+  isJsonRecord,
+  responseUrlSuffix,
+} from '@/features/dashboard/shared/fetchJsonClient'
 
 export type FavoritePanelSuccessResponse = Extract<
   FavoritesResponse,
@@ -23,15 +27,11 @@ function assertFavoritePanelSuccessResponse(
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
 function isFavoritePanelErrorResponse(
   value: unknown
 ): value is FavoritePanelErrorResponse {
   return (
-    isRecord(value) &&
+    isJsonRecord(value) &&
     value.ok === false &&
     isFavoritesErrorCode(value.error)
   )
@@ -47,10 +47,6 @@ const FAVORITES_ERROR_MESSAGE: Record<FavoritesErrorCode, string> = {
   METHOD_NOT_ALLOWED: 'Método no permitido para cargar favoritos.',
 }
 
-function favoriteRequestTarget(response: Response): string {
-  return response.url ? ` (${response.url})` : ''
-}
-
 export async function getFavoritePanelFetchError(
   response: Response
 ): Promise<Error> {
@@ -60,13 +56,13 @@ export async function getFavoritePanelFetchError(
     json = await response.json()
   } catch {
     return new Error(
-      `Error del servidor (${response.status}) al cargar favoritos${favoriteRequestTarget(response)}.`
+      `Error del servidor (${response.status}) al cargar favoritos${responseUrlSuffix(response)}.`
     )
   }
 
   if (!isFavoritePanelErrorResponse(json)) {
     return new Error(
-      `Error del servidor (${response.status}) al cargar favoritos${favoriteRequestTarget(response)}.`
+      `Error del servidor (${response.status}) al cargar favoritos${responseUrlSuffix(response)}.`
     )
   }
 

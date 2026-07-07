@@ -21,16 +21,16 @@ Guía breve de onboarding técnico. Para setup, scripts, variables de entorno, e
   - Shell visual, toolbar y navegación.
 - `src/features/dashboard/stocks/StockTable.tsx`
   - Tabla, estados vacíos y errores.
-- `src/features/dashboard/history/StockDetailsModal.tsx`
-  - Modal con detalle e histórico.
+- `src/features/dashboard/stock-detail/StockDetailsModal.tsx`
+  - Modal con detalle, cotización e histórico.
 - `src/features/dashboard/panel/useMarketPanel.ts`
   - Fetch y refresh del panel principal.
 - `src/features/dashboard/favorites/useFavoritePanel.ts`
   - Fetch y refresh del panel de favoritos.
 - `src/features/dashboard/favorites/useFavoriteStocks.ts`
   - Persistencia cliente de favoritos y snapshots.
-- `src/features/dashboard/history/useStockHistory.ts`
-  - Fetch del histórico para el modal.
+- `src/features/dashboard/stock-detail/useStockHistory.ts`
+  - Fetch del histórico para el detalle de activo.
 
 ### BFF interno
 
@@ -149,9 +149,9 @@ Revisar primero:
 
 Revisar primero:
 
-- `src/features/dashboard/history/StockDetailsModal.tsx`
+- `src/features/dashboard/stock-detail/StockDetailsModal.tsx`
 - `src/features/dashboard/charts/LightweightStockChart.tsx`
-- `src/features/dashboard/history/useStockHistory.ts`
+- `src/features/dashboard/stock-detail/useStockHistory.ts`
 - `src/app/api/stocks/[symbol]/history/route.ts`
 - `src/lib/stockHistory.ts`
 - `src/lib/server/history/historyRequest.ts`

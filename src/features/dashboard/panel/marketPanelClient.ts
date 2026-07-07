@@ -3,7 +3,11 @@ import {
   type PanelErrorCode,
   type PanelResponse as MarketPanelResponse,
 } from '@/lib/panel';
-import { fetchValidatedJson } from '@/features/dashboard/shared/fetchJsonClient';
+import {
+  fetchValidatedJson,
+  isJsonRecord,
+  responseUrlSuffix,
+} from '@/features/dashboard/shared/fetchJsonClient';
 import { assertMarketPanelSuccessResponse } from './marketPanelValidation';
 
 export type MarketPanelSuccessResponse = Extract<
@@ -13,15 +17,11 @@ export type MarketPanelSuccessResponse = Extract<
 
 type MarketPanelErrorResponse = Extract<MarketPanelResponse, { ok: false }>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
 function isMarketPanelErrorResponse(
   value: unknown,
 ): value is MarketPanelErrorResponse {
   return (
-    isRecord(value) &&
+    isJsonRecord(value) &&
     (value as { ok?: unknown }).ok === false &&
     isPanelErrorCode((value as { error?: unknown }).error)
   );
@@ -49,10 +49,6 @@ function panelErrorMessage(error: PanelErrorCode): string {
   }
 }
 
-function panelRequestTarget(response: Response): string {
-  return response.url ? ` (${response.url})` : '';
-}
-
 export async function getMarketPanelFetchError(
   response: Response,
 ): Promise<Error> {
@@ -62,13 +58,13 @@ export async function getMarketPanelFetchError(
     json = await response.json();
   } catch {
     return new Error(
-      `Error del servidor (${response.status}) al cargar el panel${panelRequestTarget(response)}.`,
+      `Error del servidor (${response.status}) al cargar el panel${responseUrlSuffix(response)}.`,
     );
   }
 
   if (!isMarketPanelErrorResponse(json)) {
     return new Error(
-      `Error del servidor (${response.status}) al cargar el panel${panelRequestTarget(response)}.`,
+      `Error del servidor (${response.status}) al cargar el panel${responseUrlSuffix(response)}.`,
     );
   }
 

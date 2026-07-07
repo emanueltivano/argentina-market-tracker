@@ -4,19 +4,18 @@ import {
   type StockQuoteResponse,
   type StockQuoteSuccessResponse,
 } from '@/lib/stockQuote'
-import { fetchValidatedJson } from '@/features/dashboard/shared/fetchJsonClient'
+import {
+  fetchValidatedJson,
+  isJsonRecord,
+} from '@/features/dashboard/shared/fetchJsonClient'
 
 type StockQuoteErrorResponse = Extract<StockQuoteResponse, { ok: false }>
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
 
 function isStockQuoteErrorResponse(
   value: unknown
 ): value is StockQuoteErrorResponse {
   return (
-    isRecord(value) &&
+    isJsonRecord(value) &&
     value.ok === false &&
     isStockQuoteErrorCode(value.error)
   )

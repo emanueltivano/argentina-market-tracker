@@ -7,19 +7,19 @@ import {
   type StockHistoryResponse,
   type StockHistorySuccessResponse,
 } from '@/lib/stockHistory'
-import { fetchValidatedJson } from '@/features/dashboard/shared/fetchJsonClient'
+import {
+  fetchValidatedJson,
+  isJsonRecord,
+  responseUrlSuffix,
+} from '@/features/dashboard/shared/fetchJsonClient'
 
 type StockHistoryErrorResponse = Extract<StockHistoryResponse, { ok: false }>
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
 
 function isStockHistoryErrorResponse(
   value: unknown
 ): value is StockHistoryErrorResponse {
   return (
-    isRecord(value) &&
+    isJsonRecord(value) &&
     value.ok === false &&
     isStockHistoryErrorCode(value.error)
   )
@@ -28,7 +28,7 @@ function isStockHistoryErrorResponse(
 function assertStockHistorySuccessResponse(
   value: unknown
 ): asserts value is StockHistorySuccessResponse {
-  if (!isRecord(value) || value.ok !== true) {
+  if (!isJsonRecord(value) || value.ok !== true) {
     throw new Error('Respuesta inválida del servidor: contrato de históricos inválido.')
   }
 
@@ -48,7 +48,7 @@ function assertStockHistorySuccessResponse(
   }
 
   if (
-    !isRecord(value.meta) ||
+    !isJsonRecord(value.meta) ||
     typeof value.meta.discardedPoints !== 'number' ||
     typeof value.meta.totalPoints !== 'number' ||
     typeof value.meta.stale !== 'boolean' ||
@@ -83,10 +83,6 @@ function historyErrorMessage(error: StockHistoryErrorCode): string {
   }
 }
 
-function historyRequestTarget(response: Response): string {
-  return response.url ? ` (${response.url})` : ''
-}
-
 export async function getStockHistoryFetchError(
   response: Response,
   parsedJson?: unknown
@@ -98,14 +94,14 @@ export async function getStockHistoryFetchError(
       json = await response.json()
     } catch {
       return new Error(
-        `Error del servidor (${response.status}) al cargar el histórico${historyRequestTarget(response)}.`
+        `Error del servidor (${response.status}) al cargar el histórico${responseUrlSuffix(response)}.`
       )
     }
   }
 
   if (!isStockHistoryErrorResponse(json)) {
     return new Error(
-      `Error del servidor (${response.status}) al cargar el histórico${historyRequestTarget(response)}.`
+      `Error del servidor (${response.status}) al cargar el histórico${responseUrlSuffix(response)}.`
     )
   }
 

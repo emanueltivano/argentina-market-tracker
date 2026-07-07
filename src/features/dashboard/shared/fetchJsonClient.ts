@@ -6,6 +6,14 @@ type FetchJsonOptions<TSuccess> = {
   signal?: AbortSignal
 }
 
+export function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+export function responseUrlSuffix(response: Response): string {
+  return response.url ? ` (${response.url})` : ''
+}
+
 export async function fetchValidatedJson<TSuccess>(
   url: string,
   options: FetchJsonOptions<TSuccess>
