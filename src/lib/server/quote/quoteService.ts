@@ -3,7 +3,7 @@ import 'server-only'
 import { ENV } from '@/lib/server/core/env'
 import { getDemoQuoteDetailBySymbol } from '@/lib/server/demo/demoMarketData'
 import { iolFetch } from '@/lib/server/upstream/iol'
-import { getQuoteDetailEndpoint } from '@/lib/server/upstream/quoteDetailEndpoint'
+import { getQuoteDetailEndpoint } from '@/lib/server/upstream/quoteEndpoint'
 import {
   normalizeStockQuoteDetail,
   type StockQuoteSuccessResponse,

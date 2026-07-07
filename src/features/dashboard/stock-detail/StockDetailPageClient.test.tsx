@@ -27,7 +27,7 @@ vi.mock('swr', () => ({
   }),
 }))
 
-vi.mock('@/features/dashboard/history/useStockHistory', () => ({
+vi.mock('@/features/dashboard/stock-detail/useStockHistory', () => ({
   useStockHistory: historyState.useStockHistory,
 }))
 

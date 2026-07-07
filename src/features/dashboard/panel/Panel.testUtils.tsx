@@ -22,7 +22,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => navigationMock.searchParams,
 }))
 
-vi.mock('@/features/dashboard/history/useStockHistory', () => ({
+vi.mock('@/features/dashboard/stock-detail/useStockHistory', () => ({
   useStockHistory: () => ({
     points: [],
     error: undefined,

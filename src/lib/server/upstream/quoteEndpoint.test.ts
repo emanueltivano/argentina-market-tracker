@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { getQuoteEndpoint, normalizeQuoteMarket } from './quoteEndpoint'
+import {
+  getQuoteDetailEndpoint,
+  getQuoteEndpoint,
+  normalizeQuoteMarket,
+} from './quoteEndpoint'
 
 describe('quoteEndpoint', () => {
   it('builds the expected individual quote endpoint path', () => {
@@ -13,6 +17,12 @@ describe('quoteEndpoint', () => {
     expect(normalizeQuoteMarket('bcba')).toBe('bCBA')
     expect(getQuoteEndpoint('BCBA', 'ALUA')).toBe(
       '/api/v2/bCBA/Titulos/ALUA/Cotizacion'
+    )
+  })
+
+  it('builds the CotizacionDetalle endpoint', () => {
+    expect(getQuoteDetailEndpoint('bCBA', 'GGAL')).toBe(
+      '/api/v2/bCBA/Titulos/GGAL/CotizacionDetalle'
     )
   })
 })

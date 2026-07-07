@@ -26,7 +26,8 @@ import {
   shouldBypassPanelCache,
   shouldReturnRawPanelData,
 } from '@/lib/server/panel/panelRequest'
-import { jsonResponse, panelErrorResponse } from '@/lib/server/panel/panelResponse'
+import { jsonResponse } from '@/lib/server/core/httpResponse'
+import { panelErrorResponse } from '@/lib/server/panel/panelResponse'
 import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/core/rateLimit'
 
 export const dynamic = 'force-dynamic'

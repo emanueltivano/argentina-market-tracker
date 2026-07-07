@@ -15,3 +15,12 @@ export function getQuoteEndpoint(market: string, symbol: string): string {
     symbol
   )}/Cotizacion`
 }
+
+export function getQuoteDetailEndpoint(
+  market: string,
+  symbol: string
+): string {
+  return `/api/v2/${encodePathPart(market)}/Titulos/${encodePathPart(
+    symbol
+  )}/CotizacionDetalle`
+}

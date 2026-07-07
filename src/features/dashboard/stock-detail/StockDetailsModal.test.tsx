@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import StockDetailsModal from '@/features/dashboard/history/StockDetailsModal'
+import StockDetailsModal from '@/features/dashboard/stock-detail/StockDetailsModal'
 import { type StockData } from '@/features/dashboard/shared/stockData'
 
 const historyMocks = vi.hoisted(() => ({
   useStockHistory: vi.fn(),
 }))
 
-vi.mock('@/features/dashboard/history/useStockHistory', () => ({
+vi.mock('@/features/dashboard/stock-detail/useStockHistory', () => ({
   useStockHistory: historyMocks.useStockHistory,
 }))
 

@@ -17,7 +17,7 @@ const chartMocks = vi.hoisted(() => ({
   simplePoints: vi.fn(),
 }))
 
-vi.mock('@/features/dashboard/history/useStockHistory', () => ({
+vi.mock('@/features/dashboard/stock-detail/useStockHistory', () => ({
   useStockHistory: () => ({
     points: [
       {

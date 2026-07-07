@@ -20,7 +20,7 @@ import {
 } from '@/features/dashboard/panel/marketPanelClient'
 import { getMarketPanelOption } from '@/features/dashboard/panel/marketPanelOptions'
 import { type StockData } from '@/features/dashboard/shared/stockData'
-import StockDetailsContent from '@/features/dashboard/history/StockDetailsContent'
+import StockDetailsContent from '@/features/dashboard/stock-detail/StockDetailsContent'
 import StockFavoriteButton from '@/features/dashboard/favorites/StockFavoriteButton'
 import {
   getVariationClass,
@@ -31,9 +31,9 @@ import {
   DEFAULT_STOCK_HISTORY_RANGE,
   type StockHistoryRange,
 } from '@/lib/stockHistory'
-import { useStockHistory } from '@/features/dashboard/history/useStockHistory'
-import { resolveCurrentStockQuote } from '@/features/dashboard/history/currentStockQuote'
-import { useStockQuote } from '@/features/dashboard/history/useStockQuote'
+import { useStockHistory } from '@/features/dashboard/stock-detail/useStockHistory'
+import { resolveCurrentStockQuote } from '@/features/dashboard/stock-detail/currentStockQuote'
+import { useStockQuote } from '@/features/dashboard/stock-detail/useStockQuote'
 import { type StockQuoteDetail } from '@/lib/stockQuote'
 
 type StockDetailPageClientProps = {

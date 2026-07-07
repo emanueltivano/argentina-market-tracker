@@ -10,7 +10,7 @@ import {
   FavoritesLookupBatchError,
   getFavoritesResponse,
 } from '@/lib/server/favorites/favoritesService'
-import { jsonResponse } from '@/lib/server/panel/panelResponse'
+import { jsonResponse } from '@/lib/server/core/httpResponse'
 import {
   getRequestId,
   getSafeErrorDetails,

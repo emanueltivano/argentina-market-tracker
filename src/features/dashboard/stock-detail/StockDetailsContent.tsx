@@ -20,7 +20,7 @@ import {
   type StockHistoryRange,
   type StockHistoryResponseMeta,
 } from '@/lib/stockHistory'
-import { useStockHistory } from '@/features/dashboard/history/useStockHistory'
+import { useStockHistory } from '@/features/dashboard/stock-detail/useStockHistory'
 import {
   calculatePeriodStats,
   normalizeHistoryPoints,
@@ -28,7 +28,7 @@ import {
 import {
   resolveCurrentStockQuote,
   syncHistoryWithCurrentQuote,
-} from '@/features/dashboard/history/currentStockQuote'
+} from '@/features/dashboard/stock-detail/currentStockQuote'
 import {
   getVariationClass,
   getVariationSeverityClass,

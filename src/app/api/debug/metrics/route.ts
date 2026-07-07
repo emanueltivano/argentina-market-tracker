@@ -11,7 +11,7 @@ import {
   withRequestIdHeaders,
 } from '@/lib/server/core/observability'
 import { getPanelCacheStats } from '@/lib/server/panel/panelCache'
-import { jsonResponse } from '@/lib/server/panel/panelResponse'
+import { jsonResponse } from '@/lib/server/core/httpResponse'
 import { getRateLimitRuntimeInfo } from '@/lib/server/core/rateLimit'
 
 export const dynamic = 'force-dynamic'

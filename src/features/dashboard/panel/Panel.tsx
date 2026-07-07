@@ -29,7 +29,7 @@ import { useFavoritePanel } from '@/features/dashboard/favorites/useFavoritePane
 import { useFavoriteStocks } from '@/features/dashboard/favorites/useFavoriteStocks';
 import { useStockSortState } from '@/features/dashboard/stocks/useStockSortState';
 import { useDashboardPanelState } from '@/features/dashboard/panel/useDashboardPanelState';
-import { useSelectedStockModal } from '@/features/dashboard/history/useSelectedStockModal';
+import { useSelectedStockModal } from '@/features/dashboard/stock-detail/useSelectedStockModal';
 import { getMarketPanelOption } from '@/features/dashboard/panel/marketPanelOptions';
 import { type StockData } from '@/features/dashboard/shared/stockData';
 import { resolvePanelRows } from '@/features/dashboard/panel/panelState';
@@ -38,7 +38,7 @@ import { normalizeTicker } from '@/features/dashboard/shared/ticker';
 import { useIsMobileViewport } from '@/features/dashboard/shared/useIsMobileViewport';
 import { type Theme } from '@/lib/theme';
 
-const StockDetailsModal = dynamic(() => import('@/features/dashboard/history/StockDetailsModal'), {
+const StockDetailsModal = dynamic(() => import('@/features/dashboard/stock-detail/StockDetailsModal'), {
   ssr: false,
   loading: () => null,
 });

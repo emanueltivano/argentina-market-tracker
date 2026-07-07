@@ -23,3 +23,11 @@ export function jsonNoStoreResponse(
     headers,
   })
 }
+
+export function jsonResponse(
+  body: unknown,
+  init: ResponseInit = {},
+  requestId?: string
+) {
+  return jsonNoStoreResponse(body, init, requestId)
+}
