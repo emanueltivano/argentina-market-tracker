@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { type StockData } from '@/features/dashboard/shared/stockData'
+import { resolveCurrentStockQuote } from './currentStockQuote'
 import {
   getArgentinaMarketStatus,
   mergeLiveQuoteIntoHistoricalSeries,
-  resolveCurrentStockQuote,
   shouldUseLiveCandle,
-  syncHistoryWithCurrentQuote,
-} from './currentStockQuote'
+} from './liveSessionCandle'
+import { syncHistoryWithCurrentQuote } from './historyQuoteSync'
 import { type StockQuoteDetail } from '@/lib/stockQuote'
 
 const snapshot: StockData = {
