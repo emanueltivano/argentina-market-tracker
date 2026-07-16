@@ -10,7 +10,7 @@ import {
 } from '@/lib/server/core/rateLimit'
 
 const FAVORITES_RATE_LIMIT_POLICY: RateLimitPolicy = {
-  namespace: 'favorites',
+  namespace: 'favorites-public',
   limit: 120,
   windowMs: 60_000,
   maxKeys: 1_000,

@@ -66,6 +66,8 @@ async function loadRoute(
   vi.doMock('server-only', () => ({}))
   vi.doMock('@/lib/server/upstream/iol', () => ({
     getQuoteBySymbol,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error && !(error instanceof TypeError),
     IolUpstreamHttpError: class IolUpstreamHttpError extends Error {
       constructor(
         message: string,
@@ -169,7 +171,12 @@ describe('/api/favorites route', () => {
     })
     expect(getQuoteBySymbol).toHaveBeenCalledTimes(1)
     expect(getQuoteBySymbol).toHaveBeenCalledWith('bCBA', 'GGAL', {
+      rateLimitIdentity: {
+        key: 'loopback:localhost',
+        source: 'local-loopback',
+      },
       requestId: body.requestId,
+      route: '/api/favorites',
     })
   })
 

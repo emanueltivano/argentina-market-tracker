@@ -6,8 +6,14 @@ import {
 import {
   getQuoteBySymbol,
   iol,
+  isRecoverableIolUpstreamError,
+  IolTokenFormatError,
   IolTokenUpstreamError,
+  IolUpstreamAbortError,
   IolUpstreamHttpError,
+  IolUpstreamNetworkError,
+  IolUpstreamResponseError,
+  IolUpstreamTimeoutError,
 } from './iol'
 
 const OLD_ENV = process.env
@@ -30,6 +36,88 @@ function setRequiredEnv() {
     NODE_ENV: 'test',
   }
 }
+
+function upstreamHttpError(status: number) {
+  return new IolUpstreamHttpError(`Upstream HTTP ${status}`, status, {
+    statusText: `Status ${status}`,
+    upstreamPath: 'api/v2/bCBA/Titulos/GGAL/Cotizacion',
+  })
+}
+
+function tokenHttpError(status: number) {
+  return new IolTokenUpstreamError(`Token HTTP ${status}`, status, {
+    statusText: `Status ${status}`,
+    upstreamPath: 'token',
+  })
+}
+
+describe('isRecoverableIolUpstreamError', () => {
+  it.each([
+    ['controlled timeout', new IolUpstreamTimeoutError('timed out')],
+    ['recognized network failure', new IolUpstreamNetworkError('offline')],
+    ['typed invalid response', new IolUpstreamResponseError('invalid JSON')],
+    ['invalid token format', new IolTokenFormatError('invalid token')],
+    ['upstream HTTP 429', upstreamHttpError(429)],
+    ['upstream HTTP 500', upstreamHttpError(500)],
+    ['upstream HTTP 503', upstreamHttpError(503)],
+    ['token HTTP 429', tokenHttpError(429)],
+    ['token HTTP 500', tokenHttpError(500)],
+  ])('classifies %s as recoverable', (_label, error) => {
+    expect(isRecoverableIolUpstreamError(error)).toBe(true)
+  })
+
+  it.each([
+    ['external abort', new IolUpstreamAbortError('aborted')],
+    ['HTTP 401', upstreamHttpError(401)],
+    ['HTTP 403', upstreamHttpError(403)],
+    ['HTTP 400', upstreamHttpError(400)],
+    ['HTTP 422', upstreamHttpError(422)],
+    ['token HTTP 401', tokenHttpError(401)],
+    ['token HTTP 403', tokenHttpError(403)],
+    ['TypeError', new TypeError('programming error')],
+    ['ReferenceError', new ReferenceError('programming error')],
+    ['SyntaxError', new SyntaxError('untyped parse error')],
+    ['generic Error', new Error('unknown failure')],
+    ['plain object', { status: 503 }],
+    ['string', 'network failed'],
+    ['null', null],
+    ['undefined', undefined],
+  ])('classifies unknown or persistent %s as non-recoverable', (_label, error) => {
+    expect(isRecoverableIolUpstreamError(error)).toBe(false)
+  })
+
+  it.each([
+    ['upstream', upstreamHttpError(404)],
+    ['token', tokenHttpError(404)],
+  ])(
+    'only classifies %s HTTP 404 as recoverable when allowNotFound is true',
+    (_label, error) => {
+      expect(isRecoverableIolUpstreamError(error)).toBe(false)
+      expect(
+        isRecoverableIolUpstreamError(error, { allowNotFound: false })
+      ).toBe(false)
+      expect(
+        isRecoverableIolUpstreamError(error, { allowNotFound: true })
+      ).toBe(true)
+    }
+  )
+
+  it.each([401, 403, 400, 422])(
+    'does not let allowNotFound change persistent HTTP %s classification',
+    (status) => {
+      expect(
+        isRecoverableIolUpstreamError(upstreamHttpError(status), {
+          allowNotFound: true,
+        })
+      ).toBe(false)
+      expect(
+        isRecoverableIolUpstreamError(tokenHttpError(status), {
+          allowNotFound: true,
+        })
+      ).toBe(false)
+    }
+  )
+})
 
 function getFetchCall(index: number) {
   const fetchMock = vi.mocked(fetch)
@@ -131,7 +219,12 @@ describe('iol server client', () => {
         )
     )
 
-    await expect(getQuoteBySymbol('bCBA', 'GGAL')).resolves.toEqual({
+    await expect(
+      getQuoteBySymbol('bCBA', 'GGAL', {
+        rateLimitIdentity: { key: 'client:test', source: 'local-loopback' },
+        route: '/api/favorites',
+      })
+    ).resolves.toEqual({
       simbolo: 'GGAL',
       descripcion: 'Grupo Financiero Galicia',
     })
@@ -227,9 +320,7 @@ describe('iol server client', () => {
         .mockResolvedValueOnce(textResponse('{invalid json'))
     )
 
-    await expect(iol('/panel')).rejects.toThrow(
-      'IOL response: invalid JSON response'
-    )
+    await expect(iol('/panel')).rejects.toThrow('IOL response was invalid')
   })
 
   it('does not include long upstream error bodies in error messages', async () => {

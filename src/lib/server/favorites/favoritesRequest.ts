@@ -8,10 +8,7 @@ import {
   type FavoriteLookupItem,
 } from '@/lib/favorites'
 import { isStockHistoryMarket } from '@/lib/stockHistory'
-
-function isValidSymbol(value: string): boolean {
-  return /^[A-Z0-9._-]{1,20}$/.test(value)
-}
+import { isStockSymbol } from '@/lib/stockSymbol'
 
 function decodeParamValue(value: string): string | null {
   try {
@@ -82,7 +79,7 @@ export function parseFavoritesRequest(req: NextRequest): ParsedFavoritesRequest 
     const market = marketPart.trim()
     const symbol = normalizeFavoriteSymbol(symbolPart)
 
-    if (!isStockHistoryMarket(market) || !isValidSymbol(symbol)) {
+    if (!isStockHistoryMarket(market) || !isStockSymbol(symbol)) {
       return {
         ok: false,
         error: 'INVALID_ITEMS',

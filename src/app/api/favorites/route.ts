@@ -19,8 +19,13 @@ import {
   recordMetricDuration,
   withRequestIdHeaders,
 } from '@/lib/server/core/observability'
-import { getRetryAfterHeaders, safeCheckRateLimit } from '@/lib/server/core/rateLimit'
+import {
+  getRetryAfterHeaders,
+  resolveRateLimitIdentity,
+  safeCheckRateLimit,
+} from '@/lib/server/core/rateLimit'
 import type { FavoritesErrorCode, FavoritesErrorResponse } from '@/lib/favorites'
+import { QuoteUpstreamBudgetError } from '@/lib/server/quote/protectedQuoteLookup'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -115,6 +120,10 @@ export async function GET(req: NextRequest) {
   }
 
   const rateLimit = rateLimitCheck.rateLimit
+  const rateLimitIdentity = resolveRateLimitIdentity(
+    req.headers,
+    req.nextUrl.hostname
+  )
 
   if (!rateLimit.ok) {
     incrementMetricCounter('api.request.total', 1, {
@@ -144,6 +153,7 @@ export async function GET(req: NextRequest) {
   try {
     const response = await getFavoritesResponse(parsedRequest.items, {
       bypassCache: parsedRequest.bypassCache,
+      rateLimitIdentity,
       requestId,
     })
 
@@ -165,6 +175,34 @@ export async function GET(req: NextRequest) {
     }, requestId)
   } catch (error: unknown) {
     const isProd = ENV.NODE_ENV === 'production'
+
+    if (error instanceof QuoteUpstreamBudgetError) {
+      incrementMetricCounter('api.request.total', 1, {
+        endpoint: '/api/favorites',
+        method: 'GET',
+        outcome: 'rate-limited',
+        source: dataSource,
+        status: error.status,
+      })
+      recordMetricDuration('api.request.duration_ms', Date.now() - startedAt, {
+        endpoint: '/api/favorites',
+        method: 'GET',
+        status: error.status,
+      })
+
+      return favoritesErrorResponse(
+        error.code,
+        {
+          status: error.status,
+          headers: withRequestIdHeaders(
+            { ...rateLimit.headers, ...error.headers },
+            requestId
+          ),
+        },
+        undefined,
+        requestId
+      )
+    }
 
     logServerError('api.favorites.GET', error, {
       requestId,

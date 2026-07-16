@@ -14,6 +14,11 @@ import {
   getOrCreateToken,
 } from './tokenCache'
 import { getQuoteEndpoint } from './quoteEndpoint'
+import {
+  executeProtectedQuoteLookup,
+  type ProtectedQuoteLookupContext,
+} from '@/lib/server/quote/protectedQuoteLookup'
+import type { StockHistoryMarket } from '@/lib/stockHistory'
 
 /**
  * Configuración general
@@ -76,6 +81,34 @@ export class IolTokenFormatError extends Error {
   }
 }
 
+export class IolUpstreamTimeoutError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'IolUpstreamTimeoutError'
+  }
+}
+
+export class IolUpstreamNetworkError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+    this.name = 'IolUpstreamNetworkError'
+  }
+}
+
+export class IolUpstreamResponseError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+    this.name = 'IolUpstreamResponseError'
+  }
+}
+
+export class IolUpstreamAbortError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+    this.name = 'IolUpstreamAbortError'
+  }
+}
+
 export class IolUpstreamHttpError extends Error {
   public readonly category = 'upstream-http'
   public readonly upstreamPath: string
@@ -97,6 +130,33 @@ export class IolUpstreamHttpError extends Error {
     this.upstreamPath = options.upstreamPath
     this.upstreamSummary = options.upstreamSummary
   }
+}
+
+export function isRecoverableIolUpstreamError(
+  error: unknown,
+  options: { allowNotFound?: boolean } = {}
+): boolean {
+  if (
+    error instanceof IolUpstreamTimeoutError ||
+    error instanceof IolUpstreamNetworkError ||
+    error instanceof IolUpstreamResponseError ||
+    error instanceof IolTokenFormatError
+  ) {
+    return true
+  }
+
+  if (
+    error instanceof IolUpstreamHttpError ||
+    error instanceof IolTokenUpstreamError
+  ) {
+    return (
+      (options.allowNotFound === true && error.status === 404) ||
+      error.status === 429 ||
+      error.status >= 500
+    )
+  }
+
+  return false
 }
 
 /**
@@ -144,10 +204,20 @@ async function fetchWithTimeout(
     })
   } catch (error) {
     if (timedOut) {
-      throw new Error(`${label} timed out after ${timeoutMs}ms`)
+      throw new IolUpstreamTimeoutError(
+        `${label} timed out after ${timeoutMs}ms`
+      )
     }
 
-    throw error
+    if (parentSignal?.aborted) {
+      throw new IolUpstreamAbortError(`${label} was aborted`, {
+        cause: error,
+      })
+    }
+
+    throw new IolUpstreamNetworkError(`${label} network request failed`, {
+      cause: error,
+    })
   } finally {
     clearTimeout(timer)
 
@@ -271,11 +341,9 @@ export async function refreshTokenForDebug(): Promise<TokenDebugInfo> {
 }
 
 export async function getQuoteBySymbol<T = unknown>(
-  market: string,
+  market: StockHistoryMarket,
   symbol: string,
-  options: {
-    requestId?: string
-  } = {}
+  context: ProtectedQuoteLookupContext
 ): Promise<T> {
   const endpoint = getQuoteEndpoint(market, symbol)
 
@@ -283,7 +351,7 @@ export async function getQuoteBySymbol<T = unknown>(
     market,
     symbol,
     endpoint,
-    requestId: options.requestId,
+    requestId: context.requestId,
   })
 
   incrementMetricCounter('favorites.upstream.quote_request.total', 1, {
@@ -291,10 +359,15 @@ export async function getQuoteBySymbol<T = unknown>(
   })
 
   try {
-    return await iol<T>(endpoint)
+    return await executeProtectedQuoteLookup({
+      context,
+      market,
+      symbol,
+      lookup: () => iol<T>(endpoint),
+    })
   } catch (error: unknown) {
     logServerWarn('iol.quote.request.failed', {
-      requestId: options.requestId,
+      requestId: context.requestId,
       market,
       symbol,
       endpoint,
@@ -350,7 +423,13 @@ export async function iol<T>(path: string, init: IolRequestInit = {}): Promise<T
     return undefined as T
   }
 
-  return readJson<T>(res, 'IOL response')
+  try {
+    return await readJson<T>(res, 'IOL response')
+  } catch (error: unknown) {
+    throw new IolUpstreamResponseError('IOL response was invalid', {
+      cause: error,
+    })
+  }
 }
 
 /**

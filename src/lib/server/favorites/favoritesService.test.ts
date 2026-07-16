@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const OLD_ENV = process.env
+const TEST_IDENTITY = { key: 'client:test', source: 'local-loopback' } as const
 
 function setRequiredEnv(
   nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = 'test',
@@ -66,6 +67,8 @@ async function loadFavoritesService(
   vi.doMock('server-only', () => ({}))
   vi.doMock('@/lib/server/upstream/iol', () => ({
     getQuoteBySymbol,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error && !(error instanceof TypeError),
     IolUpstreamHttpError: class IolUpstreamHttpError extends Error {
       constructor(
         message: string,
@@ -122,8 +125,9 @@ describe('favoritesService', () => {
         { market: 'bCBA', symbol: 'BMA' },
       ],
       {
-        bypassCache: false,
-        requestId: 'req-12345678',
+      bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
+      requestId: 'req-12345678',
       }
     )
 
@@ -161,8 +165,9 @@ describe('favoritesService', () => {
     const response = await getFavoritesResponse(
       [{ market: 'bCBA', symbol: 'ALUA' }],
       {
-        bypassCache: false,
-        requestId: 'req-12345678',
+      bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
+      requestId: 'req-12345678',
       }
     )
 
@@ -181,6 +186,7 @@ describe('favoritesService', () => {
 
     await getFavoritesResponse(items, {
       bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
       requestId: 'req-12345678',
     })
 
@@ -188,6 +194,7 @@ describe('favoritesService', () => {
 
     const response = await getFavoritesResponse(items, {
       bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
       requestId: 'req-12345678',
     })
 
@@ -202,6 +209,7 @@ describe('favoritesService', () => {
 
     const response = await getFavoritesResponse([], {
       bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
       requestId: 'req-12345678',
     })
 
@@ -221,8 +229,9 @@ describe('favoritesService', () => {
     const response = await getFavoritesResponse(
       [{ market: 'bCBA', symbol: 'DEMOX' }],
       {
-        bypassCache: false,
-        requestId: 'req-12345678',
+      bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
+      requestId: 'req-12345678',
       }
     )
 
@@ -252,8 +261,9 @@ describe('favoritesService', () => {
         { market: 'bCBA', symbol: 'AAPL' },
       ],
       {
-        bypassCache: false,
-        requestId: 'req-12345678',
+      bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
+      requestId: 'req-12345678',
       }
     )
 
@@ -277,13 +287,36 @@ describe('favoritesService', () => {
         { market: 'bCBA', symbol: 'AAPL' },
       ],
       {
-        bypassCache: false,
-        requestId: 'req-12345678',
+      bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
+      requestId: 'req-12345678',
       }
     )
 
     expect(getQuoteBySymbol).toHaveBeenCalledTimes(2)
     expect(response.rows.map((row) => row.simbolo)).toEqual(['GGAL', 'AAPL'])
+  })
+
+  it('propagates a TypeError instead of hiding it with a stale favorite quote', async () => {
+    const programmingFailure = new TypeError('broken favorite invariant')
+    const getQuoteBySymbol = vi
+      .fn()
+      .mockResolvedValueOnce(quoteResponse('GGAL'))
+      .mockRejectedValueOnce(programmingFailure)
+    const { getFavoritesResponse } = await loadFavoritesService(getQuoteBySymbol)
+    const items = [{ market: 'bCBA' as const, symbol: 'GGAL' }]
+    const options = {
+      bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
+      requestId: 'req-12345678',
+    }
+
+    await getFavoritesResponse(items, options)
+    vi.advanceTimersByTime(15_001)
+
+    await expect(getFavoritesResponse(items, options)).rejects.toBe(
+      programmingFailure
+    )
   })
 
   it('records favorites batch metrics with unique count and concurrency limit', async () => {
@@ -308,8 +341,9 @@ describe('favoritesService', () => {
         { market: 'bCBA', symbol: 'AGRO' },
       ],
       {
-        bypassCache: false,
-        requestId: 'req-12345678',
+      bypassCache: false,
+      rateLimitIdentity: TEST_IDENTITY,
+      requestId: 'req-12345678',
       }
     )
 

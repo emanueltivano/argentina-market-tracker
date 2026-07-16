@@ -11,6 +11,7 @@ import {
 } from '@/lib/server/demo/demoMarketData'
 import { ENV } from '@/lib/server/core/env'
 import { getQuoteBySymbol, IolUpstreamHttpError } from '@/lib/server/upstream/iol'
+import { isRecoverableIolUpstreamError } from '@/lib/server/upstream/iol'
 import {
   clearQuoteCacheForTests,
   getCachedQuote,
@@ -24,6 +25,8 @@ import {
   logServerWarn,
 } from '@/lib/server/core/observability'
 import type { StockHistoryMarket } from '@/lib/stockHistory'
+import type { RateLimitIdentity } from '@/lib/server/core/rateLimit'
+import { QuoteUpstreamBudgetError } from '@/lib/server/quote/protectedQuoteLookup'
 
 type FavoriteQuoteResolution =
   | {
@@ -41,6 +44,7 @@ type FavoriteQuoteResolution =
       kind: 'failed'
       itemKey: string
       reason: string
+      error: unknown
     }
 
 export class FavoritesLookupBatchError extends Error {
@@ -95,10 +99,17 @@ async function mapWithConcurrency<TInput, TOutput>(
 async function fetchLiveQuote(
   market: StockHistoryMarket,
   symbol: string,
-  requestId?: string
+  options: {
+    rateLimitIdentity: RateLimitIdentity
+    requestId?: string
+  }
 ) {
   const fetchedAt = new Date().toISOString()
-  const data = await getQuoteBySymbol(market, symbol, { requestId })
+  const data = await getQuoteBySymbol(market, symbol, {
+    rateLimitIdentity: options.rateLimitIdentity,
+    requestId: options.requestId,
+    route: '/api/favorites',
+  })
   const row = normalizeQuoteData(data, { symbol })
 
   const value = {
@@ -115,6 +126,7 @@ async function getQuoteRow(
   symbol: string,
   options: {
     bypassCache: boolean
+    rateLimitIdentity: RateLimitIdentity
     requestId?: string
   }
 ): Promise<FavoriteQuoteResolution> {
@@ -153,7 +165,7 @@ async function getQuoteRow(
 
   try {
     const value = await getOrCreateInFlightQuoteRequest(market, symbol, () =>
-      fetchLiveQuote(market, symbol, options.requestId)
+      fetchLiveQuote(market, symbol, options)
     )
 
     return {
@@ -165,8 +177,11 @@ async function getQuoteRow(
     }
   } catch (error: unknown) {
     const stale = getStaleQuote(market, symbol)
+    const recoverable =
+      error instanceof QuoteUpstreamBudgetError ||
+      isRecoverableIolUpstreamError(error, { allowNotFound: true })
 
-    if (stale) {
+    if (stale && recoverable) {
       logServerWarn('favorites.quote.stale-fallback', {
         requestId: options.requestId,
         market,
@@ -181,6 +196,10 @@ async function getQuoteRow(
         fetchedAt: stale.fetchedAt,
         stale: true,
       }
+    }
+
+    if (!(error instanceof IolUpstreamHttpError) && !recoverable) {
+      throw error
     }
 
     if (
@@ -212,6 +231,7 @@ async function getQuoteRow(
       kind: 'failed',
       itemKey,
       reason: getSafeErrorDetails(error) ?? 'unknown',
+      error,
     }
   }
 }
@@ -220,33 +240,18 @@ async function resolveQuoteRow(
   item: FavoriteLookupItem,
   options: {
     bypassCache: boolean
+    rateLimitIdentity: RateLimitIdentity
     requestId?: string
   }
 ): Promise<FavoriteQuoteResolution> {
-  try {
-    return await getQuoteRow(item.market, item.symbol, options)
-  } catch (error: unknown) {
-    const itemKey = buildFavoriteLookupKey(item)
-
-    logServerWarn('favorites.quote.lookup.unhandled', {
-      requestId: options.requestId,
-      market: item.market,
-      symbol: item.symbol,
-      reason: getSafeErrorDetails(error),
-    })
-
-    return {
-      kind: 'failed',
-      itemKey,
-      reason: getSafeErrorDetails(error) ?? 'unknown',
-    }
-  }
+  return getQuoteRow(item.market, item.symbol, options)
 }
 
 export async function getFavoritesResponse(
   items: FavoriteLookupItem[],
   options: {
     bypassCache: boolean
+    rateLimitIdentity: RateLimitIdentity
     requestId?: string
   }
 ): Promise<FavoritesSuccessResponse> {
@@ -258,6 +263,7 @@ export async function getFavoritesResponse(
     (item) =>
       resolveQuoteRow(item, {
         bypassCache: options.bypassCache,
+        rateLimitIdentity: options.rateLimitIdentity,
         requestId: options.requestId,
       })
   )
@@ -265,6 +271,7 @@ export async function getFavoritesResponse(
   const rows: PanelTitulo[] = []
   const missingItems: string[] = []
   const failedItems: string[] = []
+  const failedErrors: unknown[] = []
   const servedAt = new Date().toISOString()
   let latestFetchedAt: string | undefined
   let stale = false
@@ -287,6 +294,7 @@ export async function getFavoritesResponse(
     }
 
     failedItems.push(result.itemKey)
+    failedErrors.push(result.error)
   }
 
   incrementMetricCounter('favorites.batch.total', 1, {
@@ -298,6 +306,22 @@ export async function getFavoritesResponse(
   })
 
   if (rows.length === 0 && failedItems.length > 0) {
+    const budgetError = failedErrors.find(
+      (error): error is QuoteUpstreamBudgetError =>
+        error instanceof QuoteUpstreamBudgetError
+    )
+
+    if (
+      budgetError &&
+      failedErrors.every(
+        (error) =>
+          error instanceof QuoteUpstreamBudgetError &&
+          error.code === budgetError.code
+      )
+    ) {
+      throw budgetError
+    }
+
     throw new FavoritesLookupBatchError(
       `Favorites quote lookup failed for: ${failedItems.join(', ')}`,
       failedItems,
