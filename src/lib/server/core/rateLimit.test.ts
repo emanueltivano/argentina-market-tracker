@@ -153,7 +153,60 @@ describe('rateLimit infrastructure', () => {
       'bucket',
       120000,
     ])
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(false)
   })
+
+  it('turns a Redis REST timeout into a controlled unavailable result', async () => {
+    process.env = {
+      ...OLD_ENV,
+      NODE_ENV: 'production',
+      RATE_LIMIT_REDIS_TIMEOUT_MS: '2000',
+      RATE_LIMIT_STORE: 'redis-rest',
+      RATE_LIMIT_REDIS_REST_URL: 'https://redis.example.test',
+      RATE_LIMIT_REDIS_REST_TOKEN: 'secret-token',
+    }
+    vi.doMock('server-only', () => ({}))
+    const fetchMock = vi.fn(
+      (_url: string, init: RequestInit = {}) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener(
+            'abort',
+            () => reject(init.signal?.reason),
+            { once: true }
+          )
+        })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const {
+      checkRateLimitForIdentity,
+      safeCheckRateLimit,
+    } = await import('./rateLimit')
+
+    const result = await safeCheckRateLimit(
+      () =>
+        checkRateLimitForIdentity(
+          { key: 'global', source: 'global-fallback' },
+          { namespace: 'test', limit: 1, windowMs: 60_000 },
+          'default'
+        ),
+      { requestId: 'req-12345678', route: '/api/test' }
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'RATE_LIMIT_UNAVAILABLE',
+      retryAfterSec: 5,
+      status: 503,
+    })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(JSON.stringify(consoleWarn.mock.calls)).toContain('timeout')
+    expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain('secret-token')
+    expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(
+      'https://redis.example.test'
+    )
+  }, 5_000)
 
   it('returns a controlled unavailable result when the store check throws', async () => {
     process.env = {

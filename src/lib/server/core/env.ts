@@ -4,6 +4,16 @@ export type MarketDataSource = 'demo' | 'live'
 const DEFAULT_FAVORITES_QUOTE_CONCURRENCY = 4
 const MIN_FAVORITES_QUOTE_CONCURRENCY = 1
 const MAX_FAVORITES_QUOTE_CONCURRENCY = 10
+const DEFAULT_RATE_LIMIT_REDIS_TIMEOUT_MS = 3_000
+const MIN_RATE_LIMIT_REDIS_TIMEOUT_MS = 2_000
+const MAX_RATE_LIMIT_REDIS_TIMEOUT_MS = 5_000
+const DEFAULT_STOCK_QUOTE_NOT_FOUND_TTL_MS = 30_000
+const MIN_STOCK_QUOTE_NOT_FOUND_TTL_MS = 1_000
+const MAX_STOCK_QUOTE_NOT_FOUND_TTL_MS = 5 * 60_000
+const DEFAULT_PANEL_CACHE_FRESH_TTL_MS = 30_000
+const DEFAULT_PANEL_CACHE_STALE_TTL_MS = 2 * 60_000
+const DEFAULT_STOCK_QUOTE_FRESH_TTL_MS = 15_000
+const DEFAULT_STOCK_QUOTE_STALE_TTL_MS = 2 * 60_000
 const LIVE_ENV_KEYS = [
   'API_URL',
   'API_USERNAME',
@@ -70,6 +80,82 @@ function getBoundedIntegerEnv(
   }
 
   return parsed
+}
+
+function getStrictBoundedIntegerEnv(
+  name: string,
+  defaultValue: number,
+  options: {
+    min: number
+    max: number
+  }
+): number {
+  const rawValue = optionalTrimmed(name)
+
+  if (!/^\d+$/.test(rawValue)) {
+    return defaultValue
+  }
+
+  return getBoundedIntegerEnv(name, defaultValue, options)
+}
+
+function getFreshStaleTtls(options: {
+  fresh: { defaultValue: number; max: number; min: number; name: string }
+  stale: { defaultValue: number; max: number; min: number; name: string }
+}) {
+  const freshTtlMs = getStrictBoundedIntegerEnv(
+    options.fresh.name,
+    options.fresh.defaultValue,
+    options.fresh
+  )
+  const staleTtlMs = getStrictBoundedIntegerEnv(
+    options.stale.name,
+    options.stale.defaultValue,
+    options.stale
+  )
+
+  if (freshTtlMs >= staleTtlMs) {
+    return {
+      freshTtlMs: options.fresh.defaultValue,
+      staleTtlMs: options.stale.defaultValue,
+    }
+  }
+
+  return { freshTtlMs, staleTtlMs }
+}
+
+function getPanelCacheTtls() {
+  return getFreshStaleTtls({
+    fresh: {
+      defaultValue: DEFAULT_PANEL_CACHE_FRESH_TTL_MS,
+      min: 1_000,
+      max: 5 * 60_000,
+      name: 'PANEL_CACHE_FRESH_TTL_MS',
+    },
+    stale: {
+      defaultValue: DEFAULT_PANEL_CACHE_STALE_TTL_MS,
+      min: 5_000,
+      max: 15 * 60_000,
+      name: 'PANEL_CACHE_STALE_TTL_MS',
+    },
+  })
+}
+
+function getStockQuoteCacheTtls() {
+  return getFreshStaleTtls({
+    fresh: {
+      defaultValue: DEFAULT_STOCK_QUOTE_FRESH_TTL_MS,
+      min: 1_000,
+      max: 60_000,
+      name: 'STOCK_QUOTE_FRESH_TTL_MS',
+    },
+    stale: {
+      defaultValue: DEFAULT_STOCK_QUOTE_STALE_TTL_MS,
+      min: 5_000,
+      max: 10 * 60_000,
+      name: 'STOCK_QUOTE_STALE_TTL_MS',
+    },
+  })
 }
 
 export function getRuntimeEnvSummary() {
@@ -151,6 +237,17 @@ export const ENV = {
     return process.env.RATE_LIMIT_REDIS_REST_TOKEN ?? ''
   },
 
+  get RATE_LIMIT_REDIS_TIMEOUT_MS() {
+    return getStrictBoundedIntegerEnv(
+      'RATE_LIMIT_REDIS_TIMEOUT_MS',
+      DEFAULT_RATE_LIMIT_REDIS_TIMEOUT_MS,
+      {
+        min: MIN_RATE_LIMIT_REDIS_TIMEOUT_MS,
+        max: MAX_RATE_LIMIT_REDIS_TIMEOUT_MS,
+      }
+    )
+  },
+
   get RATE_LIMIT_TRUSTED_PROXY() {
     return process.env.RATE_LIMIT_TRUSTED_PROXY ?? ''
   },
@@ -170,6 +267,33 @@ export const ENV = {
       {
         min: MIN_FAVORITES_QUOTE_CONCURRENCY,
         max: MAX_FAVORITES_QUOTE_CONCURRENCY,
+      }
+    )
+  },
+
+  get PANEL_CACHE_FRESH_TTL_MS() {
+    return getPanelCacheTtls().freshTtlMs
+  },
+
+  get PANEL_CACHE_STALE_TTL_MS() {
+    return getPanelCacheTtls().staleTtlMs
+  },
+
+  get STOCK_QUOTE_FRESH_TTL_MS() {
+    return getStockQuoteCacheTtls().freshTtlMs
+  },
+
+  get STOCK_QUOTE_STALE_TTL_MS() {
+    return getStockQuoteCacheTtls().staleTtlMs
+  },
+
+  get STOCK_QUOTE_NOT_FOUND_TTL_MS() {
+    return getStrictBoundedIntegerEnv(
+      'STOCK_QUOTE_NOT_FOUND_TTL_MS',
+      DEFAULT_STOCK_QUOTE_NOT_FOUND_TTL_MS,
+      {
+        min: MIN_STOCK_QUOTE_NOT_FOUND_TTL_MS,
+        max: MAX_STOCK_QUOTE_NOT_FOUND_TTL_MS,
       }
     )
   },

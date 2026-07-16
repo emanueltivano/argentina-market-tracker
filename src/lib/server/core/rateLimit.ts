@@ -11,6 +11,7 @@ const RATE_LIMIT_HEADER_RESET = 'X-RateLimit-Reset'
 const RATE_LIMIT_NAMESPACE_PREFIX = 'ratelimit'
 const REDIS_KEY_TTL_MULTIPLIER = 2
 const RATE_LIMIT_UNAVAILABLE_RETRY_AFTER_SEC = 5
+const RATE_LIMIT_READINESS_CACHE_TTL_MS = 5_000
 const REDIS_FIXED_WINDOW_INCREMENT_SCRIPT = `
 local count = redis.call("INCR", KEYS[1])
 if count == 1 then
@@ -42,6 +43,11 @@ type ClientKeySource =
   | 'trusted-proxy-ip'
   | 'local-loopback'
   | 'global-fallback'
+
+export type RateLimitIdentity = {
+  key: string
+  source: ClientKeySource
+}
 
 type RateLimitWindowState = {
   count: number
@@ -103,8 +109,45 @@ type UpstashCommandResult<T> = {
   result?: T
 }
 
+type RedisRestFailureReason =
+  | 'timeout'
+  | 'network-error'
+  | 'http-error'
+  | 'invalid-response'
+
+class RedisRestRateLimitError extends Error {
+  constructor(
+    message: string,
+    public readonly reason: RedisRestFailureReason
+  ) {
+    super(message)
+    this.name = 'RedisRestRateLimitError'
+  }
+}
+
 let storeSingleton: RateLimitStore | null = null
+let readinessProbeCache: {
+  expiresAt: number
+  result: RateLimitStoreReadiness
+} | null = null
+let readinessProbeInFlight: Promise<RateLimitStoreReadiness> | null = null
 const warnedMessages = new Set<string>()
+
+export type RateLimitStoreReadinessStatus =
+  | 'available'
+  | 'unavailable'
+  | 'timeout'
+  | 'invalid-response'
+  | 'not-configured'
+  | 'invalid-configuration'
+  | 'not-required'
+
+export type RateLimitStoreReadiness = {
+  checkedAt: string | null
+  latencyMs: number | null
+  required: boolean
+  status: RateLimitStoreReadinessStatus
+}
 
 function warnOnce(message: string) {
   if (warnedMessages.has(message)) {
@@ -249,16 +292,16 @@ function isLoopbackHostname(hostname: string): boolean {
   )
 }
 
-function resolveClientKey(req: NextRequest): {
-  key: string
-  source: ClientKeySource
-} {
+export function resolveRateLimitIdentity(
+  headers: Pick<Headers, 'get'>,
+  hostname = ''
+): RateLimitIdentity {
   const proxyTrustMode = getProxyTrustMode()
 
   if (proxyTrustMode === 'vercel') {
     const trustedIp =
-      normalizeHeaderIp(req.headers.get('x-forwarded-for')) ??
-      normalizeHeaderIp(req.headers.get('x-real-ip'))
+      normalizeHeaderIp(headers.get('x-forwarded-for')) ??
+      normalizeHeaderIp(headers.get('x-real-ip'))
 
     if (trustedIp) {
       return {
@@ -272,9 +315,9 @@ function resolveClientKey(req: NextRequest): {
     )
   }
 
-  if (!isProductionLikeEnvironment() && isLoopbackHostname(req.nextUrl.hostname)) {
+  if (!isProductionLikeEnvironment() && isLoopbackHostname(hostname)) {
     return {
-      key: `loopback:${req.nextUrl.hostname}`,
+      key: `loopback:${hostname}`,
       source: 'local-loopback',
     }
   }
@@ -289,6 +332,10 @@ function resolveClientKey(req: NextRequest): {
     key: 'global',
     source: 'global-fallback',
   }
+}
+
+function resolveClientKey(req: NextRequest): RateLimitIdentity {
+  return resolveRateLimitIdentity(req.headers, req.nextUrl.hostname)
 }
 
 function createMemoryRateLimitStore(): RateLimitStore {
@@ -344,27 +391,207 @@ async function runRedisRestCommand<T>(
   token: string,
   command: (string | number)[]
 ): Promise<T> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(command),
-    cache: 'no-store',
-  })
+  const signal = AbortSignal.timeout(ENV.RATE_LIMIT_REDIS_TIMEOUT_MS)
+  let response: Response
 
-  if (!response.ok) {
-    throw new Error(`Redis REST request failed with status ${response.status}`)
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(command),
+      cache: 'no-store',
+      signal,
+    })
+  } catch (error: unknown) {
+    const isTimeout =
+      signal.aborted ||
+      (error instanceof DOMException && error.name === 'TimeoutError')
+
+    throw new RedisRestRateLimitError(
+      isTimeout
+        ? 'Redis REST request timed out'
+        : 'Redis REST network request failed',
+      isTimeout ? 'timeout' : 'network-error'
+    )
   }
 
-  const json = (await response.json()) as UpstashCommandResult<T>
+  if (!response.ok) {
+    throw new RedisRestRateLimitError(
+      `Redis REST request failed with status ${response.status}`,
+      'http-error'
+    )
+  }
+
+  let json: UpstashCommandResult<T>
+
+  try {
+    json = (await response.json()) as UpstashCommandResult<T>
+  } catch {
+    throw new RedisRestRateLimitError(
+      'Redis REST returned an invalid JSON response',
+      'invalid-response'
+    )
+  }
 
   if (json.error) {
-    throw new Error(`Redis REST command failed: ${json.error}`)
+    throw new RedisRestRateLimitError(
+      'Redis REST command returned an error',
+      'invalid-response'
+    )
   }
 
   return json.result as T
+}
+
+function getRedisReadinessConfig():
+  | { required: false }
+  | { required: true; status: 'invalid-configuration' | 'not-configured' }
+  | { required: true; token: string; url: string } {
+  const configuredMode = process.env.RATE_LIMIT_STORE?.trim() || 'auto'
+  const url = process.env.RATE_LIMIT_REDIS_REST_URL?.trim() ?? ''
+  const token = process.env.RATE_LIMIT_REDIS_REST_TOKEN?.trim() ?? ''
+
+  if (configuredMode === 'memory') {
+    return { required: false }
+  }
+
+  if (configuredMode !== 'auto' && configuredMode !== 'redis-rest') {
+    return { required: true, status: 'invalid-configuration' }
+  }
+
+  if (configuredMode === 'auto' && !url && !token) {
+    return { required: false }
+  }
+
+  if (!url || !token) {
+    return {
+      required: true,
+      status:
+        configuredMode === 'redis-rest'
+          ? 'not-configured'
+          : 'invalid-configuration',
+    }
+  }
+
+  try {
+    const parsedUrl = new URL(url)
+
+    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+      return { required: true, status: 'invalid-configuration' }
+    }
+  } catch {
+    return { required: true, status: 'invalid-configuration' }
+  }
+
+  return { required: true, token, url }
+}
+
+function classifyReadinessFailure(
+  error: unknown
+): Extract<
+  RateLimitStoreReadinessStatus,
+  'invalid-response' | 'timeout' | 'unavailable'
+> {
+  if (!(error instanceof RedisRestRateLimitError)) {
+    return 'unavailable'
+  }
+
+  if (error.reason === 'timeout') {
+    return 'timeout'
+  }
+
+  if (error.reason === 'invalid-response') {
+    return 'invalid-response'
+  }
+
+  return 'unavailable'
+}
+
+async function executeRedisReadinessProbe(config: {
+  token: string
+  url: string
+}): Promise<RateLimitStoreReadiness> {
+  const startedAt = Date.now()
+  const checkedAt = new Date(startedAt).toISOString()
+
+  try {
+    const result = await runRedisRestCommand<unknown>(config.url, config.token, [
+      'PING',
+    ])
+
+    if (result !== 'PONG') {
+      throw new RedisRestRateLimitError(
+        'Redis REST PING returned an invalid result',
+        'invalid-response'
+      )
+    }
+
+    return {
+      checkedAt,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      required: true,
+      status: 'available',
+    }
+  } catch (error: unknown) {
+    return {
+      checkedAt,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      required: true,
+      status: classifyReadinessFailure(error),
+    }
+  }
+}
+
+export function getRateLimitStoreReadiness(): Promise<RateLimitStoreReadiness> {
+  const config = getRedisReadinessConfig()
+
+  if (!config.required) {
+    return Promise.resolve({
+      checkedAt: null,
+      latencyMs: null,
+      required: false,
+      status: 'not-required',
+    })
+  }
+
+  if ('status' in config) {
+    return Promise.resolve({
+      checkedAt: null,
+      latencyMs: null,
+      required: true,
+      status: config.status,
+    })
+  }
+
+  const now = Date.now()
+
+  if (readinessProbeCache && now < readinessProbeCache.expiresAt) {
+    return Promise.resolve(readinessProbeCache.result)
+  }
+
+  if (readinessProbeInFlight) {
+    return readinessProbeInFlight
+  }
+
+  const probe = executeRedisReadinessProbe(config).then((result) => {
+    readinessProbeCache = {
+      expiresAt: Date.now() + RATE_LIMIT_READINESS_CACHE_TTL_MS,
+      result,
+    }
+    return result
+  })
+
+  const probeWithCleanup = probe.finally(() => {
+    if (readinessProbeInFlight === probeWithCleanup) {
+      readinessProbeInFlight = null
+    }
+  })
+  readinessProbeInFlight = probeWithCleanup
+
+  return probeWithCleanup
 }
 
 function createRedisRestRateLimitStore(config: {
@@ -385,7 +612,10 @@ function createRedisRestRateLimitStore(config: {
       )
 
       if (!Number.isFinite(count)) {
-        throw new Error('Redis REST EVAL returned a non-numeric value')
+        throw new RedisRestRateLimitError(
+          'Redis REST EVAL returned an invalid result',
+          'invalid-response'
+        )
       }
 
       return { count }
@@ -430,10 +660,18 @@ export function checkRateLimit(
   policy: RateLimitPolicy,
   scope: string
 ): MaybePromise<RateLimitCheckResult> {
+  return checkRateLimitWithIdentity(resolveClientKey(req), policy, scope)
+}
+
+function checkRateLimitWithIdentity(
+  identity: RateLimitIdentity,
+  policy: RateLimitPolicy,
+  scope: string
+): MaybePromise<RateLimitCheckResult> {
   const now = Date.now()
   const windowId = Math.floor(now / policy.windowMs)
   const resetAt = (windowId + 1) * policy.windowMs
-  const { key: clientKey, source: clientKeySource } = resolveClientKey(req)
+  const { key: clientKey, source: clientKeySource } = identity
   const bucketKey = [
     RATE_LIMIT_NAMESPACE_PREFIX,
     policy.namespace,
@@ -478,6 +716,14 @@ export function checkRateLimit(
   return isPromiseLike(state) ? state.then(finalizeState) : finalizeState(state)
 }
 
+export function checkRateLimitForIdentity(
+  identity: RateLimitIdentity,
+  policy: RateLimitPolicy,
+  scope: string
+): MaybePromise<RateLimitCheckResult> {
+  return checkRateLimitWithIdentity(identity, policy, scope)
+}
+
 function classifyRateLimitFailure(error: unknown): RateLimitFailureCode {
   if (
     error instanceof Error &&
@@ -492,7 +738,7 @@ function classifyRateLimitFailure(error: unknown): RateLimitFailureCode {
 export async function safeCheckRateLimit(
   check: () => MaybePromise<RateLimitCheckResult>,
   context: {
-    requestId: string
+    requestId?: string
     route: string
   }
 ): Promise<SafeRateLimitCheckResult> {
@@ -512,16 +758,20 @@ export async function safeCheckRateLimit(
         ? configuredStore
         : 'auto'
     const failureCode = classifyRateLimitFailure(error)
+    const failureReason =
+      error instanceof RedisRestRateLimitError ? error.reason : 'unknown'
 
     logServerWarn('rate_limit.unavailable', {
       requestId: context.requestId,
       route: context.route,
       store,
       failureCode,
+      failureReason,
       error,
     })
     incrementMetricCounter('rate_limit.unavailable.total', 1, {
       failureCode,
+      failureReason,
       route: context.route,
       store,
     })
@@ -545,6 +795,8 @@ export function getRetryAfterHeaders(result: RateLimitCheckResult) {
 export function clearRateLimitStateForTests() {
   storeSingleton?.reset()
   storeSingleton = null
+  readinessProbeCache = null
+  readinessProbeInFlight = null
   warnedMessages.clear()
 }
 
