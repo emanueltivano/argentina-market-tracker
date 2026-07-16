@@ -1360,6 +1360,11 @@ dialog.stock-details-dialog .stock-details-close {
   padding: 1.5rem;
 }
 
+.panel-freshness-inline[data-stale='true'] {
+  color: var(--warning-text);
+  font-weight: 750;
+}
+
 .stock-detail-quote-notice {
   display: flex;
   flex-wrap: wrap;
@@ -1375,11 +1380,6 @@ dialog.stock-details-dialog .stock-details-close {
 
 .stock-detail-quote-notice p {
   margin: 0;
-}
-
-.panel-freshness-inline[data-stale='true'] {
-  color: var(--warning-text);
-  font-weight: 750;
 }
 
 .stock-detail-back-link {
@@ -2423,6 +2423,23 @@ dialog.stock-details-dialog .stock-details-close {
   color: var(--text-color);
   font-size: clamp(2rem, 5vw, 4rem);
   font-weight: 900;
+}
+
+.about-hero .about-intro {
+  max-width: 54rem;
+  margin: 0.65rem 0 0;
+  color: var(--muted-text);
+  font-size: 1rem;
+}
+
+.about-actions {
+  justify-content: flex-start;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.about-actions .about-repository-link {
+  margin-top: 0;
 }
 
 .about-hero p:last-child {

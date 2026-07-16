@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 
 type GlobalErrorPageProps = {
   error: Error & { digest?: string }
@@ -23,20 +24,23 @@ export default function GlobalErrorPage({
       <body className="about-page">
         <div className="about-shell">
           <section className="about-section" aria-labelledby="global-error-heading">
-            <p className="about-eyebrow">Application error</p>
-            <h1 id="global-error-heading">The application could not render.</h1>
+            <p className="about-eyebrow">Error de la aplicación</p>
+            <h1 id="global-error-heading">No pudimos mostrar la aplicación.</h1>
             <p>
-              Try loading the dashboard again. Sensitive internal details remain
-              hidden from this screen.
+              El problema puede ser temporal. Intentá nuevamente o volvé al
+              inicio para continuar.
             </p>
             <div className="panel-actions">
               <button
                 type="button"
-                className="theme-toggle-button"
+                className="ui-button ui-button-primary"
                 onClick={() => reset()}
               >
-                Retry
+                Intentar nuevamente
               </button>
+              <Link className="ui-button ui-button-secondary" href="/">
+                Volver al inicio
+              </Link>
             </div>
           </section>
         </div>

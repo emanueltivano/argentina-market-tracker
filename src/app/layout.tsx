@@ -2,25 +2,18 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { cookies } from 'next/headers'
 import { THEME_COOKIE_NAME, isTheme } from '@/lib/theme'
+import {
+  getAbsoluteSiteUrl,
+  getPublicSiteUrl,
+} from '@/lib/server/publicSiteUrl'
 import './globals.css'
 
-function getPublicSiteUrl() {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined) ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
-  )
-}
-
-const siteUrl =
-  getPublicSiteUrl() ||
-  (process.env.NODE_ENV !== 'production' ? 'http://localhost:3000' : undefined)
-const socialImageUrl = siteUrl ? new URL('/og-image.svg', siteUrl).toString() : undefined
+const siteUrl = getPublicSiteUrl()
+const socialImageUrl = getAbsoluteSiteUrl('/og-image.png')
 
 export const metadata: Metadata = {
-  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
+  metadataBase: new URL(siteUrl),
+  applicationName: 'Argentina Market Tracker',
   title: {
     default: 'Argentina Market Tracker',
     template: '%s | Argentina Market Tracker',
@@ -41,31 +34,32 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Emanuel Tivano' }],
   creator: 'Emanuel Tivano',
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     title: 'Argentina Market Tracker',
     description:
       'Dashboard full-stack production-oriented con demo pública, BFF interno, contratos validados e integración live configurable.',
     type: 'website',
     locale: 'es_AR',
-    ...(socialImageUrl
-      ? {
-          images: [
-            {
-              url: socialImageUrl,
-              width: 1200,
-              height: 630,
-              alt: 'Argentina Market Tracker dashboard preview',
-            },
-          ],
-        }
-      : {}),
+    siteName: 'Argentina Market Tracker',
+    url: siteUrl,
+    images: [
+      {
+        url: socialImageUrl,
+        width: 1200,
+        height: 630,
+        alt: 'Argentina Market Tracker dashboard preview',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Argentina Market Tracker',
     description:
       'Dashboard de mercado argentino con demo pública, BFF seguro, contratos validados, histórico y tests.',
-    ...(socialImageUrl ? { images: [socialImageUrl] } : {}),
+    images: [socialImageUrl],
   },
   robots: {
     index: true,
