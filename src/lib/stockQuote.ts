@@ -3,12 +3,20 @@ import {
   isStockHistoryMarket,
   type StockHistoryMarket,
 } from '@/lib/stockHistory'
+import { isValidFreshnessContract } from '@/lib/freshness'
 
 export interface StockQuoteDepthLevel {
   buyQuantity: number | null
   buyPrice: number | null
   sellPrice: number | null
   sellQuantity: number | null
+}
+
+export class StockQuoteNormalizationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'StockQuoteNormalizationError'
+  }
 }
 
 export interface StockQuoteDetail {
@@ -40,6 +48,10 @@ export interface StockQuoteSuccessResponse {
   data: StockQuoteDetail
   fetchedAt: string
   servedAt: string
+  staleUntil: string
+  cacheStatus: 'fresh' | 'memory-cache' | 'stale'
+  stale: boolean
+  degradationReason?: 'upstream-unavailable'
   source: 'demo' | 'live'
   market: StockHistoryMarket
   symbol: string
@@ -50,6 +62,8 @@ export const STOCK_QUOTE_ERROR_CODES = [
   'QUOTE_NOT_FOUND',
   'INVALID_SYMBOL',
   'INVALID_MARKET',
+  'RATE_LIMITED',
+  'RATE_LIMIT_UNAVAILABLE',
   'METHOD_NOT_ALLOWED',
 ] as const
 
@@ -65,6 +79,16 @@ export interface StockQuoteErrorResponse {
 export type StockQuoteResponse =
   | StockQuoteSuccessResponse
   | StockQuoteErrorResponse
+
+export type StockQuoteInitialLoadState =
+  | { status: 'available' }
+  | { status: 'not-found' }
+  | {
+      status: 'rate-limited' | 'rate-limit-unavailable'
+      retryAfterSec: number
+    }
+  | { status: 'upstream-unavailable' }
+  | { status: 'no-initial-data' }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -113,14 +137,18 @@ export function normalizeStockQuoteDetail(
   fallbackSymbol = ''
 ): StockQuoteDetail {
   if (!isRecord(value)) {
-    throw new Error('Invalid upstream quote detail payload structure')
+    throw new StockQuoteNormalizationError(
+      'Invalid upstream quote detail payload structure'
+    )
   }
 
   const price = finiteNumber(value.ultimoPrecio)
   const symbol = optionalString(value.simbolo) ?? fallbackSymbol.trim().toUpperCase()
 
   if (price === null || price <= 0 || !symbol) {
-    throw new Error('Upstream quote detail payload contains no valid quote')
+    throw new StockQuoteNormalizationError(
+      'Upstream quote detail payload contains no valid quote'
+    )
   }
 
   const depth = Array.isArray(value.puntas)
@@ -220,8 +248,7 @@ export function isStockQuoteSuccessResponse(
     isRecord(value) &&
     value.ok === true &&
     isStockQuoteDetail(value.data) &&
-    typeof value.fetchedAt === 'string' &&
-    typeof value.servedAt === 'string' &&
+    isValidFreshnessContract(value) &&
     (value.source === 'demo' || value.source === 'live') &&
     isStockHistoryMarket(
       typeof value.market === 'string' ? value.market : null

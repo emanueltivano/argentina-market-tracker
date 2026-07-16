@@ -647,7 +647,12 @@ test.describe('dashboard', () => {
 
     await expect(page.getByRole('dialog', { name: 'GGAL' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'GGAL' })).toBeVisible()
-    await expect(page.getByText('Grupo Financiero Galicia')).toBeVisible()
+    await expect(
+      page.getByRole('heading', {
+        name: 'Grupo Financiero Galicia',
+        exact: true,
+      })
+    ).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Quitar GGAL de favoritos' })
     ).toBeVisible()
@@ -662,24 +667,23 @@ test.describe('dashboard', () => {
     await expect(desktopTable).toBeHidden()
     await expect(mobileDepth.getByText('Compra')).toBeVisible()
     await expect(mobileDepth.getByText('Venta')).toBeVisible()
-    await expect(mobileDepth.getByText('$ 4.195,00')).toBeVisible()
-    await expect(mobileDepth.getByText('$ 4.205,00')).toBeVisible()
-    await expect(mobileDepth.getByText('Cantidad: 100')).toBeVisible()
-    await expect(mobileDepth.getByText('Cantidad: 120')).toBeVisible()
+    await expect(mobileDepth.getByText('$ 9.480,00')).toBeVisible()
+    await expect(mobileDepth.getByText('$ 9.548,00')).toBeVisible()
+    await expect(mobileDepth.getByText('Cantidad: 2.400')).toBeVisible()
+    await expect(mobileDepth.getByText('Cantidad: 1.800')).toBeVisible()
     await expect(
-      mobileDepth.getByLabel('Precio compra: $ 4.195,00')
+      mobileDepth.getByLabel('Precio compra: $ 9.480,00')
     ).toBeVisible()
-    await expect(mobileDepth.getByLabel('Cantidad compra: 100')).toBeVisible()
+    await expect(mobileDepth.getByLabel('Cantidad compra: 2.400')).toBeVisible()
     await expect(
-      mobileDepth.getByLabel('Precio venta: $ 4.205,00')
+      mobileDepth.getByLabel('Precio venta: $ 9.548,00')
     ).toBeVisible()
-    await expect(mobileDepth.getByLabel('Cantidad venta: 120')).toBeVisible()
+    await expect(mobileDepth.getByLabel('Cantidad venta: 1.800')).toBeVisible()
     await expect(mobileDepth).not.toContainText('Precio compra')
     await expect(mobileDepth).not.toContainText('Precio venta')
     await expect(mobileDepth).not.toContainText('...')
-    await expect
-      .poll(() => quoteRequests.some((request) => request.symbol === 'GGAL'))
-      .toBe(true)
+    expect(quoteRequests).toEqual([])
+    expect(requests).toEqual([{ type: 'lider', refresh: null }])
   })
 
   test('loads stock history in the modal and changes range with the expected request', async ({

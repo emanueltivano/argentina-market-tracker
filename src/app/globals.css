@@ -1360,6 +1360,23 @@ dialog.stock-details-dialog .stock-details-close {
   padding: 1.5rem;
 }
 
+.stock-detail-quote-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: var(--stock-detail-section-gap);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--warning-border);
+  border-radius: 0.75rem;
+  background: var(--warning-surface-bg);
+}
+
+.stock-detail-quote-notice p {
+  margin: 0;
+}
+
 .stock-detail-back-link {
   min-height: 2.25rem;
   margin-bottom: 1rem;

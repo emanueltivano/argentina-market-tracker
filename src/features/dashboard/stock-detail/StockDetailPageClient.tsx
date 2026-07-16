@@ -2,23 +2,11 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import useSWR from 'swr'
-import {
-  MARKET_DATA_PANEL_KEYS,
-  buildMarketPanelApiPath,
-  type MarketDataPanelKey,
-} from '@/lib/market'
 import {
   formatCurrencyARS,
   formatDateTimeAR,
   formatPercentage,
 } from '@/lib/formatters'
-import { mapPanelTituloToStockProps } from '@/features/dashboard/stocks/panelTitleToStock'
-import {
-  fetchMarketPanel,
-  type MarketPanelSuccessResponse,
-} from '@/features/dashboard/panel/marketPanelClient'
-import { getMarketPanelOption } from '@/features/dashboard/panel/marketPanelOptions'
 import { type StockData } from '@/features/dashboard/shared/stockData'
 import StockDetailsContent from '@/features/dashboard/stock-detail/StockDetailsContent'
 import StockFavoriteButton from '@/features/dashboard/favorites/StockFavoriteButton'
@@ -28,111 +16,154 @@ import {
 } from '@/features/dashboard/stocks/stockVariationSeverity'
 import { useFavoriteStocks } from '@/features/dashboard/favorites/useFavoriteStocks'
 import {
+  DEFAULT_STOCK_HISTORY_MARKET,
   DEFAULT_STOCK_HISTORY_RANGE,
   type StockHistoryRange,
 } from '@/lib/stockHistory'
 import { useStockHistory } from '@/features/dashboard/stock-detail/useStockHistory'
 import { resolveCurrentStockQuote } from '@/features/dashboard/stock-detail/currentStockQuote'
 import { useStockQuote } from '@/features/dashboard/stock-detail/useStockQuote'
-import { type StockQuoteDetail } from '@/lib/stockQuote'
+import type {
+  StockQuoteDetail,
+  StockQuoteInitialLoadState,
+  StockQuoteSuccessResponse,
+} from '@/lib/stockQuote'
+import { parseStockSymbolParam } from '@/lib/stockSymbol'
 
 type StockDetailPageClientProps = {
   symbol: string
+  initialQuote?: StockQuoteSuccessResponse
+  initialQuoteState?: StockQuoteInitialLoadState
 }
 
-type PanelLookupResult = {
-  stock: StockData
-  panelKey: MarketDataPanelKey
-  fetchedAt?: string
-  servedAt?: string
-}
-
-function normalizeSymbol(value: string): string {
-  try {
-    return decodeURIComponent(value).trim().toUpperCase()
-  } catch {
-    return ''
+function StockQuoteRateLimitNotice({
+  initialState,
+  isRetrying,
+  onRetry,
+}: {
+  initialState: StockQuoteInitialLoadState
+  isRetrying: boolean
+  onRetry: () => void
+}) {
+  if (
+    initialState.status !== 'rate-limited' &&
+    initialState.status !== 'rate-limit-unavailable'
+  ) {
+    return null
   }
-}
 
-function usePanelData(panelKey: MarketDataPanelKey) {
-  return useSWR<MarketPanelSuccessResponse, Error>(
-    buildMarketPanelApiPath(panelKey),
-    fetchMarketPanel,
-    {
-      revalidateOnFocus: false,
-      errorRetryCount: 1,
-    }
+  return (
+    <div className="stock-detail-quote-notice" role="alert">
+      <p>
+        {initialState.status === 'rate-limited'
+          ? 'Se alcanzó temporalmente el límite de cotizaciones.'
+          : 'El control de solicitudes no está disponible temporalmente.'}{' '}
+        Podés volver a intentar en {initialState.retryAfterSec} segundos.
+      </p>
+      <button
+        type="button"
+        className="ui-button"
+        disabled={isRetrying}
+        onClick={onRetry}
+      >
+        {isRetrying ? 'Reintentando cotización…' : 'Reintentar cotización'}
+      </button>
+    </div>
   )
 }
 
-function findStockInPanels(
-  symbol: string,
-  panels: Array<{
-    key: MarketDataPanelKey
-    data?: MarketPanelSuccessResponse
-  }>
-): PanelLookupResult | null {
-  for (const panel of panels) {
-    const item = panel.data?.data.find(
-      (row) => row.simbolo.trim().toUpperCase() === symbol
-    )
-
-    if (item) {
-      const snapshotTimestamp = panel.data?.fetchedAt ?? panel.data?.servedAt
-
-      return {
-        stock: mapPanelTituloToStockProps(item, snapshotTimestamp),
-        panelKey: panel.key,
-        fetchedAt: panel.data?.fetchedAt,
-        servedAt: panel.data?.servedAt,
-      }
-    }
+function StockQuoteStaleNotice({
+  fetchedAt,
+  stale,
+}: {
+  fetchedAt?: string
+  stale: boolean
+}) {
+  if (!stale) {
+    return null
   }
 
-  return null
+  const updatedAt = formatDateTimeAR(fetchedAt)
+
+  return (
+    <div className="stock-detail-quote-notice" role="status" aria-live="polite">
+      <p>
+        Los datos de la cotización pueden estar desactualizados.
+        {updatedAt !== '—' ? ` Última actualización: ${updatedAt}.` : ''}
+      </p>
+    </div>
+  )
+}
+
+function getVariationType(
+  variation: number | null
+): StockData['varType'] {
+  if (variation === null || variation === 0) {
+    return 'neutral'
+  }
+
+  return variation > 0 ? 'positive' : 'negative'
+}
+
+function quoteDetailToStockData(
+  symbol: string,
+  quoteDetail: StockQuoteDetail | null
+): StockData {
+  const depth = quoteDetail?.depth[0]
+  const variation = quoteDetail?.variation ?? null
+
+  return {
+    ticker: quoteDetail?.symbol ?? symbol,
+    description: quoteDetail?.description || symbol,
+    price: quoteDetail?.price ?? null,
+    var: variation,
+    varType: getVariationType(variation),
+    buyQty: depth?.buyQuantity ?? null,
+    buyPrice: depth?.buyPrice ?? null,
+    sellPrice: depth?.sellPrice ?? null,
+    sellQty: depth?.sellQuantity ?? null,
+    open: quoteDetail?.open ?? null,
+    min: quoteDetail?.low ?? null,
+    max: quoteDetail?.high ?? null,
+    close: quoteDetail?.previousClose ?? null,
+    volume: quoteDetail?.volume ?? null,
+    quoteDate: quoteDetail?.timestamp ?? null,
+    amountTraded: quoteDetail?.amountTraded ?? null,
+    operationCount: quoteDetail?.operationCount ?? null,
+    currency: quoteDetail?.currency ?? null,
+    settlement: quoteDetail?.settlement ?? null,
+    minimumSheet: quoteDetail?.minimumSheet ?? null,
+    lot: quoteDetail?.lot ?? null,
+  }
 }
 
 function StockDetailPageResolved({
-  lookup,
   quoteDetail,
   quoteSource,
   symbol,
-  lookupError,
+  quoteInitialState,
+  quoteIsRetrying,
+  onQuoteRetry,
+  quoteStale,
+  quoteFetchedAt,
 }: {
-  lookup: PanelLookupResult | null
   quoteDetail: StockQuoteDetail | null
   quoteSource: 'demo' | 'live' | null
   symbol: string
-  lookupError?: Error
+  quoteInitialState: StockQuoteInitialLoadState
+  quoteIsRetrying: boolean
+  onQuoteRetry: () => void
+  quoteStale: boolean
+  quoteFetchedAt?: string
 }) {
   const { isFavorite, toggleFavoriteStock } = useFavoriteStocks()
   const [historyRange, setHistoryRange] = useState<StockHistoryRange>(
     DEFAULT_STOCK_HISTORY_RANGE
   )
   const stock = useMemo<StockData>(
-    () =>
-      lookup?.stock ?? {
-        ticker: quoteDetail?.symbol ?? symbol,
-        description: quoteDetail?.description ?? symbol,
-        price: null,
-        var: null,
-        varType: 'neutral',
-        buyQty: null,
-        buyPrice: null,
-        sellPrice: null,
-        sellQty: null,
-        open: null,
-        min: null,
-        max: null,
-        close: null,
-        volume: null,
-      },
-    [lookup, quoteDetail, symbol]
+    () => quoteDetailToStockData(symbol, quoteDetail),
+    [quoteDetail, symbol]
   )
-  const panelKey = lookup?.panelKey
-  const fetchedAt = lookup?.fetchedAt
-  const servedAt = lookup?.servedAt
   const history = useStockHistory(stock.ticker, historyRange, undefined, {
     enabled: true,
   })
@@ -153,15 +184,14 @@ function StockDetailPageResolved({
     variationType
   )
   const updatedAt = formatDateTimeAR(
-    currentQuote.timestamp ?? fetchedAt ?? servedAt
+    currentQuote.timestamp ?? quoteFetchedAt
   )
-  const panelLabel = panelKey ? getMarketPanelOption(panelKey).label : null
   const stockIsFavorite = isFavorite(stock.ticker)
   const description = currentQuote.description
   const currentPrice = currentQuote.price
 
   if (currentQuote.source === 'unavailable') {
-    const error = history.error ?? lookupError
+    const error = history.error
 
     return (
       <main className="stock-detail-page">
@@ -175,6 +205,11 @@ function StockDetailPageResolved({
           >
             Volver al dashboard
           </Link>
+          <StockQuoteRateLimitNotice
+            initialState={quoteInitialState}
+            isRetrying={quoteIsRetrying}
+            onRetry={onQuoteRetry}
+          />
           <h1>{error ? `No se pudo cargar ${symbol}` : symbol}</h1>
           <p>
             {history.isLoading
@@ -190,6 +225,15 @@ function StockDetailPageResolved({
   return (
     <main className="stock-detail-page">
       <div className="stock-detail-shell">
+        <StockQuoteRateLimitNotice
+          initialState={quoteInitialState}
+          isRetrying={quoteIsRetrying}
+          onRetry={onQuoteRetry}
+        />
+        <StockQuoteStaleNotice
+          stale={quoteStale}
+          fetchedAt={quoteFetchedAt}
+        />
         <div className="stock-detail-page-topbar">
           <Link
             href="/"
@@ -213,10 +257,7 @@ function StockDetailPageResolved({
               isFavorite={stockIsFavorite}
               className="stock-detail-icon-button stock-detail-favorite-button"
               onToggleFavorite={() =>
-                toggleFavoriteStock(
-                  stock,
-                  panelKey ? { sourcePanel: panelKey } : undefined
-                )
+                toggleFavoriteStock(stock)
               }
             />
           </div>
@@ -225,11 +266,6 @@ function StockDetailPageResolved({
           <div className="stock-detail-page-heading">
             <div className="stock-detail-title-row">
               <h2>{description}</h2>
-              {panelLabel && (
-                <span className="ui-pill ui-pill-muted stock-details-panel-label">
-                  {panelLabel}
-                </span>
-              )}
             </div>
 
             {updatedAt !== '—' && (
@@ -272,25 +308,15 @@ function StockDetailPageResolved({
 
 export default function StockDetailPageClient({
   symbol,
+  initialQuote,
+  initialQuoteState = { status: 'no-initial-data' },
 }: StockDetailPageClientProps) {
-  const normalizedSymbol = normalizeSymbol(symbol)
-  const currentQuote = useStockQuote(normalizedSymbol)
-  const liderPanel = usePanelData('lider')
-  const generalPanel = usePanelData('general')
-  const cedearsPanel = usePanelData('cedears')
-  const panels = [
-    { key: MARKET_DATA_PANEL_KEYS[0], ...liderPanel },
-    { key: MARKET_DATA_PANEL_KEYS[1], ...generalPanel },
-    { key: MARKET_DATA_PANEL_KEYS[2], ...cedearsPanel },
-  ]
-  const lookup = findStockInPanels(normalizedSymbol, panels)
-  const isLoading =
-    currentQuote.isLoading &&
-    panels.some((panel) => panel.isLoading) &&
-    !lookup
-  const errors = panels
-    .map((panel) => panel.error)
-    .filter((error): error is Error => error instanceof Error)
+  const normalizedSymbol = parseStockSymbolParam(symbol) ?? ''
+  const currentQuote = useStockQuote(
+    normalizedSymbol,
+    DEFAULT_STOCK_HISTORY_MARKET,
+    { initialData: initialQuote, initialState: initialQuoteState }
+  )
 
   if (!normalizedSymbol) {
     return (
@@ -315,38 +341,16 @@ export default function StockDetailPageClient({
     )
   }
 
-  if (isLoading) {
-    return (
-      <main className="stock-detail-page">
-        <div className="stock-detail-shell stock-detail-state" role="status">
-          <Link
-            href="/"
-            className="ui-button ui-button-ghost stock-detail-back-link"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-              <path d="M5 12l14 0" />
-              <path d="M5 12l6 6" />
-              <path d="M5 12l6 -6" />
-            </svg>
-            Volver al dashboard
-          </Link>
-          <h1>{normalizedSymbol}</h1>
-          <p>Cargando detalle del activo...</p>
-        </div>
-      </main>
-    )
-  }
-
   return (
     <StockDetailPageResolved
-      lookup={lookup}
       quoteDetail={currentQuote.quote}
       quoteSource={currentQuote.source}
       symbol={normalizedSymbol}
-      lookupError={
-        errors.length === panels.length ? errors[0] : undefined
-      }
+      quoteInitialState={currentQuote.initialState}
+      quoteIsRetrying={currentQuote.isRetrying}
+      onQuoteRetry={() => void currentQuote.retry()}
+      quoteStale={currentQuote.stale}
+      quoteFetchedAt={currentQuote.fetchedAt}
     />
   )
 }
