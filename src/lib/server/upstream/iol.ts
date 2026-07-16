@@ -10,7 +10,7 @@ import {
 } from '@/lib/server/core/observability'
 import {
   setCachedToken,
-  clearCachedToken,
+  clearCachedTokenIfMatches,
   getOrCreateToken,
 } from './tokenCache'
 import { getQuoteEndpoint } from './quoteEndpoint'
@@ -400,10 +400,14 @@ export async function iol<T>(path: string, init: IolRequestInit = {}): Promise<T
     incrementMetricCounter('upstream.auth.retry.total', 1, {
       status: res.status,
     })
-    clearCachedToken()
+    clearCachedTokenIfMatches(token)
 
     token = await fetchToken()
     res = await callWithToken(path, init, token)
+
+    if (res.status === 401 || res.status === 403) {
+      clearCachedTokenIfMatches(token)
+    }
   }
 
   if (!res.ok) {

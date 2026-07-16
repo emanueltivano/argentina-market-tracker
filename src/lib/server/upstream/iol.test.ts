@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearCachedToken,
   clearInFlightTokenRequest,
+  getCachedToken,
+  setCachedToken,
 } from './tokenCache'
 import {
   getQuoteBySymbol,
@@ -142,6 +144,27 @@ function getRequestBody(index: number) {
   return init?.body
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+
+  return { promise, resolve, reject }
+}
+
+function getRequestUrl(input: RequestInfo | URL) {
+  return typeof input === 'string' ? input : input.toString()
+}
+
+function countRequests(path: string) {
+  return vi.mocked(fetch).mock.calls.filter(([input]) =>
+    getRequestUrl(input).endsWith(path)
+  ).length
+}
+
 describe('iol server client', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -150,6 +173,9 @@ describe('iol server client', () => {
     clearCachedToken()
     clearInFlightTokenRequest()
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
@@ -259,6 +285,256 @@ describe('iol server client', () => {
       expect(getRequestHeaders(3).get('authorization')).toBe('Bearer new-token')
     }
   )
+
+  it('deduplicates renewal when two requests receive 401 concurrently', async () => {
+    const renewal = createDeferred<Response>()
+    setCachedToken('token-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = getRequestUrl(input)
+        const authorization = new Headers(init?.headers).get('authorization')
+
+        if (url.endsWith('/token')) {
+          return renewal.promise
+        }
+
+        if (authorization === 'Bearer token-1') {
+          return Promise.resolve(textResponse('rejected', { status: 401 }))
+        }
+
+        return Promise.resolve(jsonResponse({ ok: true }))
+      })
+    )
+
+    const first = iol('/panel/first')
+    const second = iol('/panel/second')
+
+    await vi.waitFor(() => expect(countRequests('/token')).toBe(1))
+    renewal.resolve(
+      jsonResponse({ access_token: 'token-2', expires_in: 1800 })
+    )
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { ok: true },
+      { ok: true },
+    ])
+    expect(countRequests('/token')).toBe(1)
+    expect(fetch).toHaveBeenCalledTimes(5)
+    expect(getCachedToken()).toBe('token-2')
+
+    const protectedHeaders = vi
+      .mocked(fetch)
+      .mock.calls.filter(([input]) => !getRequestUrl(input).endsWith('/token'))
+      .map(([, init]) => new Headers(init?.headers).get('authorization'))
+    expect(protectedHeaders).toEqual([
+      'Bearer token-1',
+      'Bearer token-1',
+      'Bearer token-2',
+      'Bearer token-2',
+    ])
+  })
+
+  it('keeps and reuses token-2 after a late 401 for token-1', async () => {
+    const firstRejection = createDeferred<Response>()
+    const secondRejection = createDeferred<Response>()
+    const renewal = createDeferred<Response>()
+    setCachedToken('token-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = getRequestUrl(input)
+        const authorization = new Headers(init?.headers).get('authorization')
+
+        if (url.endsWith('/token')) {
+          return renewal.promise
+        }
+
+        if (authorization === 'Bearer token-2') {
+          return Promise.resolve(jsonResponse({ ok: true, path: url }))
+        }
+
+        return url.endsWith('/panel/first')
+          ? firstRejection.promise
+          : secondRejection.promise
+      })
+    )
+
+    const first = iol<{ ok: boolean }>('/panel/first')
+    const second = iol<{ ok: boolean }>('/panel/second')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+
+    firstRejection.resolve(textResponse('rejected token-1', { status: 401 }))
+    await vi.waitFor(() => expect(countRequests('/token')).toBe(1))
+    renewal.resolve(
+      jsonResponse({ access_token: 'token-2', expires_in: 1800 })
+    )
+    await expect(first).resolves.toMatchObject({ ok: true })
+    expect(getCachedToken()).toBe('token-2')
+
+    secondRejection.resolve(textResponse('late rejection', { status: 401 }))
+    await expect(second).resolves.toMatchObject({ ok: true })
+
+    expect(countRequests('/token')).toBe(1)
+    expect(getCachedToken()).toBe('token-2')
+    expect(fetch).toHaveBeenCalledTimes(5)
+  })
+
+  it('does not let a late 401 erase a token replaced preventively', async () => {
+    const rejection = createDeferred<Response>()
+    setCachedToken('token-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const authorization = new Headers(init?.headers).get('authorization')
+
+        if (authorization === 'Bearer token-1') {
+          return rejection.promise
+        }
+
+        return Promise.resolve(jsonResponse({ ok: true }))
+      })
+    )
+
+    const request = iol('/panel')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    setCachedToken('token-2')
+    rejection.resolve(textResponse('late rejection', { status: 401 }))
+
+    await expect(request).resolves.toEqual({ ok: true })
+    expect(countRequests('/token')).toBe(0)
+    expect(getCachedToken()).toBe('token-2')
+    expect(getRequestHeaders(1).get('authorization')).toBe('Bearer token-2')
+  })
+
+  it.each([401, 403])(
+    'does not retry a third time and clears token-2 when the retry is rejected with %s',
+    async (status) => {
+    setCachedToken('token-1-secret')
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(textResponse('first rejection', { status: 401 }))
+        .mockResolvedValueOnce(
+          jsonResponse({ access_token: 'token-2-secret', expires_in: 1800 })
+        )
+        .mockResolvedValueOnce(textResponse('second rejection', { status }))
+    )
+
+    const error = await iol('/panel').catch((reason: unknown) => reason)
+
+    expect(error).toMatchObject({
+      name: 'IolUpstreamHttpError',
+      status,
+    })
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(countRequests('/token')).toBe(1)
+    expect(getCachedToken()).toBeNull()
+
+    const inspectableOutput = JSON.stringify({
+      error,
+      info: vi.mocked(console.info).mock.calls,
+      warnings: vi.mocked(console.warn).mock.calls,
+      errors: vi.mocked(console.error).mock.calls,
+    })
+    expect(inspectableOutput).not.toContain('token-1-secret')
+    expect(inspectableOutput).not.toContain('token-2-secret')
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        jsonResponse({ access_token: 'token-3', expires_in: 1800 })
+      )
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+    await expect(iol('/panel/next')).resolves.toEqual({ ok: true })
+    expect(getRequestUrl(getFetchCall(3)[0])).toBe(
+      'https://api.example.test/token'
+    )
+    expect(getRequestHeaders(4).get('authorization')).toBe('Bearer token-3')
+    }
+  )
+
+  it('does not let the rejection of token-2 erase a newer token-3', async () => {
+    const retryRejection = createDeferred<Response>()
+    setCachedToken('token-1')
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(textResponse('first rejection', { status: 401 }))
+        .mockResolvedValueOnce(
+          jsonResponse({ access_token: 'token-2', expires_in: 1800 })
+        )
+        .mockImplementationOnce(() => retryRejection.promise)
+    )
+
+    const request = iol('/panel')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    setCachedToken('token-3')
+    retryRejection.resolve(textResponse('late second rejection', { status: 403 }))
+
+    await expect(request).rejects.toMatchObject({ status: 403 })
+    expect(getCachedToken()).toBe('token-3')
+  })
+
+  it('shares a failed renewal and allows a later request to renew', async () => {
+    const failedRenewal = createDeferred<Response>()
+    setCachedToken('token-1')
+    let oauthCalls = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = getRequestUrl(input)
+        const authorization = new Headers(init?.headers).get('authorization')
+
+        if (url.endsWith('/token')) {
+          oauthCalls += 1
+          return oauthCalls === 1
+            ? failedRenewal.promise
+            : Promise.resolve(
+                jsonResponse({ access_token: 'token-2', expires_in: 1800 })
+              )
+        }
+
+        if (authorization === 'Bearer token-1') {
+          return Promise.resolve(textResponse('rejected', { status: 401 }))
+        }
+
+        return Promise.resolve(jsonResponse({ ok: true }))
+      })
+    )
+
+    const first = iol('/panel/first')
+    const second = iol('/panel/second')
+    await vi.waitFor(() => expect(countRequests('/token')).toBe(1))
+    failedRenewal.resolve(textResponse('oauth unavailable', { status: 503 }))
+    const results = await Promise.allSettled([first, second])
+
+    expect(results).toHaveLength(2)
+    for (const result of results) {
+      expect(result.status).toBe('rejected')
+      if (result.status === 'rejected') {
+        expect(result.reason).toBeInstanceOf(IolTokenUpstreamError)
+      }
+    }
+    expect(countRequests('/token')).toBe(1)
+
+    await expect(iol('/panel/recovered')).resolves.toEqual({ ok: true })
+    expect(countRequests('/token')).toBe(2)
+    expect(getCachedToken()).toBe('token-2')
+  })
+
+  it('does not invalidate the token for a non-auth upstream error', async () => {
+    setCachedToken('token-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(textResponse('unavailable', { status: 500 }))
+    )
+
+    await expect(iol('/panel')).rejects.toMatchObject({ status: 500 })
+    expect(countRequests('/token')).toBe(0)
+    expect(getCachedToken()).toBe('token-1')
+  })
 
   it('times out requests through AbortController', async () => {
     vi.useFakeTimers()

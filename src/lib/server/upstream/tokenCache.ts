@@ -60,6 +60,15 @@ export function clearCachedToken() {
   token = null
 }
 
+export function clearCachedTokenIfMatches(accessToken: string): boolean {
+  if (token?.accessToken !== accessToken) {
+    return false
+  }
+
+  token = null
+  return true
+}
+
 export function clearInFlightTokenRequest() {
   inFlightTokenPromise = null
 }
