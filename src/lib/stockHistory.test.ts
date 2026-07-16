@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isStockHistoryPoint,
   isStockHistoryRange,
   normalizeStockHistoryData,
   normalizeStockHistoryDataResult,
@@ -195,8 +196,89 @@ describe('stock history normalization', () => {
     ).toEqual({
       data: [{ date: '2026-05-07', close: 101 }],
       discardedPoints: 1,
+      totalPoints: 1,
+    })
+  })
+
+  it('discards impossible calendar dates before sorting and counting points', () => {
+    expect(
+      normalizeStockHistoryDataResult([
+        { fecha: '2026-12-31', ultimoPrecio: 103 },
+        { fecha: '2026-99-99', ultimoPrecio: 999 },
+        { fecha: '2026-02-30T00:00:00Z', ultimoPrecio: 998 },
+        { fecha: '2024-02-29', ultimoPrecio: 101 },
+        { fecha: '2025-04-31', ultimoPrecio: 997 },
+        { fecha: '2026-01-01', ultimoPrecio: 102 },
+      ])
+    ).toEqual({
+      data: [
+        { date: '2024-02-29', close: 101 },
+        { date: '2026-01-01', close: 102 },
+        { date: '2026-12-31', close: 103 },
+      ],
+      discardedPoints: 3,
+      totalPoints: 3,
+    })
+  })
+
+  it('deduplicates valid dates before sorting and keeps the last payload row', () => {
+    const result = normalizeStockHistoryDataResult([
+      { fecha: '2026-05-08', ultimoPrecio: 108 },
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+      { fecha: '2026-05-08', ultimoPrecio: 109 },
+      { fecha: '2026-05-06', ultimoPrecio: 99 },
+      { fecha: '2026-05-08', ultimoPrecio: 110, volumen: 3000 },
+      { fecha: '2026-05-07', ultimoPrecio: 102 },
+    ])
+
+    expect(result).toEqual({
+      data: [
+        { date: '2026-05-06', close: 99 },
+        { date: '2026-05-07', close: 102 },
+        { date: '2026-05-08', close: 110, volume: 3000 },
+      ],
+      discardedPoints: 3,
+      totalPoints: 3,
+    })
+    expect(result.totalPoints).toBe(result.data.length)
+    expect(new Set(result.data.map((point) => point.date)).size).toBe(
+      result.data.length
+    )
+  })
+
+  it('does not let an invalid duplicate displace the last valid point', () => {
+    expect(
+      normalizeStockHistoryDataResult([
+        { fecha: '2026-05-07', ultimoPrecio: 101 },
+        { fecha: '2026-05-07', ultimoPrecio: 'invalid' },
+      ])
+    ).toEqual({
+      data: [{ date: '2026-05-07', close: 101 }],
+      discardedPoints: 1,
+      totalPoints: 1,
+    })
+  })
+
+  it('preserves valid unique payloads without changing their values', () => {
+    const payload = [
+      { fecha: '2026-05-08', ultimoPrecio: 108, volumen: 2000 },
+      { fecha: '2026-05-07', ultimoPrecio: 101, apertura: 100 },
+    ]
+
+    expect(normalizeStockHistoryDataResult(payload)).toEqual({
+      data: [
+        { date: '2026-05-07', close: 101, open: 100 },
+        { date: '2026-05-08', close: 108, volume: 2000 },
+      ],
+      discardedPoints: 0,
       totalPoints: 2,
     })
+  })
+
+  it('uses the same calendar rule in the shared history contract', () => {
+    expect(isStockHistoryPoint({ date: '2026-02-28', close: 100 })).toBe(true)
+    expect(isStockHistoryPoint({ date: '2026-02-30', close: 100 })).toBe(false)
+    expect(isStockHistoryPoint({ date: '2026-99-99', close: 100 })).toBe(false)
   })
 
   it('throws when no valid history item remains', () => {

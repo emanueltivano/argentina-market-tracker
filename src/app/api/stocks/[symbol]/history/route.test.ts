@@ -51,7 +51,11 @@ async function loadRoute(
   vi.resetModules()
   setRequiredEnv(nodeEnv, envOverrides)
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({
+    iolFetch,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error && !(error instanceof TypeError),
+  }))
 
   return import('./route')
 }
@@ -78,7 +82,11 @@ async function loadDemoRouteWithoutLiveEnv() {
     throw new Error('live upstream should not be used in demo mode')
   })
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({
+    iolFetch,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error && !(error instanceof TypeError),
+  }))
 
   const route = await import('./route')
 
@@ -318,7 +326,7 @@ describe('/api/stocks/[symbol]/history route', () => {
         discardedPoints: 1,
         source: 'live',
         stale: false,
-        totalPoints: 2,
+        totalPoints: 1,
       },
     })
     expect(consoleWarn).toHaveBeenCalledWith(
@@ -327,9 +335,35 @@ describe('/api/stocks/[symbol]/history route', () => {
         level: 'warn',
         symbol: 'GGAL',
         discardedPoints: 1,
-        totalPoints: 2,
+        totalPoints: 1,
       })
     )
+  })
+
+  it('deduplicates dates before exposing history counts', async () => {
+    const iolFetch = vi.fn().mockResolvedValue([
+      { fecha: '2026-05-08', ultimoPrecio: 108 },
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+      { fecha: '2026-05-08', ultimoPrecio: 110 },
+    ])
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    const response = await GET(
+      request('/api/stocks/GGAL/history?range=1M&market=bCBA'),
+      context('GGAL')
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data).toEqual([
+      { date: '2026-05-07', close: 101 },
+      { date: '2026-05-08', close: 110 },
+    ])
+    expect(body.meta).toMatchObject({
+      discardedPoints: 1,
+      totalPoints: 2,
+    })
+    expect(body.meta.totalPoints).toBe(body.data.length)
   })
 
   it('returns HISTORY_ERROR when every history point is invalid', async () => {

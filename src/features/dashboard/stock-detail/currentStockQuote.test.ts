@@ -497,6 +497,8 @@ describe('syncHistoryWithCurrentQuote', () => {
     const result = syncHistoryWithCurrentQuote(
       [
         { date: '2026-06-24', close: 990 },
+        { date: '2026-02-30', close: 9999 },
+        { date: '2026-99-99', close: 9998 },
         { date: '2026-06-22', close: 970 },
         { date: '2026-06-23', close: 980 },
         { date: '2026-06-24', close: 993.5, high: 996, low: 989 },
@@ -510,5 +512,8 @@ describe('syncHistoryWithCurrentQuote', () => {
       '2026-06-24',
     ])
     expect(result.points.at(-1)?.close).toBe(994.5)
+    expect(new Set(result.points.map((point) => point.date)).size).toBe(
+      result.points.length
+    )
   })
 })

@@ -328,7 +328,7 @@ export default function AdvancedStockDetailChart({
               <dd>{tooltip.point.date}</dd>
             </div>
             <div>
-              <dt>Open</dt>
+              <dt>Apertura</dt>
               <dd>
                 {tooltip.point.open === undefined
                   ? '-'
@@ -336,7 +336,7 @@ export default function AdvancedStockDetailChart({
               </dd>
             </div>
             <div>
-              <dt>High</dt>
+              <dt>Máximo</dt>
               <dd>
                 {tooltip.point.high === undefined
                   ? '-'
@@ -344,7 +344,7 @@ export default function AdvancedStockDetailChart({
               </dd>
             </div>
             <div>
-              <dt>Low</dt>
+              <dt>Mínimo</dt>
               <dd>
                 {tooltip.point.low === undefined
                   ? '-'
@@ -352,7 +352,7 @@ export default function AdvancedStockDetailChart({
               </dd>
             </div>
             <div>
-              <dt>Close</dt>
+              <dt>Cierre</dt>
               <dd>{formatCurrencyARS(tooltip.point.close)}</dd>
             </div>
             <div>

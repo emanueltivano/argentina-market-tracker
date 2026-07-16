@@ -64,4 +64,75 @@ describe('fetchStockHistory', () => {
       'Respuesta inválida del servidor al cargar el histórico: /api/stocks/GGAL/history?range=1M&market=bCBA'
     )
   })
+
+  it('rejects an impossible calendar date from the server contract', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          ok: true,
+          data: [{ date: '2026-02-30', close: 100 }],
+          fetchedAt: '2026-03-01T00:00:00.000Z',
+          servedAt: '2026-03-01T00:00:00.000Z',
+          cacheStatus: 'fresh',
+          range: '1M',
+          market: 'bCBA',
+          symbol: 'GGAL',
+          meta: {
+            discardedPoints: 0,
+            source: 'live',
+            stale: false,
+            totalPoints: 1,
+          },
+        })
+      )
+    )
+
+    await expect(
+      fetchStockHistory('/api/stocks/GGAL/history?range=1M&market=bCBA')
+    ).rejects.toThrow('Respuesta inválida del servidor: históricos inválidos.')
+  })
+
+  it.each([
+    [
+      'duplicate',
+      [
+        { date: '2026-05-07', close: 100 },
+        { date: '2026-05-07', close: 101 },
+      ],
+    ],
+    [
+      'descending',
+      [
+        { date: '2026-05-08', close: 101 },
+        { date: '2026-05-07', close: 100 },
+      ],
+    ],
+  ])('rejects %s dates from the BFF contract', async (_label, data) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          ok: true,
+          data,
+          fetchedAt: '2026-05-08T15:00:00.000Z',
+          servedAt: '2026-05-08T15:00:00.000Z',
+          cacheStatus: 'fresh',
+          range: '1M',
+          market: 'bCBA',
+          symbol: 'GGAL',
+          meta: {
+            discardedPoints: 0,
+            source: 'live',
+            stale: false,
+            totalPoints: data.length,
+          },
+        })
+      )
+    )
+
+    await expect(
+      fetchStockHistory('/api/stocks/GGAL/history?range=1M&market=bCBA')
+    ).rejects.toThrow('fechas únicas y ascendentes')
+  })
 })

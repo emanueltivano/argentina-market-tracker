@@ -9,10 +9,14 @@ import {
 } from '@/lib/server/history/historyCache'
 import { getDemoHistoryData } from '@/lib/server/demo/demoMarketData'
 import { getHistoryEndpoint, type HistoryVariant } from '@/lib/server/history/historyEndpoint'
-import { iolFetch } from '@/lib/server/upstream/iol'
+import {
+  iolFetch,
+  isRecoverableIolUpstreamError,
+} from '@/lib/server/upstream/iol'
 import { createHistoryResponse } from '@/lib/server/history/historyResponse'
 import {
   normalizeStockHistoryDataResult,
+  StockHistoryNormalizationError,
   type StockHistoryMarket,
   type StockHistoryRange,
   type StockHistoryResponseMeta,
@@ -194,6 +198,13 @@ async function fetchHistoryResponse(
     })
     return response
   } catch (error: unknown) {
+    if (
+      !(error instanceof StockHistoryNormalizationError) &&
+      !isRecoverableIolUpstreamError(error)
+    ) {
+      throw error
+    }
+
     const staleFallback = getStaleHistoryResponse(symbol, market, range)
 
     if (!staleFallback) {

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type StockHistoryRange } from '@/lib/stockHistory'
 import {
   normalizeLiveHistoryPoints,
+  normalizeStockHistoryRefreshIntervalMs,
   STOCK_HISTORY_REFRESH_INTERVAL_MS,
   useStockHistory,
 } from './useStockHistory'
@@ -31,13 +32,18 @@ function HistoryProbe({
   range = '1M',
   market,
   enabled = true,
+  refreshIntervalMs,
 }: {
   symbol: string
   range?: StockHistoryRange
   market?: string
   enabled?: boolean
+  refreshIntervalMs?: number
 }) {
-  const history = useStockHistory(symbol, range, market, { enabled })
+  const history = useStockHistory(symbol, range, market, {
+    enabled,
+    refreshIntervalMs,
+  })
 
   return (
     <output>
@@ -192,8 +198,15 @@ describe('useStockHistory', () => {
   })
 
   it('refreshes once when the window gets focus', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    let focusListener: EventListener | null = null
+    vi.spyOn(window, 'addEventListener').mockImplementation(
+      (type, listener) => {
+        if (type === 'focus') {
+          focusListener = listener as EventListener
+        }
+      }
+    )
     mocks.fetchStockHistory.mockResolvedValue(historyResponse())
 
     renderWithSWR(<HistoryProbe symbol="GGAL" />)
@@ -201,10 +214,34 @@ describe('useStockHistory', () => {
     await waitFor(() => expect(screen.getByText('success:1:')).not.toBeNull())
 
     await act(async () => {
-      window.dispatchEvent(new Event('focus'))
+      expect(focusListener).not.toBeNull()
+      focusListener?.(new Event('focus'))
     })
 
     await waitFor(() => expect(mocks.fetchStockHistory).toHaveBeenCalledTimes(2))
+  })
+
+  it('falls back to a finite interval for invalid configuration', () => {
+    expect(normalizeStockHistoryRefreshIntervalMs(Number.NaN)).toBe(
+      STOCK_HISTORY_REFRESH_INTERVAL_MS
+    )
+    expect(normalizeStockHistoryRefreshIntervalMs(Number.POSITIVE_INFINITY)).toBe(
+      STOCK_HISTORY_REFRESH_INTERVAL_MS
+    )
+    expect(normalizeStockHistoryRefreshIntervalMs(0)).toBe(
+      STOCK_HISTORY_REFRESH_INTERVAL_MS
+    )
+    expect(normalizeStockHistoryRefreshIntervalMs(30_000)).toBe(30_000)
+  })
+
+  it('clears its polling timer on unmount', () => {
+    mocks.fetchStockHistory.mockReturnValue(new Promise(() => undefined))
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval')
+    const view = renderWithSWR(<HistoryProbe symbol="GGAL" />)
+
+    view.unmount()
+
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(1)
   })
 
   it('deduplicates points by timestamp and sorts them chronologically', () => {

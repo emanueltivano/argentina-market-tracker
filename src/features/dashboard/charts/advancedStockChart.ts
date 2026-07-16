@@ -1,4 +1,5 @@
 import { type StockHistoryPoint } from '@/lib/stockHistory'
+import { parseStockHistoryCalendarDate } from '@/lib/stockHistoryDate'
 
 export type CurrentStockQuote = {
   close: number
@@ -70,7 +71,7 @@ export function getLatestHistoryQuotes(
       (point) =>
         Number.isFinite(point.close) &&
         point.close > 0 &&
-        DATE_ONLY_PATTERN.test(point.date.trim().slice(0, 10))
+        parseStockHistoryCalendarDate(point.date.trim().slice(0, 10)) !== null
     )
     .sort((first, second) => first.date.localeCompare(second.date))
 
@@ -147,7 +148,7 @@ function normalizeMarketDate(value: string): string | null {
   const trimmedValue = value.trim()
   const dateOnlyValue = trimmedValue.slice(0, 10)
 
-  return DATE_ONLY_PATTERN.test(dateOnlyValue) ? dateOnlyValue : null
+  return parseStockHistoryCalendarDate(dateOnlyValue)?.date ?? null
 }
 
 function toFiniteNumber(value: number | string | null | undefined): number | null {
@@ -207,9 +208,20 @@ function normalizeQuoteRecord(
   const timestamp = value.quoteDate ?? value.fechaHora ?? value.date
   const trimmedTimestamp =
     typeof timestamp === 'string' ? timestamp.trim() : ''
-  const parsedDate = trimmedTimestamp ? new Date(trimmedTimestamp) : null
-  const date = DATE_ONLY_PATTERN.test(trimmedTimestamp)
-    ? trimmedTimestamp
+  const calendarDate = parseStockHistoryCalendarDate(trimmedTimestamp)
+  const datePrefix = trimmedTimestamp.slice(0, 10)
+  const hasInvalidCalendarPrefix =
+    DATE_ONLY_PATTERN.test(datePrefix) &&
+    parseStockHistoryCalendarDate(datePrefix) === null
+  const parsedDate =
+    trimmedTimestamp &&
+    !calendarDate &&
+    !hasInvalidCalendarPrefix &&
+    !DATE_ONLY_PATTERN.test(trimmedTimestamp)
+      ? new Date(trimmedTimestamp)
+      : null
+  const date = calendarDate
+    ? calendarDate.date
     : parsedDate
       ? toMarketDateString(parsedDate, timeZone)
       : null
@@ -339,12 +351,6 @@ export function mergeTodayQuoteIntoHistory(
   )
 }
 
-function parseHistoryTimestamp(value: string): number | null {
-  const timestamp = Date.parse(`${value}T00:00:00.000Z`)
-
-  return Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : null
-}
-
 function isFiniteNumber(value: number | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
@@ -356,8 +362,9 @@ export function normalizeHistoryPoints(
 
   points.forEach((point) => {
     const date = point.date.trim().slice(0, 10)
-    const time = DATE_ONLY_PATTERN.test(date)
-      ? parseHistoryTimestamp(date)
+    const parsedDate = parseStockHistoryCalendarDate(date)
+    const time = parsedDate
+      ? Math.floor(parsedDate.timestampMs / 1000)
       : null
     const close = toFiniteNumber(point.close)
 

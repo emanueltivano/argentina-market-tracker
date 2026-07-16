@@ -1,5 +1,6 @@
 import { toMarketDateString } from '@/features/dashboard/charts/advancedStockChart'
 import { type StockHistoryPoint } from '@/lib/stockHistory'
+import { parseStockHistoryCalendarDate } from '@/lib/stockHistoryDate'
 import { type ResolvedCurrentQuote } from './currentQuoteTypes'
 
 export type SyncedHistoryWithQuoteResult = {
@@ -26,9 +27,14 @@ function marketDateFromTimestamp(value: string | null): string | null {
   }
 
   const dateOnlyValue = value.trim().slice(0, 10)
+  const calendarDate = parseStockHistoryCalendarDate(dateOnlyValue)
+
+  if (calendarDate) {
+    return calendarDate.date
+  }
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnlyValue)) {
-    return dateOnlyValue
+    return null
   }
 
   const parsedDate = new Date(value)
@@ -41,7 +47,7 @@ function marketDateFromTimestamp(value: string | null): string | null {
 function normalizeHistoryDate(value: string): string | null {
   const date = value.trim().slice(0, 10)
 
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null
+  return parseStockHistoryCalendarDate(date)?.date ?? null
 }
 
 function sortHistoryPoints(

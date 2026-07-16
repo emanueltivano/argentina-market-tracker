@@ -12,6 +12,12 @@ import { fetchStockHistory } from './stockHistoryClient'
 
 export const STOCK_HISTORY_REFRESH_INTERVAL_MS = 5 * 60_000
 
+export function normalizeStockHistoryRefreshIntervalMs(value: number): number {
+  return Number.isFinite(value) && value > 0
+    ? value
+    : STOCK_HISTORY_REFRESH_INTERVAL_MS
+}
+
 type UseStockHistoryOptions = {
   enabled?: boolean
   initialData?: StockHistorySuccessResponse
@@ -62,6 +68,8 @@ export function useStockHistory(
   } = options
   const normalizedSymbol = symbol.trim()
   const normalizedMarket = market.trim()
+  const normalizedRefreshIntervalMs =
+    normalizeStockHistoryRefreshIntervalMs(refreshIntervalMs)
   const historyMarket = isStockHistoryMarket(normalizedMarket)
     ? normalizedMarket
     : null
@@ -149,12 +157,12 @@ export function useStockHistory(
 
     const intervalId = window.setInterval(() => {
       void runSilentRefresh()
-    }, refreshIntervalMs)
+    }, normalizedRefreshIntervalMs)
 
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [fetchUrl, refreshIntervalMs, runSilentRefresh])
+  }, [fetchUrl, normalizedRefreshIntervalMs, runSilentRefresh])
 
   useEffect(() => {
     if (!fetchUrl) {

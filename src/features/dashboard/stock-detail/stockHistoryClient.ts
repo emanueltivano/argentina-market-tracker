@@ -32,8 +32,20 @@ function assertStockHistorySuccessResponse(
     throw new Error('Respuesta inválida del servidor: contrato de históricos inválido.')
   }
 
-  if (!Array.isArray(value.data) || !value.data.every(isStockHistoryPoint)) {
+  const historyData = value.data
+
+  if (!Array.isArray(historyData) || !historyData.every(isStockHistoryPoint)) {
     throw new Error('Respuesta inválida del servidor: históricos inválidos.')
+  }
+
+  if (
+    historyData.some(
+      (point, index) => index > 0 && point.date <= historyData[index - 1].date
+    )
+  ) {
+    throw new Error(
+      'Respuesta inválida del servidor: históricos deben tener fechas únicas y ascendentes.'
+    )
   }
 
   if (
@@ -50,7 +62,11 @@ function assertStockHistorySuccessResponse(
   if (
     !isJsonRecord(value.meta) ||
     typeof value.meta.discardedPoints !== 'number' ||
+    !Number.isInteger(value.meta.discardedPoints) ||
+    value.meta.discardedPoints < 0 ||
     typeof value.meta.totalPoints !== 'number' ||
+    !Number.isInteger(value.meta.totalPoints) ||
+    value.meta.totalPoints !== historyData.length ||
     typeof value.meta.stale !== 'boolean' ||
     (value.meta.source !== 'demo' && value.meta.source !== 'live') ||
     (value.meta.requestId !== undefined && typeof value.meta.requestId !== 'string')

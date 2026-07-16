@@ -10,20 +10,9 @@ import {
   type StockHistoryMarket,
   type StockHistoryRange,
 } from '@/lib/stockHistory'
+import { parseStockSymbolParam } from '@/lib/stockSymbol'
 
 export type HistoryRouteParams = Awaited<Promise<{ symbol: string }>>
-
-function isValidSymbol(value: string): boolean {
-  return /^[A-Z0-9._-]{1,20}$/.test(value)
-}
-
-function decodeHistorySymbol(value: string): string | null {
-  try {
-    return decodeURIComponent(value)
-  } catch {
-    return null
-  }
-}
 
 type ParsedHistoryRequest =
   | {
@@ -44,15 +33,14 @@ export function parseHistoryRequest(
   req: NextRequest,
   params: HistoryRouteParams
 ): ParsedHistoryRequest {
-  const decodedSymbol = decodeHistorySymbol(params.symbol)
-  const symbol = decodedSymbol?.trim().toUpperCase() ?? ''
+  const symbol = parseStockSymbolParam(params.symbol)
   const market = (
     req.nextUrl.searchParams.get('market') ?? DEFAULT_STOCK_HISTORY_MARKET
   ).trim()
   const range =
     req.nextUrl.searchParams.get('range') ?? DEFAULT_STOCK_HISTORY_RANGE
 
-  if (!isValidSymbol(symbol)) {
+  if (!symbol) {
     return {
       ok: false,
       error: 'INVALID_SYMBOL',

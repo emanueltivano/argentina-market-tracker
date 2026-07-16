@@ -340,6 +340,8 @@ describe('advancedStockChart helpers', () => {
       normalizeHistoryPoints([
         { date: '2026-05-08', close: 103 },
         { date: 'invalid', close: 104 },
+        { date: '2026-02-30', close: 999 },
+        { date: '2026-99-99', close: 998 },
         { date: '2026-05-07', close: 100 },
         { date: '2026-05-08T00:00:00.000Z', close: 105 },
       ])

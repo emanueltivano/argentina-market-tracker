@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AdvancedStockDetailChart from '@/features/dashboard/charts/AdvancedStockDetailChart'
+import { normalizeStockHistoryDataResult } from '@/lib/stockHistory'
 
 const chartMocks = vi.hoisted(() => {
   const setData = vi.fn()
@@ -121,6 +122,40 @@ describe('AdvancedStockDetailChart', () => {
     expect(chartMocks.fitContent).toHaveBeenCalled()
   })
 
+  it('receives unique server-normalized dates without dropping chart points', () => {
+    const normalized = normalizeStockHistoryDataResult([
+      {
+        fecha: '2026-06-23',
+        apertura: 101,
+        maximo: 106,
+        minimo: 100,
+        ultimoPrecio: 104,
+      },
+      {
+        fecha: '2026-06-22',
+        apertura: 99,
+        maximo: 103,
+        minimo: 98,
+        ultimoPrecio: 101,
+      },
+      {
+        fecha: '2026-06-23',
+        apertura: 102,
+        maximo: 107,
+        minimo: 101,
+        ultimoPrecio: 105,
+      },
+    ])
+
+    render(<AdvancedStockDetailChart points={normalized.data} symbol="GGAL" />)
+
+    expect(normalized.data).toHaveLength(2)
+    expect(chartMocks.setData).toHaveBeenCalledWith([
+      expect.objectContaining({ close: 101 }),
+      expect.objectContaining({ close: 105 }),
+    ])
+  })
+
   it('falls back from Candles to Area when OHLC data is incomplete', () => {
     render(
       <AdvancedStockDetailChart
@@ -216,10 +251,10 @@ describe('AdvancedStockDetailChart', () => {
     })
 
     expect(screen.getByText('2026-06-23')).toBeTruthy()
-    expect(screen.getByText('Open')).toBeTruthy()
-    expect(screen.getByText('High')).toBeTruthy()
-    expect(screen.getByText('Low')).toBeTruthy()
-    expect(screen.getByText('Close')).toBeTruthy()
+    expect(screen.getByText('Apertura')).toBeTruthy()
+    expect(screen.getByText('Máximo')).toBeTruthy()
+    expect(screen.getByText('Mínimo')).toBeTruthy()
+    expect(screen.getByText('Cierre')).toBeTruthy()
     expect(screen.getByText('Variación')).toBeTruthy()
     expect(screen.queryByText(/volumen/i)).toBeNull()
   })

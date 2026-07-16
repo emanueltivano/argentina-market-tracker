@@ -22,7 +22,11 @@ async function loadHistoryService(iolFetch: ReturnType<typeof vi.fn>) {
   vi.resetModules()
   setRequiredEnv()
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({
+    iolFetch,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error && !(error instanceof TypeError),
+  }))
 
   return import('./historyService')
 }
@@ -74,5 +78,35 @@ describe('historyService', () => {
         cachedPoints: 1,
       })
     )
+  })
+
+  it('propagates a TypeError instead of hiding it with stale history', async () => {
+    const programmingFailure = new TypeError('broken history invariant')
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ fecha: '2026-05-07', ultimoPrecio: 101 }])
+      .mockRejectedValueOnce(programmingFailure)
+    const { getOrCreateHistoryResponse } = await loadHistoryService(iolFetch)
+
+    await getOrCreateHistoryResponse('GGAL', 'bCBA', '1W')
+    vi.setSystemTime(new Date('2026-05-07T15:05:01.000Z'))
+
+    await expect(
+      getOrCreateHistoryResponse('GGAL', 'bCBA', '1W')
+    ).rejects.toBe(programmingFailure)
+  })
+
+  it('uses stale for a typed invalid upstream history response', async () => {
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ fecha: '2026-05-07', ultimoPrecio: 101 }])
+      .mockResolvedValueOnce({ invalid: true })
+    const { getOrCreateHistoryResponse } = await loadHistoryService(iolFetch)
+
+    await getOrCreateHistoryResponse('GGAL', 'bCBA', '1W')
+    vi.setSystemTime(new Date('2026-05-07T15:05:01.000Z'))
+
+    const stale = await getOrCreateHistoryResponse('GGAL', 'bCBA', '1W')
+    expect(stale.meta.stale).toBe(true)
   })
 })

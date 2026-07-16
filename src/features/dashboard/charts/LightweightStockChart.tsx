@@ -14,6 +14,7 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { type StockHistoryPoint } from '@/lib/stockHistory'
+import { parseStockHistoryCalendarDate } from '@/lib/stockHistoryDate'
 import { THEME_CHANGE_EVENT } from '@/lib/theme'
 import {
   formatPriceLabel,
@@ -57,17 +58,13 @@ function formatDateLabel(value: unknown): string {
 }
 
 function parseHistoryTimestamp(value: string): UTCTimestamp | null {
-  if (!value.trim()) {
+  const parsed = parseStockHistoryCalendarDate(value.trim().slice(0, 10))
+
+  if (!parsed) {
     return null
   }
 
-  const timestamp = Date.parse(value)
-
-  if (!Number.isFinite(timestamp)) {
-    return null
-  }
-
-  return Math.floor(timestamp / 1000) as UTCTimestamp
+  return Math.floor(parsed.timestampMs / 1000) as UTCTimestamp
 }
 
 function normalizeChartData(points: StockHistoryPoint[]): NormalizedChartPoint[] {

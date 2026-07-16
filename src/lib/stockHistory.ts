@@ -1,3 +1,12 @@
+import { parseStockHistoryCalendarDate } from '@/lib/stockHistoryDate'
+
+export class StockHistoryNormalizationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'StockHistoryNormalizationError'
+  }
+}
+
 export const STOCK_HISTORY_RANGES = ['1W', '1M', '3M', '6M', '1Y'] as const
 
 export type StockHistoryRange = (typeof STOCK_HISTORY_RANGES)[number]
@@ -244,7 +253,7 @@ function toFiniteNumber(value: unknown): number | null {
 function formatDateParts(year: string, month: string, day: string): string | null {
   const normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
 
-  return /^\d{4}-\d{2}-\d{2}$/.test(normalizedDate) ? normalizedDate : null
+  return parseStockHistoryCalendarDate(normalizedDate)?.date ?? null
 }
 
 function normalizeObjectKeys(value: Record<string, unknown>): Record<string, string[]> {
@@ -287,8 +296,10 @@ function normalizeDate(value: unknown): string | null {
   const trimmedValue = value.trim()
   const isoDate = trimmedValue.slice(0, 10)
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
-    return isoDate
+  const parsedIsoDate = parseStockHistoryCalendarDate(isoDate)
+
+  if (parsedIsoDate) {
+    return parsedIsoDate.date
   }
 
   const localDateMatch = trimmedValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
@@ -459,22 +470,38 @@ export function normalizeStockHistoryDataResult(
   const payload = extractArrayPayload(data)
 
   if (!payload) {
-    throw new Error('Invalid upstream history payload structure')
+    throw new StockHistoryNormalizationError(
+      'Invalid upstream history payload structure'
+    )
   }
 
   const normalizedItems = payload.map((item) => normalizeHistoryPoint(item))
-  const invalidItemsCount = normalizedItems.filter((item) => item === null).length
+  const validItems = normalizedItems.filter(isNotNull)
+  const invalidItemsCount = payload.length - validItems.length
 
   if (payload.length > 0 && invalidItemsCount === payload.length) {
-    throw new Error('Upstream history payload contains no valid items')
+    throw new StockHistoryNormalizationError(
+      'Upstream history payload contains no valid items'
+    )
   }
 
+  const pointsByDate = new Map<string, StockHistoryPoint>()
+
+  for (const point of validItems) {
+    // The provider can repeat a calendar date. Preserve the existing chart
+    // policy explicitly: the last valid row in payload order wins.
+    pointsByDate.set(point.date, point)
+  }
+
+  const uniqueItems = [...pointsByDate.values()].sort((first, second) =>
+    first.date.localeCompare(second.date)
+  )
+  const duplicateItemsCount = validItems.length - uniqueItems.length
+
   return {
-    data: normalizedItems.filter(isNotNull).sort((first, second) =>
-      first.date.localeCompare(second.date)
-    ),
-    discardedPoints: invalidItemsCount,
-    totalPoints: payload.length,
+    data: uniqueItems,
+    discardedPoints: invalidItemsCount + duplicateItemsCount,
+    totalPoints: uniqueItems.length,
   }
 }
 
@@ -529,7 +556,7 @@ export function isStockHistoryPoint(value: unknown): value is StockHistoryPoint 
   const bid = value.bid
 
   return (
-    isNonEmptyString(value.date) &&
+    parseStockHistoryCalendarDate(value.date) !== null &&
     isFiniteNumber(value.close) &&
     optionalNumbers.every(
       (field) => value[field] === undefined || isFiniteNumber(value[field])

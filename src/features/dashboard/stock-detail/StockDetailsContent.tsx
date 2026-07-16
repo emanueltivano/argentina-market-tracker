@@ -108,7 +108,7 @@ function HistorySection({
       ? history.meta.stale
         ? 'Mostrando histórico cacheado por una falla temporal del upstream.'
         : history.meta.discardedPoints > 0
-          ? `Se descartaron ${history.meta.discardedPoints} de ${history.meta.totalPoints} puntos inválidos del upstream.`
+          ? `Se descartaron ${history.meta.discardedPoints} de ${history.meta.totalPoints} puntos del upstream.`
           : history.meta.source === 'demo'
             ? 'Serie histórica de demo determinística.'
             : null

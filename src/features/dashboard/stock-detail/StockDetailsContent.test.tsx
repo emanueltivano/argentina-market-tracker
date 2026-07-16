@@ -206,6 +206,42 @@ describe('StockDetailsContent variants', () => {
     vi.useRealTimers()
   })
 
+  it('describes invalid or duplicate history entries as discarded points', () => {
+    render(
+      <StockDetailsContent
+        stock={stock}
+        variant="page"
+        historyRange="1M"
+        onHistoryRangeChange={vi.fn()}
+        history={{
+          ...pageHistory,
+          meta: {
+            ...pageHistory.meta,
+            discardedPoints: 1,
+          },
+        }}
+      />
+    )
+
+    expect(
+      screen.getByText(
+        'Se descartaron 1 de 2 puntos del upstream.'
+      )
+    ).not.toBeNull()
+    expect(screen.queryByText(/puntos inválidos/i)).toBeNull()
+    expect(screen.getByText('Último mes:')).not.toBeNull()
+  })
+
+  it('omits the discarded-points message when the count is zero', () => {
+    render(<PageContentHarness />)
+
+    expect(screen.queryByText(/Se descartaron/)).toBeNull()
+    expect(
+      screen.getByText('Serie histórica de demo determinística.')
+    ).not.toBeNull()
+    expect(screen.getByText('Último mes:')).not.toBeNull()
+  })
+
   it('keeps the simple chart and omits period metrics in modal mode', () => {
     render(<StockDetailsContent stock={stock} />)
 

@@ -2,6 +2,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type StockHistoryPoint } from '@/lib/stockHistory'
+import { normalizeStockHistoryDataResult } from '@/lib/stockHistory'
 import LightweightStockChart from '@/features/dashboard/charts/LightweightStockChart'
 
 const chartMocks = vi.hoisted(() => {
@@ -132,6 +133,23 @@ describe('LightweightStockChart', () => {
     ])
   })
 
+  it('passes server-normalized unique dates directly to the chart library', () => {
+    const normalized = normalizeStockHistoryDataResult([
+      { fecha: '2026-05-07', ultimoPrecio: 101 },
+      { fecha: '2026-05-06', ultimoPrecio: 99 },
+      { fecha: '2026-05-07', ultimoPrecio: 103 },
+    ])
+
+    render(<LightweightStockChart symbol="GGAL" points={normalized.data} />)
+
+    expect(normalized.totalPoints).toBe(normalized.data.length)
+    expect(normalized.discardedPoints).toBe(1)
+    expect(chartMocks.setData).toHaveBeenCalledWith([
+      { time: timestamp('2026-05-06'), value: 99 },
+      { time: timestamp('2026-05-07'), value: 103 },
+    ])
+  })
+
   it('filters invalid dates and prices before rendering', () => {
     render(
       <LightweightStockChart
@@ -140,6 +158,8 @@ describe('LightweightStockChart', () => {
           [
             { date: '', close: 101 },
             { date: 'invalid-date', close: 102 },
+            { date: '2026-99-99', close: 998 },
+            { date: '2026-02-30', close: 999 },
             { date: '2026-05-06', close: Number.NaN },
             { date: '2026-05-07', close: 103 },
           ] as StockHistoryPoint[]
