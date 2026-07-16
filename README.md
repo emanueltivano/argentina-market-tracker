@@ -1,243 +1,241 @@
 # Argentina Market Tracker
 
-[![CI](https://github.com/emanueltivano/argentina-market-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/emanueltivano/argentina-market-tracker/actions/workflows/ci.yml)
+[![CI](https://github.com/emanuel-tivano/argentina-market-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/emanuel-tivano/argentina-market-tracker/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-green)
 
-Argentina Market Tracker is a portfolio dashboard for exploring Argentine
-market panels, favorites, quote detail, and historical price charts. It is a
-technical demo, not a broker, trading platform, real-time quote service, or
-financial advice product.
+Dashboard full-stack para explorar paneles del mercado argentino, favoritos,
+cotizaciones detalladas e histórico de activos. Fue construido por **Emanuel
+Tivano** como proyecto de portfolio para demostrar arquitectura con Next.js,
+integración segura con APIs, resiliencia y calidad automatizada.
 
-The project exists to show how a modern Next.js app can be structured beyond
-the visual layer: App Router SSR, an internal BFF, server-only upstream access,
-validated contracts, cache/rate-limit behavior, lightweight observability, and
-automated tests.
+- **Demo pública:** [argentina-market-tracker.vercel.app](https://argentina-market-tracker.vercel.app)
+- **Código:** [github.com/emanuel-tivano/argentina-market-tracker](https://github.com/emanuel-tivano/argentina-market-tracker)
+- **Modo recomendado para revisión:** `MARKET_DATA_SOURCE=demo`, sin credenciales externas
+- **Contacto público actual:** [repositorio en GitHub](https://github.com/emanuel-tivano/argentina-market-tracker)
 
-- **Demo:** [argentina-market-tracker.vercel.app](https://argentina-market-tracker.vercel.app)
-- **Primary stack:** Next.js 16, React 19, TypeScript strict, Tailwind CSS 4,
-  SWR, lightweight-charts
-- **Verification:** ESLint, TypeScript, Vitest, Testing Library, Playwright,
-  GitHub Actions
-- **Safe public mode:** deterministic demo data, no upstream credentials needed
-- **Optional live mode:** server-side external API integration for controlled
-  review
+El proyecto es una demostración técnica. No es un broker, una plataforma de
+trading, un servicio garantizado de cotizaciones en tiempo real ni una fuente
+de asesoramiento financiero.
 
-![Argentina Market Tracker desktop dashboard](./docs/screenshots/desktop.png)
+![Dashboard de escritorio de Argentina Market Tracker](./docs/screenshots/desktop.png)
 
-## What It Demonstrates
+## En un minuto
 
-This project demonstrates:
+Argentina Market Tracker resuelve la presentación consistente de datos que
+pueden provenir de paneles, cotizaciones puntuales e históricos con contratos
+distintos. El navegador nunca accede al proveedor externo: consume un Backend
+for Frontend interno que valida, normaliza, limita y observa cada operación.
 
-- Next.js App Router with SSR initial data and client revalidation
-- clear server/client boundaries; the browser never receives upstream secrets
-- internal API routes used as a BFF for panel, favorites, quote, history,
-  health, and metrics endpoints
-- TypeScript contracts and normalization before data reaches UI components
-- deterministic demo data for stable public review
-- optional live market-data integration with OAuth, timeout, and retry handling
-- process-local caching, stale fallback paths, refresh cooldowns, and rate
-  limiting
-- dashboard composition across panel tables, favorites, stock detail, and
-  chart/history views
-- focused unit, component, hook, route, SSR, and E2E coverage
-- CI-ready validation through a single `npm run validate` entrypoint
+No es una interfaz estática ni un tutorial aislado. El repositorio incluye:
 
-## Features
+- SSR inicial para dashboard y páginas de activos, seguido de revalidación con SWR
+- BFF con contratos tipados y acceso upstream exclusivamente server-side
+- modos `demo` determinístico y `live` configurable
+- caché fresh/stale, deduplicación de solicitudes concurrentes y rate limiting
+- estados explícitos de carga, error, vacío, stale y degradación parcial
+- observabilidad con request IDs, métricas agregadas, health checks y logs sanitizados
+- pruebas unitarias, de componentes, hooks, Route Handlers, SSR y flujos E2E
 
-- Market panel tabs for leaders, general panel, and CEDEARs
-- SSR first paint for the initial dashboard data
-- Client refresh with SWR polling and hidden-tab pause behavior
-- Favorite symbols stored client-side and refreshed through `/api/favorites`
-- Stock detail modal/page with current quote, session data, order-book depth,
-  and historical chart
-- Demo/live source indicator in the UI
-- Health and debug metrics endpoints for lightweight operational visibility
-- CSP/security headers, request IDs, and sanitized server logging
+## Problema que resuelve
 
-## Architecture
+La experiencia reúne panel líder, panel general y CEDEARs; permite ordenar
+cotizaciones, persistir favoritos y consultar detalle, puntas e histórico de
+cada activo. La complejidad principal no está sólo en la tabla: está en
+integrar fuentes heterogéneas sin exponer credenciales, evitar trabajo repetido
+y conservar una experiencia útil cuando una parte del sistema falla.
+
+El modo demo permite revisar la aplicación de forma estable y segura. El modo
+live demuestra la misma arquitectura contra un proveedor real, con OAuth,
+timeouts, retry de autenticación y validación antes de llegar a React.
+
+## Responsabilidad del autor
+
+Emanuel Tivano diseñó e implementó el proyecto de extremo a extremo:
+
+- arquitectura App Router y separación entre cliente, BFF, contratos y servicios server-only
+- dashboard responsive, favoritos, detalle de activos, histórico y temas claro/oscuro
+- integración demo/live, autenticación upstream y normalización de payloads
+- SSR, cachés, stale fallback, deduplicación concurrente y rate limiting
+- observabilidad, seguridad de rutas debug, tests automatizados y CI
+- documentación para ejecución, revisión técnica y operación
+
+Estas responsabilidades describen trabajo verificable en el repositorio; no
+representan una plataforma financiera productiva ni experiencia laboral no
+documentada.
+
+## Características principales
+
+- Paneles de mercado: líder, general y CEDEARs
+- Favoritos persistidos localmente y actualizados mediante `/api/favorites`
+- Cotización detallada, sesión, liquidez, puntas e histórico por activo
+- SSR del panel inicial y cabecera inicial de páginas de activos
+- Revalidación cliente con polling, pausa por pestaña oculta y refresh manual
+- Modal desktop con carga diferida y página dedicada para navegación mobile
+- Metadata por activo, canonical, sitemap, robots y Open Graph
+- Indicador visible de fuente demo/live
+- Health check y métricas de diagnóstico protegidas según ambiente
+
+## Arquitectura resumida
 
 ```txt
 Browser
-  Next.js page + client dashboard
+  Next.js pages + dashboard cliente
         |
-        | internal fetches only
+        | fetches internos
         v
-Next.js route handlers in src/app/api
-  request validation
-  contract normalization
-  cache / rate-limit checks
-  demo data or server-only live integration
+Route Handlers en src/app/api (BFF)
+  validación de request y contratos
+  rate limiting y respuestas consistentes
         |
         v
-src/lib/server
-  upstream API client
-  token/cache/rate-limit helpers
-  observability
+Servicios en src/lib/server
+  demo determinístico o integración live
+  OAuth / timeout / retry
+  caché fresh + stale e in-flight dedupe
+  observabilidad y normalización
 ```
 
-Important folders:
+Reglas centrales:
 
-```txt
-src/app
-  App Router pages, route handlers, layout, global error boundaries.
+- el browser no llama al proveedor externo
+- los payloads upstream se validan antes de llegar a componentes
+- los contratos compartidos viven en `src/lib/**`
+- integración, caché, límites y observabilidad viven en `src/lib/server/**`
+- cambios de contrato actualizan validadores, consumidores y tests juntos
 
-src/features/dashboard
-  Client-facing dashboard feature code.
+El mapa detallado está en
+[ESTRUCTURA_PROYECTO.md](./ESTRUCTURA_PROYECTO.md). La guía operativa está en
+[docs/RUNBOOK.md](./docs/RUNBOOK.md).
 
-src/features/dashboard/panel
-  Main dashboard orchestration, panel state, refresh behavior, and toolbar UI.
+## Decisiones técnicas destacadas
 
-src/features/dashboard/stocks
-  Stock table rows, sorting, layout helpers, and ticker rendering.
+| Decisión | Problema resuelto | Trade-off |
+| --- | --- | --- |
+| BFF interno | Aísla credenciales, OAuth y contratos del proveedor. | Agrega una capa server-side que debe operarse y probarse. |
+| SSR + SWR | Entrega contenido inicial y mantiene datos actualizados. | Requiere coordinar fallback, hidratación y revalidación. |
+| Demo/live | Ofrece revisión pública estable sin perder integración real. | Demo no representa datos reales; live depende del upstream. |
+| Caché fresh/stale | Reduce latencia y conserva datos conocidos ante fallos breves. | En memoria, el estado es local a cada instancia. |
+| Deduplicación in-flight | Evita llamadas duplicadas para una misma clave concurrente. | Sólo coordina solicitudes dentro del mismo proceso. |
+| Rate limiting configurable | Protege al BFF y al proveedor ante abuso o ráfagas. | Para alcance global requiere Redis REST y proxy confiable. |
+| Validación de payloads | Impide que estructuras upstream inválidas contaminen la UI. | Obliga a mantener adaptadores explícitos por contrato. |
+| Observabilidad liviana | Permite correlacionar fallos sin exponer payloads ni secretos. | No reemplaza una plataforma externa de observabilidad. |
 
-src/features/dashboard/favorites
-  Client favorite persistence and favorite quote refresh flow.
+## Stack real
 
-src/features/dashboard/stock-detail
-  Stock detail modal/page, history hook, quote hook, current quote resolution,
-  history/quote synchronization, and live-session candle handling.
+| Área | Tecnologías |
+| --- | --- |
+| Aplicación | Next.js 16, React 19, App Router, TypeScript 6 strict |
+| UI y datos cliente | Tailwind CSS 4, SWR 2, lightweight-charts |
+| Backend for Frontend | Route Handlers, Node.js runtime, Fetch API, OAuth upstream |
+| Calidad | ESLint 9, contratos tipados, validadores y normalizadores |
+| Testing | Vitest 4, Testing Library, jsdom, Playwright |
+| Operación | GitHub Actions, health checks, métricas, request IDs, Redis REST opcional |
 
-src/features/dashboard/charts
-  Chart components and historical data calculations.
+## Ejecución local
 
-src/features/dashboard/shared
-  Shared client-side dashboard helpers and row models.
-
-src/lib
-  Shared contracts, validation, formatting, and normalized data types.
-
-src/lib/server
-  Server-only configuration, upstream integration, cache, rate limiting,
-  observability, demo data, panel/history/favorites/quote services.
-
-e2e
-  Playwright dashboard and SSR boot coverage.
-
-docs
-  Runbook and screenshots.
-```
-
-`stock-detail` is separated from panel, favorites, charts, and shared utilities
-because it has its own workflow: selecting or routing to a symbol, fetching
-quote/history detail, resolving the best current quote, synchronizing it with
-history data, and rendering a detail-focused UI. Keeping that code together
-makes the dashboard panel easier to scan while keeping chart primitives and
-shared row utilities reusable.
-
-See [ESTRUCTURA_PROYECTO.md](./ESTRUCTURA_PROYECTO.md) for a reviewer-focused
-map of the codebase.
-
-## Internal API Routes
-
-- `GET /api/panel?type=lider|general|cedears`
-- `GET /api/favorites?items=bCBA:ALUA,bCBA:AAPL`
-- `GET /api/stocks/[symbol]/quote?market=bCBA`
-- `GET /api/stocks/[symbol]/history?range=1W|1M|3M|6M|1Y&market=bCBA`
-- `GET /api/health`
-- `GET /api/debug/metrics`
-- `GET /api/token` for localhost-only token debugging
-
-The browser calls these internal routes instead of the external provider. Live
-credentials, OAuth tokens, upstream payload handling, cache behavior, and rate
-limiting stay on the server side.
-
-## Demo And Live Modes
-
-`MARKET_DATA_SOURCE=demo` uses deterministic data from
-`src/lib/server/demo/demoMarketData.ts`. It is the recommended mode for public
-portfolio review because it needs no secrets and produces stable behavior.
-
-`MARKET_DATA_SOURCE=live` enables the server-only upstream integration. Use it
-only with private credentials and the live-mode environment variables listed in
-[.env.local.example](./.env.local.example). For public deployments, prefer demo
-mode.
-
-## Local Setup
-
-Requirements:
+### Requisitos
 
 - Node `>=24.15.0 <25`
 - npm
-- no database, Prisma setup, or seed command is required
+- no requiere base de datos, Prisma ni seed
 
-Install dependencies:
+### Instalación
 
 ```bash
 npm install
 ```
 
-Create a local environment file:
+Crear el archivo local de entorno:
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-PowerShell equivalent:
+En PowerShell:
 
 ```powershell
 Copy-Item -LiteralPath .env.local.example -Destination .env.local
 ```
 
-Run the development server:
+Iniciar desarrollo:
 
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Abrir `http://localhost:3000`.
 
-## Environment Variables
+## Variables de entorno
 
-Use [.env.local.example](./.env.local.example) as the source of truth. Do not
-commit real secrets.
+[.env.local.example](./.env.local.example) es la fuente de referencia. Nunca
+se deben guardar secretos reales en commits, logs, issues o snapshots.
 
-Minimal local/demo setup:
+### Demo y despliegue
 
-| Variable | Required | Notes |
+| Variable | Requerida | Uso |
 | --- | --- | --- |
-| `MARKET_DATA_SOURCE` | No | Use `demo` for portfolio review; defaults to demo behavior. |
-| `NEXT_PUBLIC_SITE_URL` | Recommended | Public origin for metadata/Open Graph; local default can be `http://localhost:3000`. |
-| `APP_VERSION` | No | Optional version string exposed by `/api/health`. |
+| `MARKET_DATA_SOURCE` | No | `demo` para revisión pública; `live` para integración controlada. |
+| `NEXT_PUBLIC_SITE_URL` | Producción fuera de Vercel | Origen público HTTPS para metadata, sitemap, robots y Open Graph. |
+| `APP_VERSION` | No | Versión opcional expuesta por `/api/health`. |
 
-Required only for live mode:
+Si `NEXT_PUBLIC_SITE_URL` no existe, el SEO usa primero las variables de
+producción de Vercel. Fuera de producción utiliza `http://localhost:3000`; una
+producción sin origen válido falla de forma explícita.
 
-| Variable | Notes |
+### Integración live
+
+| Variable | Uso |
 | --- | --- |
-| `API_URL` | External API base URL. |
-| `TOKEN_ENDPOINT` | Token endpoint path. |
-| `API_USERNAME` | Upstream username. |
-| `API_PASSWORD` | Upstream password. |
-| `PANEL_LIDER_ENDPOINT` | Upstream leader panel endpoint. |
-| `PANEL_GENERAL_ENDPOINT` | Upstream general panel endpoint. |
-| `PANEL_CEDEARS_ENDPOINT` | Upstream CEDEARs endpoint. |
+| `API_URL` | Base URL del proveedor externo. |
+| `TOKEN_ENDPOINT` | Ruta del endpoint OAuth. |
+| `API_USERNAME` | Usuario upstream, sólo servidor. |
+| `API_PASSWORD` | Contraseña upstream, sólo servidor. |
+| `PANEL_LIDER_ENDPOINT` | Endpoint upstream del panel líder. |
+| `PANEL_GENERAL_ENDPOINT` | Endpoint upstream del panel general. |
+| `PANEL_CEDEARS_ENDPOINT` | Endpoint upstream de CEDEARs. |
 
-Operational/debug variables:
+### Operación y debug
 
-| Variable | Notes |
+| Variable | Uso |
 | --- | --- |
-| `ENABLE_TOKEN_DEBUG` | Enables localhost-only token/raw panel debug routes outside production. |
-| `OBSERVABILITY_DEBUG_TOKEN` | Required to read `/api/debug/metrics` in production when configured. |
-| `FAVORITES_QUOTE_CONCURRENCY` | Bounds favorite quote fan-out; valid range is `1-10`. |
-| `RATE_LIMIT_STORE` | `auto`, `memory`, or `redis-rest`. |
-| `RATE_LIMIT_TRUSTED_PROXY` | `none` or `vercel`. |
-| `RATE_LIMIT_REDIS_REST_URL` | REST-compatible Redis/KV URL for distributed rate limiting. |
-| `RATE_LIMIT_REDIS_REST_TOKEN` | Token for the Redis/KV REST endpoint. |
+| `ENABLE_TOKEN_DEBUG` | Habilita debug local de token/raw fuera de producción. |
+| `OBSERVABILITY_DEBUG_TOKEN` | Protege `/api/debug/metrics` en producción. |
+| `FAVORITES_QUOTE_CONCURRENCY` | Límite `1-10` para fan-out de favoritos. |
+| `PANEL_CACHE_FRESH_TTL_MS` / `PANEL_CACHE_STALE_TTL_MS` | Ventana fresh y edad máxima del snapshot de panel; defaults `30s` / `2m`. |
+| `STOCK_QUOTE_FRESH_TTL_MS` / `STOCK_QUOTE_STALE_TTL_MS` | Ventana fresh y edad máxima de cotización; defaults `15s` / `2m`. |
+| `STOCK_QUOTE_NOT_FOUND_TTL_MS` | Caché negativa de un `404` confirmado; default `30s`, rango `1s-5m`. |
+| `RATE_LIMIT_STORE` | `auto`, `memory` o `redis-rest`. |
+| `RATE_LIMIT_TRUSTED_PROXY` | `none` o `vercel`. |
+| `RATE_LIMIT_REDIS_REST_URL` | Endpoint REST de Redis/KV. |
+| `RATE_LIMIT_REDIS_REST_TOKEN` | Token del almacenamiento distribuido. |
+| `RATE_LIMIT_REDIS_TIMEOUT_MS` | Timeout `2000-5000ms` compartido por operaciones y readiness Redis; default `3000ms`. |
+
+Las variables adicionales usadas por E2E y fixtures controlados están
+documentadas en [.env.local.example](./.env.local.example) y
+[AGENTS.md](./AGENTS.md).
+
+Los TTL se expresan en milisegundos. El stale TTL es la edad máxima total
+desde `fetchedAt`, no tiempo adicional después de la ventana fresh. Los valores
+inválidos o fuera de rango vuelven a los defaults; si una pareja configura
+`fresh >= stale`, ambos TTL de esa pareja vuelven a sus defaults. Los rangos y
+el comportamiento por ambiente se detallan en el runbook.
 
 ## Scripts
 
 ```bash
-npm run dev          # Next.js dev server on port 3000
-npm run dev:e2e      # Next.js dev server on port 3100
-npm run lint         # ESLint
-npm run type-check   # TypeScript --noEmit
-npm run test         # Vitest
-npm run build        # Production build
-npm run validate     # lint, type-check, test, build, then E2E suite
+npm run dev              # desarrollo en puerto 3000
+npm run dev:e2e          # desarrollo E2E en puerto 3100
+npm run lint             # ESLint
+npm run type-check       # TypeScript --noEmit
+npm run test             # Vitest
+npm run build            # build de producción
+npm run validate:local   # lint + type-check + test + build
+npm run validate         # validación local + suite E2E
 ```
 
-E2E commands:
+E2E específicos:
 
 ```bash
 npm run test:e2e
@@ -246,49 +244,113 @@ npm run test:e2e:app
 npm run test:e2e:ui
 ```
 
-`npm run validate:local` runs lint, type-check, tests, and build without the
-Playwright E2E suite. `npm run validate` is closest to CI.
+`npm run validate` es el flujo más cercano a CI. `deps:update` modifica
+dependencias y lockfile, por lo que no forma parte de la validación habitual.
 
-## Testing Strategy
+## Testing y validación
 
-The test suite covers:
+La estrategia valida comportamiento en distintos límites:
 
-- shared data contracts and normalization
-- route handlers and error contracts
-- cache, rate-limit, and stale fallback behavior
-- dashboard hooks and UI states
-- favorites behavior and quote refresh
-- stock detail quote/history logic
-- chart data calculations
-- SSR boot behavior and interactive dashboard flows with Playwright
+- contratos y normalización de datos
+- servicios, cachés, rate limiting y stale fallback
+- hooks y estados de UI
+- componentes y accesibilidad estructural
+- Route Handlers y códigos/headers de error
+- SSR inicial y metadata de activos
+- flujos interactivos y responsive con Playwright
 
-GitHub Actions runs the validation flow in demo mode through
-[.github/workflows/ci.yml](./.github/workflows/ci.yml).
+GitHub Actions ejecuta la validación en modo demo mediante
+[.github/workflows/ci.yml](./.github/workflows/ci.yml). No se fija aquí un
+número de tests para evitar que la documentación quede desactualizada.
 
-## Screenshots
+## Estructura principal
 
-Existing screenshots:
+```txt
+src/
+  app/                         páginas, layout, metadata y Route Handlers
+  features/dashboard/          UI, hooks y flujos del dashboard
+  lib/                         contratos, validación y formateo compartido
+  lib/server/                  integración, caché, límites y observabilidad
+e2e/                           pruebas Playwright
+docs/                          runbook y capturas
+scripts/                       runners E2E
+.github/workflows/ci.yml       validación continua
+```
 
-- [Desktop dashboard](./docs/screenshots/desktop.png)
-- [Stock detail history](./docs/screenshots/modal-history.png)
-- [Mobile dashboard](./docs/screenshots/mobile.png)
+## Rutas internas del BFF
 
-![Argentina Market Tracker modal history](./docs/screenshots/modal-history.png)
+- `GET /api/panel?type=lider|general|cedears`
+- `GET /api/favorites?items=bCBA:ALUA,bCBA:AAPL`
+- `GET /api/stocks/[symbol]/quote?market=bCBA`
+- `GET /api/stocks/[symbol]/history?range=1W|1M|3M|6M|1Y&market=bCBA`
+- `GET /api/health/live`, liveness sin dependencias externas
+- `GET /api/health/ready`, readiness del backend de rate limiting
+- `GET /api/health`, diagnóstico compatible; puede responder `200 degraded`
+- `GET /api/debug/metrics`
+- `GET /api/token`, sólo para debug local autorizado
 
-## Operational Notes
+Las cotizaciones separan tres controles: `quote-public` limita el endpoint de
+detalle, `favorites-public` limita cada request batch de favoritos y
+`quote-upstream` protege cada lookup real al proveedor. Un cache hit no consume
+`quote-upstream`; dos símbolos distintos sí consumen dos unidades. Si el
+presupuesto se agota durante el fan-out, favoritos conserva los resultados ya
+obtenidos y declara los restantes en `failedItems`.
 
-See [docs/RUNBOOK.md](./docs/RUNBOOK.md) for health checks, request ID
-correlation, debug metrics, degraded health interpretation, rate-limit failure
-modes, and demo/live troubleshooting.
+El rate limiter público falla cerrado si no puede verificar el límite. Cachés,
+deduplicación y límites configurados en memoria son process-local. En respuestas
+`429`, `Retry-After` fija el mínimo para el retry automático; un retry manual
+sigue sujeto a la misma ventana del servidor y el cliente evita ejecuciones
+manuales concurrentes.
 
-Important constraints:
+## Modo demo y modo live
 
-- demo mode is synthetic and not real market data
-- live mode depends on a third-party upstream provider
-- panel, history, favorites quote cache, in-flight dedupe, stale fallback, and
-  metrics are process-local unless distributed storage is configured where
-  supported
-- `/api/favorites` performs bounded fan-out to individual quote lookups; there
-  is no real upstream batch quote endpoint in this project
-- the project is designed as a technical portfolio demo, not as a live trading
-  or financial decision-making tool
+`MARKET_DATA_SOURCE=demo` usa datos determinísticos locales. Es la opción
+recomendada para portfolio porque no necesita secretos y produce una revisión
+repetible.
+
+`MARKET_DATA_SOURCE=live` habilita el proveedor externo desde el servidor. Se
+debe usar con credenciales privadas, configuración de rate limiting adecuada y
+las variables live completas.
+
+## Capturas
+
+- [Dashboard desktop](./docs/screenshots/desktop.png)
+- [Detalle con histórico](./docs/screenshots/modal-history.png)
+- [Dashboard mobile](./docs/screenshots/mobile.png)
+
+![Detalle e histórico de un activo](./docs/screenshots/modal-history.png)
+
+## Operación
+
+[docs/RUNBOOK.md](./docs/RUNBOOK.md) documenta:
+
+- liveness, readiness y diagnóstico compatible `degraded`
+- correlación mediante `X-Request-Id`
+- métricas y rutas debug
+- fallos de rate limiting
+- degradación de favoritos e histórico
+- troubleshooting demo/live y rollback seguro
+
+## Limitaciones conocidas
+
+- el modo demo es sintético y no representa cotizaciones reales
+- live depende de disponibilidad, contratos y credenciales de un tercero
+- cachés, deduplicación y métricas en memoria son locales a cada instancia
+- el rate limiting sólo es distribuido cuando se configura Redis REST
+- favoritos hace fan-out acotado porque no existe un endpoint batch upstream
+- no existe persistencia propia de histórico ni una base de datos
+- la aplicación no ejecuta órdenes ni ofrece asesoramiento financiero
+
+## Autor y contacto
+
+**Emanuel Tivano** diseñó y desarrolló Argentina Market Tracker como proyecto
+de portfolio técnico.
+
+- Repositorio: [github.com/emanuel-tivano/argentina-market-tracker](https://github.com/emanuel-tivano/argentina-market-tracker)
+- Demo: [argentina-market-tracker.vercel.app](https://argentina-market-tracker.vercel.app)
+- LinkedIn: `[Agregar LinkedIn]`
+- Correo profesional: `[Agregar correo profesional]`
+
+Estas dos marcas son editoriales y no se renderizan en la interfaz. Para
+publicar los canales, reemplazá los valores `null` de
+`src/lib/authorContact.ts` por la URL completa de LinkedIn y el correo real.
