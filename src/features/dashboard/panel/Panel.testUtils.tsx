@@ -36,13 +36,19 @@ export function setCurrentSearchParams(value: string) {
   navigationMock.searchParams = new URLSearchParams(value)
 }
 
-export function panelResponse(data: PanelTitulo[]) {
+export function panelResponse(
+  data: PanelTitulo[],
+  overrides: Partial<PanelSuccessResponse> = {}
+) {
   return {
     ok: true,
     data,
     fetchedAt: '2026-05-04T16:00:00.000Z',
     servedAt: '2026-05-04T16:00:00.000Z',
+    staleUntil: '2026-05-04T16:02:00.000Z',
     cacheStatus: 'fresh',
+    stale: false,
+    ...overrides,
   } satisfies PanelSuccessResponse
 }
 

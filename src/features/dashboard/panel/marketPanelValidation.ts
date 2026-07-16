@@ -1,4 +1,5 @@
 import { isPanelTitulo } from '@/lib/panel';
+import { isValidFreshnessContract } from '@/lib/freshness';
 import { type MarketPanelSuccessResponse } from './marketPanelClient';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -18,11 +19,7 @@ function getMarketPanelSuccessValidationError(value: unknown): string | null {
     return 'Respuesta inválida del servidor: item de panel inválido.';
   }
 
-  if (
-    typeof value.fetchedAt !== 'string' ||
-    typeof value.servedAt !== 'string' ||
-    (value.cacheStatus !== 'fresh' && value.cacheStatus !== 'memory-cache')
-  ) {
+  if (!isValidFreshnessContract(value)) {
     return 'Respuesta inválida del servidor: metadata inválida.';
   }
 

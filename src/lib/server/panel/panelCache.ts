@@ -4,31 +4,35 @@ import type { MarketDataPanelKey } from '@/lib/market'
 import {
   normalizePanelData,
   normalizePanelDataResult,
+  PanelNormalizationError,
   type PanelSuccessResponse,
   type PanelTitulo,
 } from '@/lib/panel'
 import { getDemoPanelData } from '@/lib/server/demo/demoMarketData'
 import { ENV } from '@/lib/server/core/env'
-import { iolFetch } from '@/lib/server/upstream/iol'
+import {
+  iolFetch,
+  isRecoverableIolUpstreamError,
+} from '@/lib/server/upstream/iol'
 import { incrementMetricCounter, logServerWarn } from '@/lib/server/core/observability'
 import { getPanelEndpoint } from '@/lib/server/panel/panelEndpoint'
-
-const PANEL_CACHE_TTL_MS = 30_000
 
 type PanelCacheEntry = {
   data: PanelTitulo[]
   fetchedAt: string
-  expiresAt: number
+  freshUntil: number
+  staleUntil: number
 }
 
 const panelCache = new Map<MarketDataPanelKey, PanelCacheEntry>()
+type InFlightPanelRequest = {
+  initiatedBy: 'normal' | 'refresh'
+  promise: Promise<PanelSuccessResponse>
+}
+
 const inFlightPanelRequests = new Map<
   MarketDataPanelKey,
-  Promise<PanelSuccessResponse>
->()
-const inFlightPanelRefreshRequests = new Map<
-  MarketDataPanelKey,
-  Promise<PanelSuccessResponse>
+  InFlightPanelRequest
 >()
 
 function getFixturePanelResponse(
@@ -58,32 +62,48 @@ function getFixturePanelResponse(
 
   const typedFixture = parsedFixture as Partial<Record<MarketDataPanelKey, unknown>>
   const data = normalizePanelData(typedFixture[type] ?? [])
-  const fetchedAt = new Date().toISOString()
+  const now = Date.now()
+  const fetchedAt = new Date(now).toISOString()
   incrementMetricCounter('panel.cache.event.total', 1, {
     event: 'fixture-hit',
     panelType: type,
   })
 
-  return createPanelResponse(data, fetchedAt, 'fresh')
+  return createPanelResponse(
+    data,
+    fetchedAt,
+    'fresh',
+    false,
+    now,
+    now + ENV.PANEL_CACHE_STALE_TTL_MS
+  )
 }
 
 function createPanelResponse(
   data: PanelCacheEntry['data'],
   fetchedAt: string,
-  cacheStatus: PanelSuccessResponse['cacheStatus']
+  cacheStatus: PanelSuccessResponse['cacheStatus'],
+  stale: boolean,
+  servedAt: number,
+  staleUntil: number,
+  degradationReason?: PanelSuccessResponse['degradationReason']
 ): PanelSuccessResponse {
   return {
     ok: true,
     data,
     fetchedAt,
-    servedAt: new Date().toISOString(),
+    servedAt: new Date(servedAt).toISOString(),
+    staleUntil: new Date(staleUntil).toISOString(),
     cacheStatus,
+    stale,
+    ...(degradationReason ? { degradationReason } : {}),
   }
 }
 
 function getCachedPanelResponse(
   type: MarketDataPanelKey
 ): PanelSuccessResponse | null {
+  const now = Date.now()
   const cached = panelCache.get(type)
 
   if (!cached) {
@@ -94,9 +114,18 @@ function getCachedPanelResponse(
     return null
   }
 
-  if (Date.now() >= cached.expiresAt) {
+  if (now >= cached.staleUntil) {
+    panelCache.delete(type)
     incrementMetricCounter('panel.cache.event.total', 1, {
-      event: 'expired',
+      event: 'stale-expired',
+      panelType: type,
+    })
+    return null
+  }
+
+  if (now >= cached.freshUntil) {
+    incrementMetricCounter('panel.cache.event.total', 1, {
+      event: 'fresh-expired',
       panelType: type,
     })
     return null
@@ -107,52 +136,101 @@ function getCachedPanelResponse(
     panelType: type,
   })
 
-  return createPanelResponse(cached.data, cached.fetchedAt, 'memory-cache')
+  return createPanelResponse(
+    cached.data,
+    cached.fetchedAt,
+    'memory-cache',
+    false,
+    now,
+    cached.staleUntil
+  )
+}
+
+function canUseStalePanelFallback(error: unknown): boolean {
+  return (
+    error instanceof PanelNormalizationError ||
+    isRecoverableIolUpstreamError(error)
+  )
 }
 
 function getStalePanelResponse(
   type: MarketDataPanelKey,
   error: unknown
 ): PanelSuccessResponse | null {
-  const cached = panelCache.get(type)
-
-  if (!cached) {
+  if (!canUseStalePanelFallback(error)) {
     return null
   }
 
-  logServerWarn('panel.cache.stale-fallback', {
-    panelType: type,
-    reason: error instanceof Error ? error.message : String(error ?? 'unknown'),
-  })
+  const now = Date.now()
+  const cached = panelCache.get(type)
+
+  if (!cached || now >= cached.staleUntil) {
+    if (cached) {
+      panelCache.delete(type)
+    }
+    return null
+  }
+
+  const stale = now >= cached.freshUntil
+
+  logServerWarn(
+    stale ? 'panel.cache.stale-fallback' : 'panel.cache.fresh-fallback',
+    {
+      panelType: type,
+      reason: error instanceof Error ? error.message : String(error ?? 'unknown'),
+    }
+  )
   incrementMetricCounter('panel.cache.event.total', 1, {
-    event: 'stale-fallback',
+    event: now < cached.freshUntil ? 'fresh-fallback' : 'stale-fallback',
     panelType: type,
     source: ENV.MARKET_DATA_SOURCE,
   })
 
-  return createPanelResponse(cached.data, cached.fetchedAt, 'memory-cache')
+  return createPanelResponse(
+    cached.data,
+    cached.fetchedAt,
+    stale ? 'stale' : 'memory-cache',
+    stale,
+    now,
+    cached.staleUntil,
+    stale ? 'upstream-unavailable' : undefined
+  )
 }
 
 function setCachedPanelResponse(
   type: MarketDataPanelKey,
-  response: PanelSuccessResponse
-) {
+  data: PanelTitulo[],
+  now: number
+): PanelSuccessResponse {
+  const fetchedAt = new Date(now).toISOString()
+  const freshUntil = now + ENV.PANEL_CACHE_FRESH_TTL_MS
+  const staleUntil = now + ENV.PANEL_CACHE_STALE_TTL_MS
+
   panelCache.set(type, {
-    data: response.data,
-    fetchedAt: response.fetchedAt,
-    expiresAt: Date.now() + PANEL_CACHE_TTL_MS,
+    data,
+    fetchedAt,
+    freshUntil,
+    staleUntil,
   })
   incrementMetricCounter('panel.cache.event.total', 1, {
     event: 'write',
     panelType: type,
     source: ENV.MARKET_DATA_SOURCE,
   })
+
+  return createPanelResponse(
+    data,
+    fetchedAt,
+    'fresh',
+    false,
+    now,
+    staleUntil
+  )
 }
 
 async function fetchPanelResponse(
   type: MarketDataPanelKey
 ): Promise<PanelSuccessResponse> {
-  const fetchedAt = new Date().toISOString()
   const data =
     ENV.MARKET_DATA_SOURCE === 'demo'
       ? getDemoPanelData(type)
@@ -169,23 +247,23 @@ async function fetchPanelResponse(
     })
   }
 
-  const response = createPanelResponse(
-    normalized.data,
-    fetchedAt,
-    'fresh'
-  )
-
-  setCachedPanelResponse(type, response)
-  return response
+  const now = Date.now()
+  return setCachedPanelResponse(type, normalized.data, now)
 }
 
-function getOrCreateRefreshPanelResponse(
-  type: MarketDataPanelKey
+function getOrCreateUpstreamPanelResponse(
+  type: MarketDataPanelKey,
+  initiatedBy: InFlightPanelRequest['initiatedBy']
 ): Promise<PanelSuccessResponse> {
-  const inFlightRefresh = inFlightPanelRefreshRequests.get(type)
+  const inFlight = inFlightPanelRequests.get(type)
 
-  if (inFlightRefresh) {
-    return inFlightRefresh
+  if (inFlight) {
+    incrementMetricCounter('panel.cache.event.total', 1, {
+      event: 'inflight-hit',
+      panelType: type,
+      initiatedBy: inFlight.initiatedBy,
+    })
+    return inFlight.promise
   }
 
   const promise = fetchPanelResponse(type)
@@ -199,12 +277,12 @@ function getOrCreateRefreshPanelResponse(
       throw error
     })
     .finally(() => {
-      if (inFlightPanelRefreshRequests.get(type) === promise) {
-        inFlightPanelRefreshRequests.delete(type)
+      if (inFlightPanelRequests.get(type)?.promise === promise) {
+        inFlightPanelRequests.delete(type)
       }
     })
 
-  inFlightPanelRefreshRequests.set(type, promise)
+  inFlightPanelRequests.set(type, { initiatedBy, promise })
   return promise
 }
 
@@ -223,7 +301,15 @@ export function getOrCreatePanelResponse(
       event: 'refresh-bypass',
       panelType: type,
     })
-    return getOrCreateRefreshPanelResponse(type)
+    return getOrCreateUpstreamPanelResponse(type, 'refresh')
+  }
+
+  // A normal read joins a pending refresh before consulting the cache so both
+  // consumers observe the same current upstream result.
+  const inFlight = inFlightPanelRequests.get(type)
+
+  if (inFlight) {
+    return inFlight.promise
   }
 
   const cached = getCachedPanelResponse(type)
@@ -232,61 +318,27 @@ export function getOrCreatePanelResponse(
     return Promise.resolve(cached)
   }
 
-  const inFlight = inFlightPanelRequests.get(type)
-
-  if (inFlight) {
-    incrementMetricCounter('panel.cache.event.total', 1, {
-      event: 'inflight-hit',
-      panelType: type,
-    })
-    return inFlight
-  }
-
-  const inFlightRefresh = inFlightPanelRefreshRequests.get(type)
-
-  if (inFlightRefresh) {
-    incrementMetricCounter('panel.cache.event.total', 1, {
-      event: 'refresh-inflight-hit',
-      panelType: type,
-    })
-    return inFlightRefresh
-  }
-
-  const promise = fetchPanelResponse(type)
-    .catch((error: unknown) => {
-      const stale = getStalePanelResponse(type, error)
-
-      if (stale) {
-        return stale
-      }
-
-      throw error
-    })
-    .finally(() => {
-      if (inFlightPanelRequests.get(type) === promise) {
-        inFlightPanelRequests.delete(type)
-      }
-    })
-
-  inFlightPanelRequests.set(type, promise)
-  return promise
+  return getOrCreateUpstreamPanelResponse(type, 'normal')
 }
 
 export function hasInFlightPanelRefresh(type: MarketDataPanelKey): boolean {
-  return inFlightPanelRefreshRequests.has(type)
+  return inFlightPanelRequests.get(type)?.initiatedBy === 'refresh'
 }
 
 export function clearPanelResponseCacheForTests() {
   panelCache.clear()
   inFlightPanelRequests.clear()
-  inFlightPanelRefreshRequests.clear()
 }
 
 export function getPanelCacheStats() {
   return {
     entries: panelCache.size,
     inFlight: inFlightPanelRequests.size,
-    inFlightRefresh: inFlightPanelRefreshRequests.size,
-    ttlMs: PANEL_CACHE_TTL_MS,
+    inFlightRefresh: [...inFlightPanelRequests.values()].filter(
+      (request) => request.initiatedBy === 'refresh'
+    ).length,
+    ttlMs: ENV.PANEL_CACHE_FRESH_TTL_MS,
+    freshTtlMs: ENV.PANEL_CACHE_FRESH_TTL_MS,
+    staleTtlMs: ENV.PANEL_CACHE_STALE_TTL_MS,
   }
 }

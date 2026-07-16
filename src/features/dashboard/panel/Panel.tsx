@@ -94,6 +94,7 @@ export default function Panel({
     fetchedAt,
     isRefreshing,
     hasStaleError,
+    stale,
     viewStatus,
   } = isFavoritesPanel ? favoritePanelState : marketPanelState;
 
@@ -170,6 +171,7 @@ export default function Panel({
           <PanelFreshness
             fetchedAt={fetchedAt}
             isRefreshing={isRefreshing}
+            stale={stale}
           />
         )
       }

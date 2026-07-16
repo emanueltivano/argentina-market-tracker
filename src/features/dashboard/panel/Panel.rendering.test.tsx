@@ -84,7 +84,9 @@ function panelResponse() {
     ],
     fetchedAt: '2026-05-04T16:00:00.000Z',
     servedAt: '2026-05-04T16:00:00.000Z',
+    staleUntil: '2026-05-04T16:02:00.000Z',
     cacheStatus: 'fresh' as const,
+    stale: false,
   }
 }
 

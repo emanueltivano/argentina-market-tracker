@@ -73,12 +73,17 @@ const panelData: Record<PanelKey, MockPanelItem[]> = {
 }
 
 function panelResponse(data: MockPanelItem[], cacheStatus = 'fresh') {
+  const stale = cacheStatus === 'stale'
+
   return {
     ok: true,
     data,
     fetchedAt,
     servedAt: fetchedAt,
+    staleUntil: '2026-05-04T16:02:00.000Z',
     cacheStatus,
+    stale,
+    ...(stale ? { degradationReason: 'upstream-unavailable' } : {}),
   }
 }
 

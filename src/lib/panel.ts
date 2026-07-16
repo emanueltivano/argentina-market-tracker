@@ -28,7 +28,17 @@ export interface PanelSuccessResponse {
   data: PanelTitulo[]
   fetchedAt: string
   servedAt: string
-  cacheStatus: 'fresh' | 'memory-cache'
+  staleUntil: string
+  cacheStatus: 'fresh' | 'memory-cache' | 'stale'
+  stale: boolean
+  degradationReason?: 'upstream-unavailable'
+}
+
+export class PanelNormalizationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PanelNormalizationError'
+  }
 }
 
 export const PANEL_ERROR_CODES = [
@@ -346,7 +356,7 @@ export function normalizePanelDataResult(data: unknown): PanelNormalizationResul
   const payload = extractArrayPayload(data)
 
   if (!payload) {
-    throw new Error('Invalid upstream payload structure')
+    throw new PanelNormalizationError('Invalid upstream payload structure')
   }
 
   const validItems: PanelTitulo[] = []
@@ -363,7 +373,7 @@ export function normalizePanelDataResult(data: unknown): PanelNormalizationResul
   }
 
   if (payload.length > 0 && validItems.length === 0) {
-    throw new Error('Upstream payload contains no valid items')
+    throw new PanelNormalizationError('Upstream payload contains no valid items')
   }
 
   return {
@@ -393,7 +403,9 @@ export function normalizeQuoteData(
   const quoteData = candidates.find(isRecord)
 
   if (!quoteData) {
-    throw new Error('Invalid upstream quote payload structure')
+    throw new PanelNormalizationError(
+      'Invalid upstream quote payload structure'
+    )
   }
 
   const descripcion =

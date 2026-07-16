@@ -28,17 +28,27 @@ function getUpdatedAt(value: string | undefined) {
 type PanelFreshnessProps = {
   fetchedAt: string | undefined;
   isRefreshing: boolean;
+  stale?: boolean;
 };
 
 export default function PanelFreshness({
   fetchedAt,
   isRefreshing,
+  stale = false,
 }: PanelFreshnessProps) {
   const updatedAt = getUpdatedAt(fetchedAt);
-  const label = isRefreshing
+  const label = stale
+    ? updatedAt
+      ? `Datos desactualizados · ${updatedAt.label}`
+      : 'Datos desactualizados'
+    : isRefreshing
     ? 'Actualizando...'
     : (updatedAt?.label ?? 'Actualización pendiente');
-  const accessibleLabel = isRefreshing
+  const accessibleLabel = stale
+    ? updatedAt
+      ? `Datos posiblemente desactualizados. ${updatedAt.title}`
+      : 'Datos posiblemente desactualizados'
+    : isRefreshing
     ? updatedAt
       ? `Actualizando datos. ${updatedAt.title}`
       : 'Actualizando datos'
@@ -47,6 +57,7 @@ export default function PanelFreshness({
   return (
     <p
       className="panel-freshness-inline"
+      data-stale={stale || undefined}
       aria-label={accessibleLabel}
       aria-live="polite"
       aria-busy={isRefreshing}

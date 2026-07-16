@@ -147,7 +147,9 @@ describe('fetchMarketPanel', () => {
             ],
             fetchedAt: '2026-05-04T16:00:00.000Z',
             servedAt: '2026-05-04T16:00:01.000Z',
+            staleUntil: '2026-05-04T16:02:00.000Z',
             cacheStatus: 'fresh',
+            stale: false,
           },
           200,
         ),
@@ -172,8 +174,52 @@ describe('fetchMarketPanel', () => {
       ],
       fetchedAt: '2026-05-04T16:00:00.000Z',
       servedAt: '2026-05-04T16:00:01.000Z',
+      staleUntil: '2026-05-04T16:02:00.000Z',
       cacheStatus: 'fresh',
+      stale: false,
     });
+  });
+
+  it('accepts an explicitly stale backend response', async () => {
+    const staleResponse = {
+      ok: true,
+      data: [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
+      fetchedAt: '2026-05-04T16:00:00.000Z',
+      servedAt: '2026-05-04T16:00:31.000Z',
+      staleUntil: '2026-05-04T16:02:00.000Z',
+      cacheStatus: 'stale',
+      stale: true,
+      degradationReason: 'upstream-unavailable',
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(staleResponse, 200)))
+
+    await expect(fetchMarketPanel('/api/panel?type=lider')).resolves.toEqual(
+      staleResponse
+    )
+  });
+
+  it('rejects contradictory stale metadata', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ok: true,
+            data: [],
+            fetchedAt: '2026-05-04T16:00:00.000Z',
+            servedAt: '2026-05-04T16:00:31.000Z',
+            staleUntil: '2026-05-04T16:02:00.000Z',
+            cacheStatus: 'memory-cache',
+            stale: true,
+          },
+          200
+        )
+      )
+    )
+
+    await expect(fetchMarketPanel('/api/panel?type=lider')).rejects.toThrow(
+      'Respuesta inválida del servidor: metadata inválida.'
+    )
   });
 
   it('rejects success responses when data is not an array', async () => {

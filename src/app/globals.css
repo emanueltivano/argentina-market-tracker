@@ -1377,6 +1377,11 @@ dialog.stock-details-dialog .stock-details-close {
   margin: 0;
 }
 
+.panel-freshness-inline[data-stale='true'] {
+  color: var(--warning-text);
+  font-weight: 750;
+}
+
 .stock-detail-back-link {
   min-height: 2.25rem;
   margin-bottom: 1rem;

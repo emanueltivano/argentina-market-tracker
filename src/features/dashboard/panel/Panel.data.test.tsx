@@ -44,6 +44,31 @@ describe('Panel data', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('keeps stale panel rows visible and labels them as outdated', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderPanel({
+      initialData: panelResponse(
+        [{ simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' }],
+        {
+          cacheStatus: 'stale',
+          stale: true,
+          degradationReason: 'upstream-unavailable',
+        }
+      ),
+      initialPanelKey: 'lider',
+    })
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Abrir detalle de GGAL, Grupo Financiero Galicia',
+      })
+    ).not.toBeNull()
+    expect(screen.getByText(/Datos desactualizados/)).not.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('shows a demo badge when demo mode is enabled', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

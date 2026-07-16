@@ -36,14 +36,19 @@ function remoteRequest(path: string) {
 function expectPanelSuccess(
   body: unknown,
   data: unknown[],
-  cacheStatus: 'fresh' | 'memory-cache' = 'fresh'
+  cacheStatus: 'fresh' | 'memory-cache' | 'stale' = 'fresh'
 ) {
+  const stale = cacheStatus === 'stale'
+
   expect(body).toEqual({
     ok: true,
     data,
     fetchedAt: expect.any(String),
     servedAt: expect.any(String),
+    staleUntil: expect.any(String),
     cacheStatus,
+    stale,
+    ...(stale ? { degradationReason: 'upstream-unavailable' } : {}),
   })
 }
 
@@ -69,7 +74,18 @@ async function loadLiveRoute(
     ...envOverrides,
   })
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({
+    iolFetch,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error &&
+      !(error instanceof TypeError) &&
+      !('status' in error) ||
+      (typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof error.status === 'number' &&
+        (error.status === 429 || error.status >= 500)),
+  }))
 
   return import('./route')
 }
@@ -89,7 +105,18 @@ async function loadDemoRoute(
     throw new Error('live upstream should not be used in demo mode')
   })
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({
+    iolFetch,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error &&
+      !(error instanceof TypeError) &&
+      !('status' in error) ||
+      (typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof error.status === 'number' &&
+        (error.status === 429 || error.status >= 500)),
+  }))
 
   const route = await import('./route')
 
@@ -114,7 +141,18 @@ async function loadRouteWithoutRequiredEnv(iolFetch: ReturnType<typeof vi.fn>) {
     PANEL_CEDEARS_ENDPOINT: undefined,
   }
   vi.doMock('server-only', () => ({}))
-  vi.doMock('@/lib/server/upstream/iol', () => ({ iolFetch }))
+  vi.doMock('@/lib/server/upstream/iol', () => ({
+    iolFetch,
+    isRecoverableIolUpstreamError: (error: unknown) =>
+      error instanceof Error &&
+      !(error instanceof TypeError) &&
+      !('status' in error) ||
+      (typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof error.status === 'number' &&
+        (error.status === 429 || error.status >= 500)),
+  }))
 
   return import('./route')
 }
@@ -467,7 +505,7 @@ describe('/api/panel route', () => {
     expectPanelSuccess(
       body,
       [{ simbolo: 'ALUA', descripcion: 'Aluar' }],
-      'memory-cache'
+      'stale'
     )
     expect(iolFetch).toHaveBeenCalledTimes(2)
     expect(consoleWarn).toHaveBeenCalledWith(
@@ -477,6 +515,114 @@ describe('/api/panel route', () => {
         panelType: 'lider',
         reason: 'upstream failed',
       })
+    )
+  })
+
+  it('does not serve a panel after the maximum stale window', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockRejectedValueOnce(new Error('upstream failed'))
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    vi.advanceTimersByTime(120_001)
+    const response = await GET(request('/api/panel?type=lider'))
+
+    expect(response.status).toBe(502)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: 'PANEL_ERROR',
+    })
+    expect(iolFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('replaces a stale panel after a later successful refresh', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockResolvedValueOnce([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    vi.advanceTimersByTime(30_001)
+    const stale = await GET(request('/api/panel?type=lider'))
+    const refreshed = await GET(request('/api/panel?type=lider'))
+
+    expectPanelSuccess(
+      await stale.json(),
+      [{ simbolo: 'ALUA', descripcion: 'Aluar' }],
+      'stale'
+    )
+    expectPanelSuccess(await refreshed.json(), [
+      { simbolo: 'COME', descripcion: 'Comercial del Plata' },
+    ])
+    expect(iolFetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('does not hide a non-recoverable upstream 404 with stale panel data', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+    const notFoundError = Object.assign(new Error('not found'), { status: 404 })
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockRejectedValueOnce(notFoundError)
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    vi.advanceTimersByTime(30_001)
+    const response = await GET(request('/api/panel?type=lider'))
+
+    expect(response.status).toBe(502)
+    expect(await response.json()).toMatchObject({ error: 'PANEL_ERROR' })
+  })
+
+  it('does not hide a TypeError with stale panel data', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+    const programmingFailure = new TypeError('broken panel invariant')
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockRejectedValueOnce(programmingFailure)
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    expect((await GET(request('/api/panel?type=lider'))).status).toBe(200)
+    vi.advanceTimersByTime(30_001)
+
+    const response = await GET(request('/api/panel?type=lider'))
+
+    expect(response.status).toBe(502)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: 'PANEL_ERROR',
+    })
+  })
+
+  it('uses stale for a typed invalid upstream panel response', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-04T16:00:00.000Z'))
+    const iolFetch = vi
+      .fn()
+      .mockResolvedValueOnce([{ simbolo: 'ALUA', descripcion: 'Aluar' }])
+      .mockResolvedValueOnce({ invalid: true })
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    await GET(request('/api/panel?type=lider'))
+    vi.advanceTimersByTime(30_001)
+    const response = await GET(request('/api/panel?type=lider'))
+
+    expect(response.status).toBe(200)
+    expectPanelSuccess(
+      await response.json(),
+      [{ simbolo: 'ALUA', descripcion: 'Aluar' }],
+      'stale'
     )
   })
 
@@ -606,6 +752,57 @@ describe('/api/panel route', () => {
     expectPanelSuccess(await normalResponse.json(), [
       { simbolo: 'COME', descripcion: 'Comercial del Plata' },
     ])
+    expect(iolFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('joins a refresh to a pending normal upstream read', async () => {
+    let resolvePanel!: (value: unknown) => void
+    const iolFetch = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolvePanel = resolve
+        })
+    )
+    await loadLiveRoute(iolFetch)
+    const { getOrCreatePanelResponse } = await import(
+      '@/lib/server/panel/panelCache'
+    )
+
+    const normal = getOrCreatePanelResponse('lider', false)
+    await vi.waitFor(() => expect(iolFetch).toHaveBeenCalledOnce())
+    const refresh = getOrCreatePanelResponse('lider', true)
+    resolvePanel([{ simbolo: 'COME', descripcion: 'Comercial del Plata' }])
+
+    const [normalBody, refreshBody] = await Promise.all([normal, refresh])
+
+    expect(normalBody.data).toEqual(refreshBody.data)
+    expect(iolFetch).toHaveBeenCalledOnce()
+  })
+
+  it('shares a rejection, cleans the in-flight entry and permits a later read', async () => {
+    let rejectPanel!: (reason: unknown) => void
+    const failure = new TypeError('broken panel invariant')
+    const iolFetch = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectPanel = reject
+          })
+      )
+      .mockResolvedValueOnce([{ simbolo: 'PAMP', descripcion: 'Pampa Energia' }])
+    const { GET } = await loadLiveRoute(iolFetch)
+
+    const first = GET(request('/api/panel?type=lider'))
+    const second = GET(request('/api/panel?type=lider'))
+    await vi.waitFor(() => expect(iolFetch).toHaveBeenCalledOnce())
+    rejectPanel(failure)
+
+    const failed = await Promise.all([first, second])
+    expect(failed.map((response) => response.status)).toEqual([502, 502])
+
+    const recovered = await GET(request('/api/panel?type=lider'))
+    expect(recovered.status).toBe(200)
     expect(iolFetch).toHaveBeenCalledTimes(2)
   })
 

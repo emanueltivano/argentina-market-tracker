@@ -37,4 +37,22 @@ describe('PanelFreshness', () => {
     expect(freshness?.getAttribute('aria-label')).toContain('Actualizando datos')
     expect(screen.queryByRole('button')).toBeNull()
   })
+
+  it('shows a textual stale warning with the last update time', () => {
+    render(
+      <PanelFreshness
+        fetchedAt="2026-05-04T16:00:00.000Z"
+        isRefreshing={false}
+        stale
+      />
+    )
+
+    const freshness = screen.getByText(/Datos desactualizados/).closest('p')
+
+    expect(freshness?.textContent).toContain('Actualizado')
+    expect(freshness?.getAttribute('aria-label')).toContain(
+      'Datos posiblemente desactualizados'
+    )
+    expect(freshness?.getAttribute('data-stale')).toBe('true')
+  })
 })

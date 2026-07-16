@@ -105,6 +105,8 @@ export function useMarketPanel(
     fetchedAt: data?.fetchedAt,
     servedAt: data?.servedAt,
     cacheStatus: data?.cacheStatus,
+    stale: data?.stale ?? false,
+    staleUntil: data?.staleUntil,
     refresh,
     viewStatus,
     isInitialLoading: viewStatus === 'loading',
