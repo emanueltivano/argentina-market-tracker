@@ -23,6 +23,43 @@ beforeEach(setupPanelTest)
 afterEach(cleanupPanelTest)
 
 describe('Panel favorites', () => {
+  it.each([
+    ['lider', '/api/panel?type=lider'],
+    ['general', '/api/panel?type=general'],
+    ['cedears', '/api/panel?type=cedears'],
+  ])(
+    'does not request favorites while the %s panel is active',
+    async (panel, panelUrl) => {
+      setCurrentSearchParams(`panel=${panel}`)
+      window.localStorage.setItem(
+        FAVORITE_STOCKS_STORAGE_KEY,
+        '[{"symbol":"GGAL","market":"bCBA"}]'
+      )
+      const fetchMock = vi.fn<typeof fetch>(async () =>
+        Response.json(
+          panelResponse([
+            { simbolo: 'GGAL', descripcion: 'Grupo Financiero Galicia' },
+          ])
+        )
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      renderPanel()
+
+      await screen.findByRole('button', { name: 'Quitar GGAL de favoritos' })
+
+      expect(fetchMock).toHaveBeenCalledWith(panelUrl, {
+        cache: 'no-store',
+        headers: { accept: 'application/json' },
+      })
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).startsWith('/api/favorites')
+        )
+      ).toBe(false)
+    }
+  )
+
   it('toggles a favorite without opening the stock details modal', async () => {
     vi.stubGlobal(
       'fetch',

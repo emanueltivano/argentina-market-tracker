@@ -87,7 +87,9 @@ export default function Panel({
     initialErrorMessage,
     initialPanelKey,
   });
-  const favoritePanelState = useFavoritePanel(favoriteItems);
+  const favoritePanelState = useFavoritePanel(favoriteItems, {
+    enabled: isFavoritesPanel,
+  });
   const {
     rows,
     error,
