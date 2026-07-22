@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
   const isDegraded =
     runtimeEnv.marketDataSource === 'invalid' ||
     runtimeEnv.missingLiveConfig.length > 0 ||
+    runtimeEnv.invalidLiveConfig.length > 0 ||
     rateLimit.status !== 'ok'
 
   incrementMetricCounter('api.request.total', 1, {
@@ -47,8 +48,14 @@ export async function GET(req: NextRequest) {
           runtimeEnv.marketDataSource === 'live'
             ? {
                 missingLiveConfig: runtimeEnv.missingLiveConfig,
+                ...(runtimeEnv.invalidLiveConfig.length > 0
+                  ? { invalidLiveConfig: runtimeEnv.invalidLiveConfig }
+                  : {}),
                 status:
-                  runtimeEnv.missingLiveConfig.length > 0 ? 'degraded' : 'ok',
+                  runtimeEnv.missingLiveConfig.length > 0 ||
+                  runtimeEnv.invalidLiveConfig.length > 0
+                    ? 'degraded'
+                    : 'ok',
               }
             : {
                 missingLiveConfig: [],

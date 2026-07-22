@@ -1,4 +1,5 @@
 import 'server-only'
+import { normalizeServerUrl } from './serverUrl'
 
 export type MarketDataSource = 'demo' | 'live'
 const DEFAULT_FAVORITES_QUOTE_CONCURRENCY = 4
@@ -35,10 +36,6 @@ function required(name: string): string {
 
 function normalizePath(value: string): string {
   return value.replace(/^\/+|\/+$/g, '')
-}
-
-function normalizeBaseUrl(value: string): string {
-  return value.replace(/\/+$/, '')
 }
 
 function getMarketDataSource(): MarketDataSource {
@@ -173,6 +170,39 @@ export function getRuntimeEnvSummary() {
     marketDataSource === 'live'
       ? LIVE_ENV_KEYS.filter((key) => optionalTrimmed(key).length === 0)
       : []
+  const invalidLiveConfig: string[] = []
+
+  if (marketDataSource === 'live' && !missingLiveConfig.includes('API_URL')) {
+    try {
+      normalizeServerUrl(optionalTrimmed('API_URL'), {
+        allowPathname: true,
+        httpPolicy: 'sensitive',
+        nodeEnv: process.env.NODE_ENV ?? 'development',
+        variableName: 'API_URL',
+      })
+    } catch {
+      invalidLiveConfig.push('API_URL')
+    }
+  }
+
+  let rateLimitRedisConfigured = false
+
+  if (
+    optionalTrimmed('RATE_LIMIT_REDIS_REST_URL').length > 0 &&
+    optionalTrimmed('RATE_LIMIT_REDIS_REST_TOKEN').length > 0
+  ) {
+    try {
+      normalizeServerUrl(optionalTrimmed('RATE_LIMIT_REDIS_REST_URL'), {
+        allowPathname: false,
+        httpPolicy: 'sensitive',
+        nodeEnv: process.env.NODE_ENV ?? 'development',
+        variableName: 'RATE_LIMIT_REDIS_REST_URL',
+      })
+      rateLimitRedisConfigured = true
+    } catch {
+      rateLimitRedisConfigured = false
+    }
+  }
 
   return {
     appVersion:
@@ -181,10 +211,9 @@ export function getRuntimeEnvSummary() {
     marketDataSourceError,
     metricsDebugTokenConfigured: optionalTrimmed('OBSERVABILITY_DEBUG_TOKEN').length > 0,
     missingLiveConfig,
+    invalidLiveConfig,
     nodeEnv: process.env.NODE_ENV ?? 'development',
-    rateLimitRedisConfigured:
-      optionalTrimmed('RATE_LIMIT_REDIS_REST_URL').length > 0 &&
-      optionalTrimmed('RATE_LIMIT_REDIS_REST_TOKEN').length > 0,
+    rateLimitRedisConfigured,
   }
 }
 
@@ -194,7 +223,12 @@ export const ENV = {
   },
 
   get API_URL() {
-    return normalizeBaseUrl(required('API_URL'))
+    return normalizeServerUrl(required('API_URL'), {
+      allowPathname: true,
+      httpPolicy: 'sensitive',
+      nodeEnv: process.env.NODE_ENV ?? 'development',
+      variableName: 'API_URL',
+    })
   },
 
   get TOKEN_ENDPOINT() {
@@ -230,7 +264,16 @@ export const ENV = {
   },
 
   get RATE_LIMIT_REDIS_REST_URL() {
-    return process.env.RATE_LIMIT_REDIS_REST_URL ?? ''
+    const value = optionalTrimmed('RATE_LIMIT_REDIS_REST_URL')
+
+    return value
+      ? normalizeServerUrl(value, {
+          allowPathname: false,
+          httpPolicy: 'sensitive',
+          nodeEnv: process.env.NODE_ENV ?? 'development',
+          variableName: 'RATE_LIMIT_REDIS_REST_URL',
+        })
+      : ''
   },
 
   get RATE_LIMIT_REDIS_REST_TOKEN() {

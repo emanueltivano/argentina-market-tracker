@@ -1,11 +1,10 @@
 import 'server-only'
 
 import type { PanelTitulo } from '@/lib/panel'
+import { ENV } from '@/lib/server/core/env'
 import { incrementMetricCounter } from '@/lib/server/core/observability'
 import type { StockHistoryMarket } from '@/lib/stockHistory'
 
-const QUOTE_CACHE_TTL_MS = 15_000
-const QUOTE_CACHE_STALE_TTL_MS = 2 * 60_000
 const QUOTE_CACHE_MAX_KEYS = 500
 
 export type QuoteCacheEntryValue = {
@@ -121,8 +120,8 @@ export function setCachedQuote(
 ) {
   quoteCache.set(getCacheKey(market, symbol), {
     ...value,
-    freshUntil: Date.now() + QUOTE_CACHE_TTL_MS,
-    staleUntil: Date.now() + QUOTE_CACHE_STALE_TTL_MS,
+    freshUntil: Date.now() + ENV.STOCK_QUOTE_FRESH_TTL_MS,
+    staleUntil: Date.now() + ENV.STOCK_QUOTE_STALE_TTL_MS,
   })
   pruneQuoteCache()
   incrementMetricCounter('favorites.quote_cache.event.total', 1, {

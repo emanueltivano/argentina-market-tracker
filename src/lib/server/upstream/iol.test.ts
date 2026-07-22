@@ -209,6 +209,28 @@ describe('iol server client', () => {
     expect(String(getRequestBody(0))).toContain('password=super-secret-password')
   })
 
+  it('keeps relative endpoints under a normalized HTTPS API base pathname', async () => {
+    process.env.API_URL = 'https://api.example.test/base/v2/'
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ access_token: 'fresh-token', expires_in: 1800 })
+        )
+        .mockResolvedValueOnce(jsonResponse({ ok: true }))
+    )
+
+    await expect(iol('/panel')).resolves.toEqual({ ok: true })
+
+    expect(getFetchCall(0)[0]).toBe(
+      'https://api.example.test/base/v2/token'
+    )
+    expect(getFetchCall(1)[0]).toBe(
+      'https://api.example.test/base/v2/panel'
+    )
+  })
+
   it('reuses a cached token while it is still valid', async () => {
     vi.stubGlobal(
       'fetch',
@@ -730,5 +752,22 @@ describe('iol server client', () => {
 
     await expect(iol('/panel')).rejects.toThrow('Missing API_USERNAME')
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects an insecure API URL before sending credentials over the network', async () => {
+    process.env = {
+      ...OLD_ENV,
+      API_URL: 'http://api.example.test/private?password=secret',
+      TOKEN_ENDPOINT: 'token',
+      NODE_ENV: 'production',
+      MARKET_DATA_SOURCE: 'live',
+      API_USERNAME: 'test-user',
+      API_PASSWORD: 'super-secret-password',
+    }
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(iol('/panel')).rejects.toThrow('API_URL')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

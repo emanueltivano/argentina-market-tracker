@@ -53,4 +53,37 @@ describe('useFavoritePanel', () => {
     expect(result.current.missingItems).toEqual(['bCBA:DEMOX'])
     expect(result.current.failedItems).toEqual(['bCBA:AGRO'])
   })
+
+  it('uses a null SWR key and an empty stable state when disabled', () => {
+    mutateMock.mockResolvedValue(undefined)
+    useSWRMock.mockReturnValue({
+      data: undefined,
+      error: undefined,
+      isLoading: false,
+      isValidating: false,
+      mutate: mutateMock,
+    })
+
+    const { result } = renderHook(() =>
+      useFavoritePanel([{ symbol: 'GGAL', market: 'bCBA' }], {
+        enabled: false,
+      })
+    )
+
+    expect(useSWRMock).toHaveBeenCalledWith(
+      null,
+      expect.any(Function),
+      expect.objectContaining({ revalidateOnMount: false })
+    )
+    expect(result.current).toMatchObject({
+      rows: [],
+      error: null,
+      viewStatus: 'empty',
+      isRefreshing: false,
+      hasStaleError: false,
+      missingItems: [],
+      failedItems: [],
+      stale: false,
+    })
+  })
 })

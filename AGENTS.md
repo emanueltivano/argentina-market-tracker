@@ -84,6 +84,8 @@ Modo de datos:
 Live mode:
 
 - `API_URL`
+  - HTTPS obligatorio en `live`; sólo se permite HTTP loopback fuera de producción
+  - admite pathname base, pero no credenciales, query ni fragment
 - `TOKEN_ENDPOINT`
 - `API_USERNAME`
 - `API_PASSWORD`
@@ -107,6 +109,8 @@ Rate limiting / operación:
 - `RATE_LIMIT_STORE`
 - `RATE_LIMIT_TRUSTED_PROXY`
 - `RATE_LIMIT_REDIS_REST_URL`
+  - HTTPS obligatorio en producción; HTTP sólo loopback en desarrollo/tests
+  - debe ser sólo origen, sin credenciales, pathname, query ni fragment
 - `RATE_LIMIT_REDIS_REST_TOKEN`
 
 Variables usadas en testing/dev controlado:
@@ -182,6 +186,8 @@ Rutas internas actuales:
 - `/api/favorites?items=bCBA:ALUA,bCBA:AAPL`
 - `/api/stocks/[symbol]/history?range=1W|1M|3M|6M|1Y&market=bCBA`
 - `/api/health`
+- `/api/health/live`
+- `/api/health/ready`
 - `/api/debug/metrics`
 - `/api/token`
 
@@ -191,7 +197,8 @@ Notas importantes:
 - `/api/panel?raw=1` sólo está habilitado como debug local cuando `ENABLE_TOKEN_DEBUG=1` y el host es `localhost` / `127.0.0.1` / `::1`.
 - `/api/token` también es debug local-only bajo esas mismas restricciones.
 - `/api/favorites` valida y deduplica items, aplica rate limiting y hace fan-out a quotes individuales con cache y concurrencia acotada.
-- `/api/health` expone `status`, `dataSource`, `version`, `uptimeMs` y checks de config/cache/rate limit.
+- `/api/health` expone diagnóstico compatible con HTTP `200`, incluso como `degraded` ante configuración live/Redis inválida.
+- `/api/health/live` es liveness sin dependencias externas; `/api/health/ready` prueba Redis cuando es requerido y devuelve `503` si su configuración es insegura o no está disponible.
 - `/api/debug/metrics` en desarrollo/test está abierto; en producción requiere `OBSERVABILITY_DEBUG_TOKEN` vía header `x-observability-token`, y si no está configurado devuelve `404`.
 
 Live/demo:
@@ -204,10 +211,11 @@ Live/demo:
 Integración server:
 
 - `src/lib/server/upstream/iol.ts` maneja OAuth, timeout, `cache: 'no-store'`, sanitización básica y retry único ante `401/403`.
-- `src/lib/server/core/env.ts` normaliza base URL, endpoints y variables operativas.
+- `src/lib/server/core/env.ts` valida URLs sensibles, normaliza base URL/endpoints y resuelve variables operativas.
 - `src/lib/server/panel/panelCache.ts` usa cache en memoria por panel con TTL de `30s`.
 - `src/lib/server/history/historyCache.ts` usa cache en memoria por `market:symbol:range` con TTL de `5m` y máximo `500` claves.
-- `src/lib/server/upstream/quoteCache.ts` cachea quotes de favoritos y soporta stale fallback.
+- `src/lib/server/upstream/quoteCache.ts` cachea quotes de favoritos y soporta stale fallback con `STOCK_QUOTE_FRESH_TTL_MS` / `STOCK_QUOTE_STALE_TTL_MS`, igual que la caché de detalle en `src/lib/server/quote/quoteCache.ts`.
+- Si `STOCK_QUOTE_FRESH_TTL_MS >= STOCK_QUOTE_STALE_TTL_MS`, ambos vuelven a los defaults `15000` / `120000`.
 
 Rate limiting:
 
@@ -233,7 +241,7 @@ Rate limiting:
 
 - El dashboard principal es cliente (`src/features/dashboard/panel/Panel.tsx`) e hidrata con datos SSR cuando existen.
 - `useMarketPanel` usa SWR con polling de `60s`, pausa por pestaña oculta y refresh manual con `?refresh=1`.
-- `useFavoritePanel` usa un patrón similar para `/api/favorites`.
+- `useFavoritePanel` usa un patrón similar para `/api/favorites`, pero su key y polling sólo están habilitados cuando el panel Favoritos está activo.
 - `StockDetailsModal` se carga con `next/dynamic` y `ssr: false`; no romper esa carga diferida salvo motivo claro.
 - El histórico usa `lightweight-charts`; tratarlo como componente relativamente pesado.
 - Mantener estados explícitos de loading, error, empty, stale y success.

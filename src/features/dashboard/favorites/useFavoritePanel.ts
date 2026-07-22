@@ -9,14 +9,22 @@ import {
 import { type MarketPanelViewStatus } from '@/features/dashboard/panel/useMarketPanel'
 import { useRefreshableSWR } from '@/features/dashboard/panel/useRefreshableSWR'
 
+export type UseFavoritePanelOptions = {
+  enabled?: boolean
+}
+
 function withRefreshParam(url: string): string {
   return `${url}&refresh=1`
 }
 
-export function useFavoritePanel(items: FavoriteStockIdentity[]) {
+export function useFavoritePanel(
+  items: FavoriteStockIdentity[],
+  options: UseFavoritePanelOptions = {}
+) {
+  const isEnabled = options.enabled ?? true
   const fetchUrl = useMemo(
-    () => (items.length > 0 ? buildFavoritesApiPath(items) : null),
-    [items]
+    () => (isEnabled && items.length > 0 ? buildFavoritesApiPath(items) : null),
+    [isEnabled, items]
   )
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<

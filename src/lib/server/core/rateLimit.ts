@@ -226,7 +226,7 @@ function getConfiguredStoreModeSafe():
 
 function getStoreConfig(): ResolvedStoreConfig {
   const configuredMode = process.env.RATE_LIMIT_STORE?.trim()
-  const redisUrl = process.env.RATE_LIMIT_REDIS_REST_URL?.trim()
+  const rawRedisUrl = process.env.RATE_LIMIT_REDIS_REST_URL?.trim()
   const redisToken = process.env.RATE_LIMIT_REDIS_REST_TOKEN?.trim()
 
   if (configuredMode === 'memory') {
@@ -234,7 +234,7 @@ function getStoreConfig(): ResolvedStoreConfig {
   }
 
   if (configuredMode === 'redis-rest') {
-    if (!redisUrl || !redisToken) {
+    if (!rawRedisUrl || !redisToken) {
       throw new Error(
         'RATE_LIMIT_STORE=redis-rest requires RATE_LIMIT_REDIS_REST_URL and RATE_LIMIT_REDIS_REST_TOKEN'
       )
@@ -242,7 +242,7 @@ function getStoreConfig(): ResolvedStoreConfig {
 
     return {
       mode: 'redis-rest',
-      url: redisUrl,
+      url: ENV.RATE_LIMIT_REDIS_REST_URL,
       token: redisToken,
     }
   }
@@ -253,10 +253,10 @@ function getStoreConfig(): ResolvedStoreConfig {
     )
   }
 
-  if (redisUrl && redisToken) {
+  if (rawRedisUrl && redisToken) {
     return {
       mode: 'redis-rest',
-      url: redisUrl,
+      url: ENV.RATE_LIMIT_REDIS_REST_URL,
       token: redisToken,
     }
   }
@@ -451,7 +451,7 @@ function getRedisReadinessConfig():
   | { required: true; status: 'invalid-configuration' | 'not-configured' }
   | { required: true; token: string; url: string } {
   const configuredMode = process.env.RATE_LIMIT_STORE?.trim() || 'auto'
-  const url = process.env.RATE_LIMIT_REDIS_REST_URL?.trim() ?? ''
+  const rawUrl = process.env.RATE_LIMIT_REDIS_REST_URL?.trim() ?? ''
   const token = process.env.RATE_LIMIT_REDIS_REST_TOKEN?.trim() ?? ''
 
   if (configuredMode === 'memory') {
@@ -462,11 +462,11 @@ function getRedisReadinessConfig():
     return { required: true, status: 'invalid-configuration' }
   }
 
-  if (configuredMode === 'auto' && !url && !token) {
+  if (configuredMode === 'auto' && !rawUrl && !token) {
     return { required: false }
   }
 
-  if (!url || !token) {
+  if (!rawUrl || !token) {
     return {
       required: true,
       status:
@@ -476,12 +476,10 @@ function getRedisReadinessConfig():
     }
   }
 
-  try {
-    const parsedUrl = new URL(url)
+  let url: string
 
-    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
-      return { required: true, status: 'invalid-configuration' }
-    }
+  try {
+    url = ENV.RATE_LIMIT_REDIS_REST_URL
   } catch {
     return { required: true, status: 'invalid-configuration' }
   }
@@ -727,7 +725,8 @@ export function checkRateLimitForIdentity(
 function classifyRateLimitFailure(error: unknown): RateLimitFailureCode {
   if (
     error instanceof Error &&
-    error.message.includes('RATE_LIMIT_STORE=')
+    (error.message.includes('RATE_LIMIT_STORE=') ||
+      error.message.includes('RATE_LIMIT_REDIS_REST_URL'))
   ) {
     return 'RATE_LIMIT_STORE_CONFIG_INVALID'
   }

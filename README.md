@@ -69,6 +69,7 @@ documentada.
 
 - Paneles de mercado: líder, general y CEDEARs
 - Favoritos persistidos localmente y actualizados mediante `/api/favorites`
+  sólo mientras el panel Favoritos está visible
 - Cotización detallada, sesión, liquidez, puntas e histórico por activo
 - SSR del panel inicial y cabecera inicial de páginas de activos
 - Revalidación cliente con polling, pausa por pestaña oculta y refresh manual
@@ -188,7 +189,7 @@ producción sin origen válido falla de forma explícita.
 
 | Variable | Uso |
 | --- | --- |
-| `API_URL` | Base URL del proveedor externo. |
+| `API_URL` | Base URL HTTPS del proveedor externo; admite pathname base normalizado. |
 | `TOKEN_ENDPOINT` | Ruta del endpoint OAuth. |
 | `API_USERNAME` | Usuario upstream, sólo servidor. |
 | `API_PASSWORD` | Contraseña upstream, sólo servidor. |
@@ -204,11 +205,11 @@ producción sin origen válido falla de forma explícita.
 | `OBSERVABILITY_DEBUG_TOKEN` | Protege `/api/debug/metrics` en producción. |
 | `FAVORITES_QUOTE_CONCURRENCY` | Límite `1-10` para fan-out de favoritos. |
 | `PANEL_CACHE_FRESH_TTL_MS` / `PANEL_CACHE_STALE_TTL_MS` | Ventana fresh y edad máxima del snapshot de panel; defaults `30s` / `2m`. |
-| `STOCK_QUOTE_FRESH_TTL_MS` / `STOCK_QUOTE_STALE_TTL_MS` | Ventana fresh y edad máxima de cotización; defaults `15s` / `2m`. |
+| `STOCK_QUOTE_FRESH_TTL_MS` / `STOCK_QUOTE_STALE_TTL_MS` | Ventana fresh y edad máxima compartidas por detalle y Favoritos; defaults `15s` / `2m`. |
 | `STOCK_QUOTE_NOT_FOUND_TTL_MS` | Caché negativa de un `404` confirmado; default `30s`, rango `1s-5m`. |
 | `RATE_LIMIT_STORE` | `auto`, `memory` o `redis-rest`. |
 | `RATE_LIMIT_TRUSTED_PROXY` | `none` o `vercel`. |
-| `RATE_LIMIT_REDIS_REST_URL` | Endpoint REST de Redis/KV. |
+| `RATE_LIMIT_REDIS_REST_URL` | Origen REST HTTPS de Redis/KV, sin pathname, query ni fragment. |
 | `RATE_LIMIT_REDIS_REST_TOKEN` | Token del almacenamiento distribuido. |
 | `RATE_LIMIT_REDIS_TIMEOUT_MS` | Timeout `2000-5000ms` compartido por operaciones y readiness Redis; default `3000ms`. |
 
@@ -221,6 +222,11 @@ desde `fetchedAt`, no tiempo adicional después de la ventana fresh. Los valores
 inválidos o fuera de rango vuelven a los defaults; si una pareja configura
 `fresh >= stale`, ambos TTL de esa pareja vuelven a sus defaults. Los rangos y
 el comportamiento por ambiente se detallan en el runbook.
+
+`API_URL` y `RATE_LIMIT_REDIS_REST_URL` rechazan credenciales embebidas, query,
+fragment y protocolos distintos de HTTP/HTTPS. En producción ambas exigen
+HTTPS. Fuera de producción, HTTP sólo se admite para `localhost`, `127.0.0.1`
+o `::1`. `API_URL` admite un pathname base; Redis REST exige sólo el origen.
 
 ## Scripts
 
@@ -301,6 +307,12 @@ deduplicación y límites configurados en memoria son process-local. En respuest
 `429`, `Retry-After` fija el mínimo para el retry automático; un retry manual
 sigue sujeto a la misma ventana del servidor y el cliente evita ejecuciones
 manuales concurrentes.
+
+`/api/health/live` sólo confirma que el proceso responde y siempre evita
+dependencias externas. `/api/health/ready` prueba Redis con `PING` cuando es
+requerido y devuelve `503` ante configuración insegura o dependencia no
+disponible. `/api/health` conserva HTTP `200` para diagnóstico y marca
+`degraded` una `API_URL` live inválida o una configuración Redis insegura.
 
 ## Modo demo y modo live
 
