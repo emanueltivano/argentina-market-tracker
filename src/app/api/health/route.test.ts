@@ -83,6 +83,58 @@ describe('/api/health route', () => {
     expect(JSON.stringify(body)).not.toContain('password')
   })
 
+  it('reports an insecure live API URL as invalid without exposing it', async () => {
+    const insecureUrl = 'http://user:private-password@api.example.test'
+    const { GET } = await loadRoute({
+      MARKET_DATA_SOURCE: 'live',
+      NODE_ENV: 'production',
+      API_URL: insecureUrl,
+      API_USERNAME: 'user',
+      API_PASSWORD: 'password',
+      PANEL_LIDER_ENDPOINT: 'lider-endpoint',
+      PANEL_GENERAL_ENDPOINT: 'general-endpoint',
+      PANEL_CEDEARS_ENDPOINT: 'cedears-endpoint',
+      RATE_LIMIT_STORE: 'memory',
+      RATE_LIMIT_TRUSTED_PROXY: 'vercel',
+      VERCEL: '1',
+    })
+
+    const response = await GET(request('/api/health'))
+    const body = await response.json()
+    const serialized = JSON.stringify(body)
+
+    expect(response.status).toBe(200)
+    expect(body.status).toBe('degraded')
+    expect(body.checks.config).toEqual({
+      invalidLiveConfig: ['API_URL'],
+      missingLiveConfig: [],
+      status: 'degraded',
+    })
+    expect(serialized).not.toContain(insecureUrl)
+    expect(serialized).not.toContain('private-password')
+  })
+
+  it('reports an insecure required Redis URL as degraded', async () => {
+    const { GET } = await loadRoute({
+      MARKET_DATA_SOURCE: 'demo',
+      NODE_ENV: 'production',
+      RATE_LIMIT_STORE: 'redis-rest',
+      RATE_LIMIT_REDIS_REST_URL: 'http://redis.example.test',
+      RATE_LIMIT_REDIS_REST_TOKEN: 'redis-secret-token',
+    })
+
+    const response = await GET(request('/api/health'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.status).toBe('degraded')
+    expect(body.checks.rateLimit).toMatchObject({
+      status: 'degraded',
+      details: 'RATE_LIMIT_STORE_CONFIG_INVALID',
+      storeMode: 'unavailable',
+    })
+  })
+
   it('reports degraded status when redis-rest rate limiting is misconfigured', async () => {
     const { GET } = await loadRoute({
       MARKET_DATA_SOURCE: 'demo',

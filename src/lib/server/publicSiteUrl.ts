@@ -1,46 +1,19 @@
 import 'server-only'
+import { normalizeServerUrl } from '@/lib/server/core/serverUrl'
 
 const DEVELOPMENT_SITE_URL = 'http://localhost:3000'
-
-function isLoopbackHostname(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
-}
 
 function normalizePublicOrigin(
   value: string,
   options: { allowInsecure: boolean; variableName: string }
 ): string {
-  let url: URL
-
-  try {
-    url = new URL(value)
-  } catch {
-    throw new Error(`${options.variableName} must be a valid absolute URL`)
-  }
-
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error(`${options.variableName} must use http or https`)
-  }
-
-  if (
-    url.protocol === 'http:' &&
-    !options.allowInsecure &&
-    !isLoopbackHostname(url.hostname)
-  ) {
-    throw new Error(`${options.variableName} must use https in production`)
-  }
-
-  if (
-    url.username ||
-    url.password ||
-    url.pathname !== '/' ||
-    url.search ||
-    url.hash
-  ) {
-    throw new Error(`${options.variableName} must contain only the public origin`)
-  }
-
-  return url.origin
+  return normalizeServerUrl(value, {
+    allowPathname: false,
+    httpPolicy: 'public-origin',
+    nodeEnv: options.allowInsecure ? 'development' : 'production',
+    originDescription: 'the public origin',
+    variableName: options.variableName,
+  })
 }
 
 function getVercelOrigin(

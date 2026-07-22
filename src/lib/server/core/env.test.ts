@@ -30,6 +30,36 @@ describe('server env', () => {
     expect(() => ENV.API_URL).toThrow('Missing API_URL')
   })
 
+  it('normalizes secure API and Redis URLs through ENV getters', async () => {
+    vi.resetModules()
+    process.env = {
+      NODE_ENV: 'production',
+      API_URL: 'https://api.example.com/v2/',
+      RATE_LIMIT_REDIS_REST_URL: 'https://redis.example.com/',
+    }
+    vi.doMock('server-only', () => ({}))
+    const { ENV } = await import('./env')
+
+    expect(ENV.API_URL).toBe('https://api.example.com/v2')
+    expect(ENV.RATE_LIMIT_REDIS_REST_URL).toBe('https://redis.example.com')
+  })
+
+  it('rejects insecure sensitive URLs through ENV getters', async () => {
+    vi.resetModules()
+    process.env = {
+      NODE_ENV: 'production',
+      API_URL: 'http://api.example.com',
+      RATE_LIMIT_REDIS_REST_URL: 'http://redis.example.com',
+    }
+    vi.doMock('server-only', () => ({}))
+    const { ENV } = await import('./env')
+
+    expect(() => ENV.API_URL).toThrow(/API_URL.*https/)
+    expect(() => ENV.RATE_LIMIT_REDIS_REST_URL).toThrow(
+      /RATE_LIMIT_REDIS_REST_URL.*https/
+    )
+  })
+
   it('uses a safe default favorites quote concurrency when env is missing', async () => {
     vi.resetModules()
     process.env = {

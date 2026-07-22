@@ -203,6 +203,26 @@ describe('/api/health/ready route', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('returns 503 without a network call for an insecure required Redis URL', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await loadRoute({
+      NODE_ENV: 'production',
+      RATE_LIMIT_REDIS_REST_URL:
+        'http://user:private-password@redis.example.test',
+    })
+
+    const response = await GET(request())
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(body.dependencies.rateLimitStore.status).toBe(
+      'invalid-configuration'
+    )
+    expect(JSON.stringify(body)).not.toContain('private-password')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it.each([
     { RATE_LIMIT_STORE: 'unknown' },
     {
