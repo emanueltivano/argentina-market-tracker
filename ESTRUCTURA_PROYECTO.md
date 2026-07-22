@@ -49,7 +49,8 @@ variables, demo/live mode, and portfolio positioning, start with
     helpers.
 - `src/features/dashboard/favorites/`
   - Favorite persistence, favorite panel fetch/revalidation, and favorite
-    button UI.
+    button UI. The favorites SWR key and polling are disabled unless the
+    Favorites panel is active.
 - `src/features/dashboard/stock-detail/`
   - Detail modal/page, quote and history clients/hooks, current quote
     resolution, quote/history synchronization, live-session candle handling,
@@ -89,7 +90,11 @@ shared row/formatting utilities stay reusable across the dashboard.
 ### Server-Only Layer
 
 - `src/lib/server/core/env.ts`
-  - Environment parsing and runtime summary.
+  - Environment parsing, sensitive URL validation, TTL policy, and runtime
+    summary.
+- `src/lib/server/core/serverUrl.ts`
+  - Shared absolute HTTP(S) URL validation for public and secret-bearing
+    server endpoints.
 - `src/lib/server/core/httpResponse.ts`
   - Shared JSON response helper for route handlers.
 - `src/lib/server/core/rateLimit.ts`
@@ -100,7 +105,7 @@ shared row/formatting utilities stay reusable across the dashboard.
   - Debug route access checks.
 - `src/lib/server/upstream/`
   - OAuth token cache, upstream API client, quote endpoint helpers, and quote
-    cache.
+    cache. Its Favorites quote cache uses the shared stock quote TTL policy.
 - `src/lib/server/panel/`
   - Panel request parsing, endpoint selection, cache, limits, and response
     helpers.
@@ -110,7 +115,8 @@ shared row/formatting utilities stay reusable across the dashboard.
 - `src/lib/server/favorites/`
   - Favorites request parsing, rate limiting, and server-side quote fan-out.
 - `src/lib/server/quote/`
-  - Current quote service orchestration.
+  - Current quote service orchestration and the individual quote cache using
+    the same fresh/stale TTL policy as Favorites.
 - `src/lib/server/demo/demoMarketData.ts`
   - Deterministic demo data source.
 

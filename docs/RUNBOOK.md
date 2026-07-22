@@ -35,6 +35,15 @@ keeps its existing contract and HTTP `200` behavior, including
 `status: "degraded"`; do not use it as a readiness probe. Existing monitors
 should migrate to `/api/health/live` and `/api/health/ready`.
 
+Endpoint roles are intentionally different:
+
+- `/api/health/live`: process liveness only; no Redis or market-provider call
+- `/api/health/ready`: dependency readiness; returns `503` when required Redis
+  configuration is insecure/incomplete or the probe fails
+- `/api/health`: HTTP `200` compatibility diagnostics; reports invalid live
+  `API_URL` under `checks.config.invalidLiveConfig` and Redis URL failures under
+  `checks.rateLimit`
+
 ### Debug Metrics
 
 Development and test:
@@ -70,8 +79,8 @@ an additional duration after the fresh window.
 | --- | ---: | ---: | --- |
 | `PANEL_CACHE_FRESH_TTL_MS` | `30000` | `1000-300000` | Optional in demo/live. Invalid values use `30000`. |
 | `PANEL_CACHE_STALE_TTL_MS` | `120000` | `5000-900000` | Optional in demo/live. Invalid values use `120000`. |
-| `STOCK_QUOTE_FRESH_TTL_MS` | `15000` | `1000-60000` | Optional in demo/live. Invalid values use `15000`. |
-| `STOCK_QUOTE_STALE_TTL_MS` | `120000` | `5000-600000` | Optional in demo/live. Invalid values use `120000`. |
+| `STOCK_QUOTE_FRESH_TTL_MS` | `15000` | `1000-60000` | Shared by individual quote detail and Favorites quote caches. Invalid values use `15000`. |
+| `STOCK_QUOTE_STALE_TTL_MS` | `120000` | `5000-600000` | Shared maximum snapshot age for those two caches. Invalid values use `120000`. |
 | `STOCK_QUOTE_NOT_FOUND_TTL_MS` | `30000` | `1000-300000` | Optional; used by confirmed live quote `404` negative cache. Invalid values use `30000`. |
 | `RATE_LIMIT_REDIS_TIMEOUT_MS` | `3000` | `2000-5000` | Optional; used by Redis REST operations and readiness. Invalid values use `3000`. |
 
@@ -82,6 +91,14 @@ identity. An unrecognized value falls back to `vercel` only in a production
 Vercel environment and to `none` elsewhere. `RATE_LIMIT_STORE=redis-rest` additionally requires
 `RATE_LIMIT_REDIS_REST_URL` and `RATE_LIMIT_REDIS_REST_TOKEN`. Public rate
 limiting remains fail-closed if the configured store cannot verify a request.
+
+Sensitive server URLs are validated before network access. `API_URL` requires
+HTTPS in production and in normal live deployments, permits a normalized base
+pathname, and rejects credentials, query strings, and fragments. Redis REST
+requires an HTTPS origin in production and rejects pathnames as well. Outside
+production, HTTP is accepted only for `localhost`, `127.0.0.1`, or `::1`.
+An insecure required Redis URL makes readiness `not-ready` without sending a
+request. An invalid live `API_URL` makes `/api/health` degraded.
 
 Controlled test inputs are optional and must not contain secrets:
 
@@ -155,6 +172,8 @@ the readiness endpoint. A monitor that only checks HTTP status must use
 Common `degraded` causes:
 
 - `MARKET_DATA_SOURCE=live` but one or more required live env vars are missing
+- `MARKET_DATA_SOURCE=live` with an invalid or insecure `API_URL`
+- required Redis REST configuration has an invalid or insecure URL
 - rate-limit runtime could not initialize as expected
 - operational config is incomplete for the selected mode
 - live/production-like rate limiting is using process-local memory buckets
@@ -238,6 +257,7 @@ individual upstream quote lookups after request validation and deduplication.
 
 Operational notes:
 
+- browser fetch and polling run only while the Favorites panel is visible
 - fan-out concurrency is limited by `FAVORITES_QUOTE_CONCURRENCY`
 - default concurrency is `4`
 - valid configured range is `1-10`
@@ -324,8 +344,10 @@ Panel:
 
 Quote detail:
 
-- quote responses use a 15-second fresh window and a bounded two-minute maximum
-  age by default
+- individual detail and Favorites quote caches share a 15-second fresh window
+  and a bounded two-minute maximum age by default
+- both read `STOCK_QUOTE_FRESH_TTL_MS` / `STOCK_QUOTE_STALE_TTL_MS`; if
+  `fresh >= stale`, both values revert to `15000` / `120000`
 - timeout, connectivity, invalid response, upstream `429`/`5xx`, confirmed
   `404`, and quote upstream-budget store failures can use stale fallback
 - persistent `401`/`403` and other non-recoverable upstream `4xx` responses do
